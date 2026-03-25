@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — AgriCore</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/global.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+  <div class="dashboard-layout">
+
+    <!-- ========== SIDEBAR ========== -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <img src="assets/AgriCore Logo.png" alt="AgriCore Logo">
+        AgriCore <span style="font-size:0.625rem;background:var(--primary-600);color:#fff;padding:2px 6px;border-radius:4px;margin-left:6px;">ADMIN</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="sidebar-section-title">Admin</div>
+        <div class="nav-item active" data-panel="overview">
+          <i data-lucide="layout-dashboard"></i>
+          Overview
+        </div>
+        <div class="nav-item" data-panel="deletions">
+          <i data-lucide="trash-2"></i>
+          Deletion Requests
+          <span class="notif-dot" id="deletionDot" style="display:none;"></span>
+        </div>
+        <div class="nav-item" data-panel="users">
+          <i data-lucide="users"></i>
+          All Users
+        </div>
+
+        <div class="sidebar-section-title">Account</div>
+        <div class="nav-item" id="logoutBtn">
+          <i data-lucide="log-out"></i>
+          Logout
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-avatar" id="sidebarAvatar">AD</div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name" id="sidebarUserName">Admin</div>
+            <div class="sidebar-user-role">System Admin</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Sidebar overlay for mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ========== MAIN CONTENT ========== -->
+    <div class="main-content">
+
+      <!-- Topbar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="topbar-hamburger" id="sidebarToggle" aria-label="Toggle sidebar">
+            <i data-lucide="menu"></i>
+          </button>
+          <div class="topbar-title">
+            <h2 id="topbarTitle">Admin Overview</h2>
+            <p id="topbarSubtitle">System administration panel</p>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <div class="topbar-btn" id="refreshBtn" title="Refresh data">
+            <i data-lucide="refresh-cw"></i>
+          </div>
+          <div class="topbar-btn">
+            <div class="sidebar-avatar" id="topbarAvatar" style="width:28px;height:28px;font-size:.625rem;">AD</div>
+          </div>
+        </div>
+      </header>
+
+      <!-- ========== PANELS ========== -->
+      <div class="dashboard-content">
+
+        <!-- OVERVIEW PANEL -->
+        <div class="panel active" id="panel-overview">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">System Overview</h2>
+              <p style="color:var(--gray-500);font-size:.875rem;">Platform statistics at a glance.</p>
+            </div>
+          </div>
+
+          <div class="admin-stats" id="statsGrid">
+            <div class="stat-card">
+              <div class="stat-icon blue"><i data-lucide="users"></i></div>
+              <div class="stat-info">
+                <div class="stat-value" id="statTotalUsers">—</div>
+                <div class="stat-label">Total Users</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon green"><i data-lucide="sprout"></i></div>
+              <div class="stat-info">
+                <div class="stat-value" id="statTotalFarmers">—</div>
+                <div class="stat-label">Farmers</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon blue"><i data-lucide="clipboard-list"></i></div>
+              <div class="stat-info">
+                <div class="stat-value" id="statTotalPlans">—</div>
+                <div class="stat-label">Support Plans</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon amber"><i data-lucide="alert-triangle"></i></div>
+              <div class="stat-info">
+                <div class="stat-value" id="statPendingDeletions">—</div>
+                <div class="stat-label">Pending Deletions</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent pending deletions preview -->
+          <div class="requests-section">
+            <div class="requests-header">
+              <h3>Recent Deletion Requests</h3>
+              <button class="btn btn-ghost btn-sm" id="viewAllDeletionsBtn">View All →</button>
+            </div>
+            <div class="request-list" id="overviewDeletionsList">
+              <div class="empty-state"><i data-lucide="inbox"></i><p>No pending requests</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DELETIONS PANEL -->
+        <div class="panel" id="panel-deletions">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">Deletion Requests</h2>
+              <p style="color:var(--gray-500);font-size:.875rem;">Review and process user account deletion requests.</p>
+            </div>
+          </div>
+
+          <div class="filter-tabs" id="deletionFilters">
+            <button class="filter-tab active" data-status="">All</button>
+            <button class="filter-tab" data-status="pending">Pending</button>
+            <button class="filter-tab" data-status="approved">Approved</button>
+            <button class="filter-tab" data-status="rejected">Rejected</button>
+          </div>
+
+          <div class="request-list" id="deletionRequestList" style="margin-top:1rem;">
+            <div class="empty-state"><i data-lucide="inbox"></i><p>No deletion requests found</p></div>
+          </div>
+        </div>
+
+        <!-- USERS PANEL -->
+        <div class="panel" id="panel-users">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">All Users</h2>
+              <p style="color:var(--gray-500);font-size:.875rem;">Manage and view all registered users.</p>
+            </div>
+          </div>
+
+          <div class="filter-tabs" id="userFilters">
+            <button class="filter-tab active" data-role="">All</button>
+            <button class="filter-tab" data-role="farmer">Farmers</button>
+            <button class="filter-tab" data-role="government">Government</button>
+            <button class="filter-tab" data-role="admin">Admin</button>
+          </div>
+
+          <div class="users-table-wrap" style="margin-top:1rem;">
+            <table class="users-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Phone</th>
+                  <th>Joined</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                <tr><td colspan="5" class="empty-state"><p>Loading users...</p></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== REVIEW MODAL ========== -->
+  <div class="admin-modal-overlay" id="reviewModal">
+    <div class="admin-modal">
+      <h3 id="reviewModalTitle">Review Deletion Request</h3>
+      <p style="font-size:.875rem;color:var(--gray-600);margin-bottom:1rem;" id="reviewModalDesc"></p>
+      <label for="adminNotes">Admin Notes (optional)</label>
+      <textarea id="adminNotes" placeholder="Add any notes about this decision..."></textarea>
+      <div class="admin-modal-actions">
+        <button class="btn btn-ghost" id="reviewCancelBtn">Cancel</button>
+        <button class="btn-reject" id="reviewRejectBtn" style="display:none;">Reject</button>
+        <button class="btn-approve" id="reviewApproveBtn" style="display:none;">Approve & Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="js/app.js"></script>
+  <script src="js/admin.js"></script>
+
+</body>
+</html>
