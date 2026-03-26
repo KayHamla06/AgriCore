@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="robots" content="noindex, nofollow">
   <title>Dashboard — AgriCore</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -48,12 +51,20 @@
           <i data-lucide="map-pin"></i>
           Map View
         </div>
+        <div class="nav-item" data-panel="support">
+          <i data-lucide="life-buoy"></i>
+          Support
+        </div>
 
         <div class="sidebar-section-title">Account</div>
         <div class="nav-item" data-panel="settings">
           <i data-lucide="settings"></i>
           Settings
         </div>
+        <a class="nav-item" href="/legal/terms-and-services" style="text-decoration:none;color:inherit;">
+          <i data-lucide="file-text"></i>
+          Terms & Services
+        </a>
         <div class="nav-item" id="logoutBtn">
           <i data-lucide="log-out"></i>
           Logout
@@ -142,6 +153,7 @@
   <script src="js/panels/settings.js"></script>
   <script src="js/panels/comparison.js"></script>
   <script src="js/panels/map-view.js"></script>
+  <script src="js/panels/support.js"></script>
   <script src="js/panels/upload-modal.js"></script>
   <script src="js/panels/create-plan-modal.js"></script>
 

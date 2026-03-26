@@ -19,6 +19,11 @@
           <span class="verified-badge" id="govVerifiedBadge" style="display:none;"><i data-lucide="badge-check"></i> Verified Gov Official</span>
         </div>
 
+        <div class="unverified-warning" id="govUnverifiedWarning" style="display:none;">
+          <i data-lucide="alert-triangle"></i>
+          <span>Your account is not verified. Please upload verification documents in Settings to get your verified badge ✓</span>
+        </div>
+
         <div class="attention-banner" id="govAttentionBanner">
           <i data-lucide="alert-triangle"></i>
           <strong><span id="attentionCount">0</span> farmers need attention today</strong>
@@ -115,6 +120,28 @@
       if (!ctx.isGov) return;
 
       var escape = AgriCore.escapeHtml;
+
+      // === Verification Badge & Warning ===
+      var API_BASE = window.AGRICORE_API_BASE || 'http://localhost:3000/api';
+      var token = ctx.user.token || '';
+      fetch(API_BASE + '/verification/status', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(res) {
+        if (res.success && res.data) {
+          var badge = document.getElementById('govVerifiedBadge');
+          var warning = document.getElementById('govUnverifiedWarning');
+          if (res.data.status === 'verified') {
+            if (badge) { badge.style.display = 'inline-flex'; badge.innerHTML = '<span style="color:#16a34a;">✓</span> Verified Gov Official'; }
+            if (warning) warning.style.display = 'none';
+          } else {
+            if (badge) badge.style.display = 'none';
+            if (warning) warning.style.display = 'flex';
+          }
+        }
+      })
+      .catch(function() {});
 
       // === Attention Count ===
       var needAttention = AgriCore.getFarmersNeedingAttention();

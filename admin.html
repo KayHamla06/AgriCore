@@ -3,12 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="robots" content="noindex, nofollow">
   <title>Admin Dashboard — AgriCore</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/global.css">
   <link rel="stylesheet" href="css/dashboard.css">
   <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
 
@@ -35,6 +39,21 @@
         <div class="nav-item" data-panel="users">
           <i data-lucide="users"></i>
           All Users
+        </div>
+        <div class="nav-item" data-panel="verification">
+          <i data-lucide="shield-check"></i>
+          Verification
+          <span class="notif-dot" id="verificationDot" style="display:none;"></span>
+        </div>
+        <div class="nav-item" data-panel="data-approval">
+          <i data-lucide="check-square"></i>
+          Data Approval
+          <span class="notif-dot" id="dataApprovalDot" style="display:none;"></span>
+        </div>
+        <div class="nav-item" data-panel="tickets">
+          <i data-lucide="life-buoy"></i>
+          Tickets
+          <span class="notif-dot" id="ticketDot" style="display:none;"></span>
         </div>
 
         <div class="sidebar-section-title">Account</div>
@@ -123,6 +142,27 @@
                 <div class="stat-label">Pending Deletions</div>
               </div>
             </div>
+            <div class="stat-card">
+              <div class="stat-icon purple"><i data-lucide="shield-check"></i></div>
+              <div class="stat-info">
+                <div class="stat-value" id="statPendingVerifications">—</div>
+                <div class="stat-label">Pending Verifications</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon orange"><i data-lucide="database"></i></div>
+              <div class="stat-info">
+                <div class="stat-value" id="statPendingData">—</div>
+                <div class="stat-label">Pending Data</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#e3f2fd;color:#1976d2;"><i data-lucide="life-buoy"></i></div>
+              <div class="stat-info">
+                <div class="stat-value" id="statOpenTickets">—</div>
+                <div class="stat-label">Open Tickets</div>
+              </div>
+            </div>
           </div>
 
           <!-- Recent pending deletions preview -->
@@ -181,17 +221,243 @@
                   <th>Name</th>
                   <th>Email</th>
                   <th>Role</th>
+                  <th>Status</th>
                   <th>Phone</th>
                   <th>Joined</th>
                 </tr>
               </thead>
               <tbody id="usersTableBody">
-                <tr><td colspan="5" class="empty-state"><p>Loading users...</p></td></tr>
+                <tr><td colspan="6" class="empty-state"><p>Loading users...</p></td></tr>
               </tbody>
             </table>
           </div>
         </div>
 
+        <!-- USER DETAIL PANEL -->
+        <div class="panel" id="panel-user-detail">
+          <div class="section-header">
+            <div style="display:flex;align-items:center;gap:.75rem;">
+              <button class="btn btn-ghost btn-sm" id="backToUsersBtn" title="Back to users">
+                <i data-lucide="arrow-left"></i>
+              </button>
+              <div>
+                <h2 class="section-title" id="userDetailTitle">User Details</h2>
+                <p style="color:var(--gray-500);font-size:.875rem;" id="userDetailSubtitle">Full profile information</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- User Profile Header -->
+          <div class="user-detail-header" id="userDetailHeader">
+            <div class="user-detail-avatar" id="udAvatar">??</div>
+            <div class="user-detail-info">
+              <h3 id="udName">—</h3>
+              <p id="udEmail">—</p>
+              <div style="display:flex;gap:.5rem;margin-top:.375rem;flex-wrap:wrap;">
+                <span class="role-badge" id="udRole">—</span>
+                <span class="ver-status-badge" id="udStatus">—</span>
+              </div>
+            </div>
+            <div class="user-detail-actions">
+              <button class="btn btn-primary btn-sm" id="editUserBtn"><i data-lucide="edit-2" style="width:14px;height:14px;margin-right:4px;"></i> Edit Profile</button>
+              <button class="btn btn-ghost btn-sm" id="togglePermBtn"><i data-lucide="shield" style="width:14px;height:14px;margin-right:4px;"></i> <span id="permBtnText">Revoke Edit</span></button>
+            </div>
+          </div>
+
+          <!-- Tabbed Content -->
+          <div class="user-detail-tabs" id="userDetailTabs">
+            <button class="ud-tab active" data-udtab="profile">Profile</button>
+            <button class="ud-tab" data-udtab="photos">Photos & Docs</button>
+            <button class="ud-tab" data-udtab="logins">Login Activity</button>
+            <button class="ud-tab" data-udtab="map">Login Map</button>
+            <button class="ud-tab" data-udtab="edit-history">Edit History</button>
+          </div>
+
+          <!-- Profile Tab -->
+          <div class="ud-tab-content active" id="udtab-profile">
+            <div class="ud-profile-grid" id="udProfileGrid">
+              <p style="color:var(--gray-500);">Loading profile...</p>
+            </div>
+          </div>
+
+          <!-- Photos & Documents Tab -->
+          <div class="ud-tab-content" id="udtab-photos">
+            <div class="ud-photo-gallery" id="udPhotoGallery">
+              <p style="color:var(--gray-500);">Loading files...</p>
+            </div>
+          </div>
+
+          <!-- Login Activity Tab -->
+          <div class="ud-tab-content" id="udtab-logins">
+            <div class="ud-login-table-wrap">
+              <table class="users-table">
+                <thead>
+                  <tr>
+                    <th>Date & Time</th>
+                    <th>IP Address</th>
+                    <th>Location</th>
+                    <th>Browser / Device</th>
+                  </tr>
+                </thead>
+                <tbody id="udLoginTableBody">
+                  <tr><td colspan="4" class="empty-state"><p>Loading...</p></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Login Map Tab -->
+          <div class="ud-tab-content" id="udtab-map">
+            <div id="udLoginMap" style="width:100%;height:450px;border-radius:12px;border:1px solid var(--gray-200);"></div>
+          </div>
+
+          <!-- Edit History Tab -->
+          <div class="ud-tab-content" id="udtab-edit-history">
+            <div id="udEditHistory">
+              <p style="color:var(--gray-500);">Loading edit history...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- VERIFICATION PANEL -->
+        <div class="panel" id="panel-verification">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">Verification Requests</h2>
+              <p style="color:var(--gray-500);font-size:.875rem;">Review user verification documents and approve or reject.</p>
+            </div>
+          </div>
+
+          <div class="filter-tabs" id="verificationFilters">
+            <button class="filter-tab active" data-vstatus="pending">Pending</button>
+            <button class="filter-tab" data-vstatus="">All</button>
+            <button class="filter-tab" data-vstatus="verified">Verified</button>
+            <button class="filter-tab" data-vstatus="rejected">Rejected</button>
+          </div>
+
+          <div class="request-list" id="verificationRequestList" style="margin-top:1rem;">
+            <div class="empty-state"><i data-lucide="inbox"></i><p>No verification requests</p></div>
+          </div>
+        </div>
+
+        <!-- DATA APPROVAL PANEL -->
+        <div class="panel" id="panel-data-approval">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">Data Approval</h2>
+              <p style="color:var(--gray-500);font-size:.875rem;">Review and approve farmer data submissions before they go live.</p>
+            </div>
+          </div>
+
+          <div class="filter-tabs" id="dataApprovalFilters">
+            <button class="filter-tab active" data-dstatus="pending">Pending</button>
+            <button class="filter-tab" data-dstatus="">All</button>
+            <button class="filter-tab" data-dstatus="approved">Approved</button>
+            <button class="filter-tab" data-dstatus="rejected">Rejected</button>
+          </div>
+
+          <div class="request-list" id="dataApprovalList" style="margin-top:1rem;">
+            <div class="empty-state"><i data-lucide="inbox"></i><p>No data submissions</p></div>
+          </div>
+        </div>
+
+        <!-- TICKETS PANEL -->
+        <div class="panel" id="panel-tickets">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">Support Tickets</h2>
+              <p style="color:var(--gray-500);font-size:.875rem;">Review and respond to user support tickets.</p>
+            </div>
+          </div>
+
+          <div class="filter-tabs" id="ticketFilters">
+            <button class="filter-tab active" data-tstatus="">All</button>
+            <button class="filter-tab" data-tstatus="open">Open</button>
+            <button class="filter-tab" data-tstatus="in_progress">In Progress</button>
+            <button class="filter-tab" data-tstatus="resolved">Resolved</button>
+          </div>
+
+          <div style="display:flex;gap:.5rem;margin-top:.75rem;flex-wrap:wrap;">
+            <select class="form-select" id="ticketTypeFilter" style="width:auto;font-size:.8125rem;padding:.375rem .75rem;">
+              <option value="">All Types</option>
+              <option value="bug">Bug</option>
+              <option value="feature_request">Feature Request</option>
+              <option value="general_inquiry">General Enquiry</option>
+            </select>
+            <select class="form-select" id="ticketUrgencyFilter" style="width:auto;font-size:.8125rem;padding:.375rem .75rem;">
+              <option value="">All Urgency</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+
+          <div class="request-list" id="ticketList" style="margin-top:1rem;">
+            <div class="empty-state"><i data-lucide="inbox"></i><p>No tickets found</p></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== EDIT USER MODAL ========== -->
+  <div class="admin-modal-overlay" id="editUserModal">
+    <div class="admin-modal" style="max-width:550px;">
+      <h3>Edit User Profile</h3>
+      <p style="font-size:.875rem;color:var(--gray-600);margin-bottom:1rem;" id="editUserModalDesc">Update user information as admin.</p>
+      <div class="edit-user-form" id="editUserForm">
+        <div class="form-row">
+          <label for="editName">Full Name</label>
+          <input type="text" id="editName" class="form-input" placeholder="Full Name">
+        </div>
+        <div class="form-row">
+          <label for="editPhone">Phone</label>
+          <input type="text" id="editPhone" class="form-input" placeholder="Phone Number">
+        </div>
+        <div class="form-row">
+          <label for="editRole">Role</label>
+          <select id="editRole" class="form-select">
+            <option value="farmer">Farmer</option>
+            <option value="government">Government</option>
+            <option value="supervisor">Supervisor</option>
+            <option value="field_agent">Field Agent</option>
+            <option value="office_staff">Office Staff</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="editAddressNumber">Address Number</label>
+          <input type="text" id="editAddressNumber" class="form-input" placeholder="e.g. 12">
+        </div>
+        <div class="form-row">
+          <label for="editStreetName">Street Name</label>
+          <input type="text" id="editStreetName" class="form-input" placeholder="Street Name">
+        </div>
+        <div class="form-row">
+          <label for="editSuburb">Suburb</label>
+          <input type="text" id="editSuburb" class="form-input" placeholder="Suburb">
+        </div>
+        <div class="form-row">
+          <label for="editTown">Town / City</label>
+          <input type="text" id="editTown" class="form-input" placeholder="Town">
+        </div>
+        <div class="form-row">
+          <label for="editProvince">Province</label>
+          <input type="text" id="editProvince" class="form-input" placeholder="Province">
+        </div>
+        <div class="form-row">
+          <label for="editPostalCode">Postal Code</label>
+          <input type="text" id="editPostalCode" class="form-input" placeholder="Postal Code">
+        </div>
+        <div class="form-row">
+          <label for="editReason">Reason for Edit (optional)</label>
+          <textarea id="editReason" placeholder="Why are you making this change?"></textarea>
+        </div>
+      </div>
+      <div class="admin-modal-actions">
+        <button class="btn btn-ghost" id="editUserCancelBtn">Cancel</button>
+        <button class="btn-approve" id="editUserSaveBtn">Save Changes</button>
       </div>
     </div>
   </div>
@@ -211,8 +477,63 @@
     </div>
   </div>
 
+  <!-- ========== VERIFICATION REVIEW MODAL ========== -->
+  <div class="admin-modal-overlay" id="verificationModal">
+    <div class="admin-modal" style="max-width:600px;">
+      <h3 id="verModalTitle">Review Verification</h3>
+      <p style="font-size:.875rem;color:var(--gray-600);margin-bottom:.5rem;" id="verModalUser"></p>
+      <div id="verModalDocs" style="margin-bottom:1rem;"></div>
+      <label for="verNotes">Admin Notes (optional)</label>
+      <textarea id="verNotes" placeholder="Add notes about this verification decision..."></textarea>
+      <div class="admin-modal-actions">
+        <button class="btn btn-ghost" id="verCancelBtn">Cancel</button>
+        <button class="btn-reject" id="verRejectBtn">Reject</button>
+        <button class="btn-approve" id="verApproveBtn">Approve ✓</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== DATA REVIEW MODAL ========== -->
+  <div class="admin-modal-overlay" id="dataModal">
+    <div class="admin-modal" style="max-width:600px;">
+      <h3 id="dataModalTitle">Review Data Submission</h3>
+      <p style="font-size:.875rem;color:var(--gray-600);margin-bottom:.5rem;" id="dataModalDesc"></p>
+      <div id="dataModalPayload" style="margin-bottom:1rem;background:var(--gray-50);padding:.75rem;border-radius:8px;font-size:.8125rem;max-height:200px;overflow-y:auto;"></div>
+      <label for="dataNotes">Admin Notes (optional)</label>
+      <textarea id="dataNotes" placeholder="Add notes about this data review..."></textarea>
+      <div class="admin-modal-actions">
+        <button class="btn btn-ghost" id="dataCancelBtn">Cancel</button>
+        <button class="btn-reject" id="dataRejectBtn">Reject</button>
+        <button class="btn-approve" id="dataApproveBtn">Approve & Publish</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TICKET REVIEW MODAL ========== -->
+  <div class="admin-modal-overlay" id="ticketModal">
+    <div class="admin-modal" style="max-width:600px;">
+      <h3 id="ticketModalTitle">Review Ticket</h3>
+      <p style="font-size:.875rem;color:var(--gray-600);margin-bottom:.5rem;" id="ticketModalMeta"></p>
+      <div id="ticketModalBody" style="margin-bottom:1rem;background:var(--gray-50);padding:.75rem;border-radius:8px;font-size:.8125rem;max-height:200px;overflow-y:auto;"></div>
+      <div id="ticketModalAttachment" style="margin-bottom:1rem;"></div>
+      <label for="ticketModalStatus">Update Status</label>
+      <select class="form-select" id="ticketModalStatus" style="margin-bottom:.75rem;">
+        <option value="open">Open</option>
+        <option value="in_progress">In Progress</option>
+        <option value="resolved">Resolved</option>
+      </select>
+      <label for="ticketNotes">Admin Notes</label>
+      <textarea id="ticketNotes" placeholder="Add notes or a response for the user..."></textarea>
+      <div class="admin-modal-actions">
+        <button class="btn btn-ghost" id="ticketCancelBtn">Cancel</button>
+        <button class="btn-approve" id="ticketSaveBtn">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/app.js"></script>
   <script src="js/admin.js"></script>
 

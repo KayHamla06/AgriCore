@@ -94,6 +94,7 @@
 
         <div style="display:flex;gap:12px;">
           <button class="btn btn-primary" id="createPlanFromProfileBtn"><i data-lucide="clipboard-plus"></i> Create Plan</button>
+          <button class="btn btn-secondary" id="downloadFarmerProfilePdfBtn"><i data-lucide="file-down"></i> Download Farmer Report</button>
           <button class="btn btn-danger" id="flagFarmerBtn"><i data-lucide="alert-triangle"></i> Flag for Follow-up</button>
         </div>
       `;
@@ -114,10 +115,62 @@
       var flagBtn = document.getElementById('flagFarmerBtn');
       if (flagBtn) flagBtn.addEventListener('click', function() { AgriCore.showToast('Farmer flagged for follow-up', 'warning'); });
 
+      // PDF download from profile
+      var pdfProfileBtn = document.getElementById('downloadFarmerProfilePdfBtn');
+      if (pdfProfileBtn) {
+        pdfProfileBtn.addEventListener('click', function() {
+          // Get the currently viewed farmer ID
+          var currentFarmerId = window._currentProfileFarmerId;
+          if (!currentFarmerId) {
+            AgriCore.showToast('No farmer selected.', 'error');
+            return;
+          }
+
+          pdfProfileBtn.disabled = true;
+          pdfProfileBtn.innerHTML = '<i data-lucide="loader"></i> Generating...';
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+
+          var user = ctx.user;
+          var token = user.token || '';
+          var API_BASE = window.AGRICORE_API_BASE || 'http://localhost:3000/api';
+
+          fetch(API_BASE + '/pdf/farmer/' + currentFarmerId, {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + token },
+          })
+          .then(function(res) {
+            if (!res.ok) throw new Error('Failed to generate PDF');
+            return res.blob();
+          })
+          .then(function(blob) {
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'AgriCore_Farm_Report.pdf';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            AgriCore.showToast('Report downloaded!', 'success');
+          })
+          .catch(function() {
+            AgriCore.showToast('Failed to download report. Please try again.', 'error');
+          })
+          .finally(function() {
+            pdfProfileBtn.disabled = false;
+            pdfProfileBtn.innerHTML = '<i data-lucide="file-down"></i> Download Farmer Report';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        });
+      }
+
       // === viewFarmerProfile — exposed globally ===
       window.viewFarmerProfile = function(farmerId) {
         var farmer = AgriCore.mockFarmers.find(function(f) { return f.id === farmerId; });
         if (!farmer) return;
+
+        // Track current farmer for PDF download
+        window._currentProfileFarmerId = farmerId;
 
         ctx.switchPanel('farmer-profile');
 

@@ -755,6 +755,50 @@
   transform: translateX(18px);
 }
 
+/* --- Profile Picture Upload --- */
+.profile-pic-section {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.profile-pic-preview {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--primary-light, #dcfce7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 3px solid var(--primary);
+  flex-shrink: 0;
+}
+
+.profile-pic-initials {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.profile-pic-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-pic-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-pic-status {
+  font-size: .75rem;
+  color: var(--primary);
+  font-weight: 500;
+}
+
 /* --- Empty State --- */
 .empty-state {
   text-align: center;
@@ -2356,4 +2400,91 @@
   .analytics-kpi-row {
     grid-template-columns: 1fr;
   }
+}
+
+/* --- Unverified Warning Banner --- */
+.unverified-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  font-size: .875rem;
+  color: #856404;
+}
+
+.unverified-warning i {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: #e2a100;
+}
+
+.unverified-warning a {
+  color: #0d6efd;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* --- Verification Tick Badges (Admin User Table) --- */
+.ver-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: .6875rem;
+  font-weight: 700;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+.badge-verified-farmer {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.badge-verified-gov {
+  background: #d1fae5;
+  color: #16a34a;
+}
+
+.badge-pending {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.badge-unverified {
+  background: #fde2e2;
+  color: #dc2626;
+}
+
+/* --- Verification Status Badge (inline) --- */
+.ver-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: .75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.ver-status-badge.verified {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.ver-status-badge.pending {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.ver-status-badge.rejected,
+.ver-status-badge.unverified {
+  background: #fde2e2;
+  color: #dc2626;
 }

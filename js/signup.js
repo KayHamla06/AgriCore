@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons();
 
   let currentStep = 1;
+  let emailVerified = false;
 
   // --- Role Card Selection ---
   const roleCards = document.querySelectorAll('.role-card');
@@ -22,6 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Step Navigation ---
   function goToStep(step) {
     if (step > currentStep && !validateStep(currentStep)) return;
+
+    if (step === 2) {
+      // Pre-fill the email display from Step 1
+      document.getElementById('verifyEmailDisplay').value = document.getElementById('signupEmail').value.trim();
+    }
 
     if (step === 3) {
       const role = roleInput.value;
@@ -76,10 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (step === 2) {
-      const phone = document.getElementById('phoneNumber').value.trim();
-      if (!phone) { AgriCore.showToast('Please enter your phone number.', 'error'); return false; }
-      const otpCode = Array.from(document.querySelectorAll('.otp-input')).map(i => i.value).join('');
-      if (otpCode.length < 6) { AgriCore.showToast('Please complete OTP verification.', 'error'); return false; }
+      if (!emailVerified) { AgriCore.showToast('Please verify your email address.', 'error'); return false; }
       return true;
     }
 
@@ -111,7 +114,6 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="review-item"><label>Full Name</label><span>${esc(document.getElementById('fullName').value)}</span></div>
           <div class="review-item"><label>Email</label><span>${esc(document.getElementById('signupEmail').value)}</span></div>
           <div class="review-item"><label>Role</label><span>${role === 'farmer' ? 'Farmer' : 'Government Official'}</span></div>
-          <div class="review-item"><label>Phone</label><span>${esc(document.getElementById('phoneNumber').value)}</span></div>
         </div>
       </div>`;
 
@@ -146,45 +148,106 @@ document.addEventListener('DOMContentLoaded', () => {
     lucide.createIcons();
   }
 
-  // --- OTP Simulation ---
+  // --- Email Verification via Resend ---
   const sendOtpBtn = document.getElementById('sendOtpBtn');
   const otpSection = document.getElementById('otpSection');
   const sendOtpBtnContainer = document.getElementById('sendOtpBtnContainer');
 
-  sendOtpBtn.addEventListener('click', () => {
-    const phone = document.getElementById('phoneNumber').value.trim();
-    if (!phone) {
-      AgriCore.showToast('Please enter a phone number first.', 'error');
+  sendOtpBtn.addEventListener('click', async () => {
+    const email = document.getElementById('signupEmail').value.trim();
+    if (!email) {
+      AgriCore.showToast('No email address found. Please go back to Step 1.', 'error');
       return;
     }
-    sendOtpBtnContainer.style.display = 'none';
-    otpSection.style.display = 'block';
-    AgriCore.showToast('Verification code sent! (Use: 123456)', 'success');
 
-    setTimeout(() => {
-      const code = '123456';
-      document.querySelectorAll('.otp-input').forEach((inp, i) => {
-        inp.value = code[i];
+    sendOtpBtn.disabled = true;
+    sendOtpBtn.textContent = 'Sending...';
+
+    try {
+      const res = await fetch(AgriCore.API_URL + '/auth/send-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
       });
-      AgriCore.showToast('Phone verified successfully!', 'success');
-    }, 1500);
+      const data = await res.json();
+
+      if (!res.ok) {
+        AgriCore.showToast(data.message || 'Failed to send code.', 'error');
+        sendOtpBtn.disabled = false;
+        sendOtpBtn.textContent = 'Send Verification Code';
+        return;
+      }
+
+      sendOtpBtnContainer.style.display = 'none';
+      otpSection.style.display = 'block';
+      AgriCore.showToast('Verification code sent to your email!', 'success');
+    } catch {
+      AgriCore.showToast('Network error. Please try again.', 'error');
+      sendOtpBtn.disabled = false;
+      sendOtpBtn.textContent = 'Send Verification Code';
+    }
   });
 
-  // OTP auto-advance
+  // OTP auto-advance + auto-verify
   document.querySelectorAll('.otp-input').forEach((input, idx, inputs) => {
-    input.addEventListener('input', (e) => {
+    input.addEventListener('input', async (e) => {
       const val = e.target.value.replace(/[^0-9]/g, '');
       e.target.value = val;
       if (val && idx < inputs.length - 1) inputs[idx + 1].focus();
+
+      // Auto-verify when all 6 digits entered
+      const otpCode = Array.from(inputs).map(i => i.value).join('');
+      if (otpCode.length === 6) {
+        const email = document.getElementById('signupEmail').value.trim();
+        try {
+          const res = await fetch(AgriCore.API_URL + '/auth/verify-code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, code: otpCode }),
+          });
+          const data = await res.json();
+
+          if (res.ok) {
+            emailVerified = true;
+            AgriCore.showToast('Email verified successfully!', 'success');
+            inputs.forEach(i => { i.disabled = true; });
+          } else {
+            AgriCore.showToast(data.message || 'Invalid code.', 'error');
+            inputs.forEach(i => { i.value = ''; });
+            inputs[0].focus();
+          }
+        } catch {
+          AgriCore.showToast('Network error. Please try again.', 'error');
+        }
+      }
     });
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Backspace' && !input.value && idx > 0) inputs[idx - 1].focus();
     });
   });
 
-  document.getElementById('resendOtpBtn').addEventListener('click', (e) => {
+  document.getElementById('resendOtpBtn').addEventListener('click', async (e) => {
     e.preventDefault();
-    AgriCore.showToast('New verification code sent! (Use: 123456)', 'success');
+    const email = document.getElementById('signupEmail').value.trim();
+    try {
+      const res = await fetch(AgriCore.API_URL + '/auth/send-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        AgriCore.showToast('New verification code sent to your email!', 'success');
+        document.querySelectorAll('.otp-input').forEach(i => { i.value = ''; i.disabled = false; });
+        document.querySelector('.otp-input').focus();
+        emailVerified = false;
+      } else {
+        AgriCore.showToast(data.message || 'Failed to resend code.', 'error');
+      }
+    } catch {
+      AgriCore.showToast('Network error. Please try again.', 'error');
+    }
   });
 
   // --- File Upload ---
@@ -225,6 +288,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Submit Application ---
   document.getElementById('submitApplicationBtn').addEventListener('click', () => {
+    const termsCheckbox = document.getElementById('agreeTerms');
+    if (!termsCheckbox || !termsCheckbox.checked) {
+      AgriCore.showToast('You must accept the Terms & Services before creating your account.', 'error');
+      return;
+    }
+
     const role = roleInput.value;
     const name = document.getElementById('fullName').value.trim();
     const email = document.getElementById('signupEmail').value.trim();
@@ -249,7 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
     AgriCore.showToast('Application submitted successfully!', 'success');
 
     setTimeout(() => {
-      window.location.href = 'dashboard.html';
+      window.location.href = '/platform/dashboard';
     }, 1200);
   });
 });

@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
       AgriCore.setCurrentUser(user);
       AgriCore.showToast('Login successful! Redirecting...', 'success');
       setTimeout(() => {
-        window.location.href = user.role === 'admin' ? 'admin.html' : 'dashboard.html';
+        window.location.href = user.role === 'admin' ? '/platform/admin/console' : '/platform/dashboard';
       }, 800);
     } else {
       loginError.textContent = 'Invalid email or password. Try farmer@agricore.com / farmer123 or gov@gov.za / gov123';

@@ -1,0 +1,142 @@
+/* ============================================
+   AgriCore — Terms & Services Styles
+   ============================================ */
+
+.terms-page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 4rem;
+}
+.terms-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+.terms-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--primary);
+  text-decoration: none;
+  margin-bottom: 1.5rem;
+}
+.terms-logo img { height: 32px; }
+.terms-header h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--gray-900);
+  margin-bottom: .5rem;
+}
+.terms-header p {
+  color: var(--gray-500);
+  font-size: .9375rem;
+}
+.terms-owner {
+  margin-top: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .625rem;
+}
+.terms-owner span {
+  font-size: .875rem;
+  color: var(--gray-600);
+}
+.terms-owner img {
+  height: 36px;
+}
+.terms-nav {
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2rem;
+}
+.terms-nav h3 {
+  font-size: .8125rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--gray-500);
+  margin-bottom: .75rem;
+}
+.terms-nav ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.terms-nav li {
+  margin-bottom: .375rem;
+}
+.terms-nav a {
+  color: var(--primary);
+  text-decoration: none;
+  font-size: .875rem;
+  font-weight: 500;
+}
+.terms-nav a:hover { text-decoration: underline; }
+.terms-section {
+  margin-bottom: 2rem;
+}
+.terms-section h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin-bottom: .75rem;
+  padding-bottom: .5rem;
+  border-bottom: 2px solid var(--primary-50);
+}
+.terms-section h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin: 1rem 0 .5rem;
+}
+.terms-section p,
+.terms-section li {
+  font-size: .9375rem;
+  color: var(--gray-700);
+  line-height: 1.7;
+}
+.terms-section ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+  margin: .5rem 0 1rem;
+}
+.terms-section li { margin-bottom: .375rem; }
+.terms-highlight {
+  background: var(--primary-50);
+  border-left: 4px solid var(--primary);
+  padding: 1rem 1.25rem;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin: 1rem 0;
+  font-size: .875rem;
+  color: var(--gray-800);
+}
+.terms-warning {
+  background: var(--warning-light);
+  border-left: 4px solid var(--warning);
+  padding: 1rem 1.25rem;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin: 1rem 0;
+  font-size: .875rem;
+  color: var(--gray-800);
+}
+.terms-footer {
+  text-align: center;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--gray-200);
+  color: var(--gray-500);
+  font-size: .8125rem;
+}
+.terms-back {
+  display: inline-flex;
+  align-items: center;
+  gap: .375rem;
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: .875rem;
+  margin-top: 1rem;
+}
+.terms-back:hover { text-decoration: underline; }

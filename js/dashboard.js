@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // =============================================
   var user = AgriCore.getCurrentUser();
   if (!user) {
-    window.location.href = 'login.html';
+    window.location.href = '/auth/login';
     return;
   }
 
@@ -136,7 +136,8 @@ document.addEventListener('DOMContentLoaded', function() {
     'plans': 'Plans',
     'settings': 'Settings',
     'compare': 'Compare Farmers',
-    'map': 'Map View'
+    'map': 'Map View',
+    'support': 'Support'
   };
 
   function switchPanel(panelName) {
@@ -149,7 +150,8 @@ document.addEventListener('DOMContentLoaded', function() {
       'plans': 'panel-plans',
       'settings': 'panel-settings',
       'compare': 'panel-compare',
-      'map': 'panel-map'
+      'map': 'panel-map',
+      'support': 'panel-support'
     };
 
     var targetId = idMap[panelName];
@@ -223,7 +225,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (logoutBtn) {
     logoutBtn.addEventListener('click', function() {
       AgriCore.clearCurrentUser();
-      window.location.href = 'login.html';
+      window.location.href = '/auth/login';
     });
   }
 

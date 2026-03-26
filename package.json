@@ -1,0 +1,18 @@
+{
+  "name": "agricore-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AgriCore — Frontend server with clean URL routing & security",
+  "scripts": {
+    "start": "node server.js",
+    "build": "node build.js"
+  },
+  "dependencies": {
+    "compression": "^1.7.4",
+    "express": "^4.21.0",
+    "helmet": "^7.1.0"
+  },
+  "devDependencies": {
+    "supabase": "^2.84.4"
+  }
+}

@@ -19,6 +19,11 @@
           <span class="verified-badge" id="farmerVerifiedBadge" style="display:none;"><i data-lucide="badge-check"></i> Verified Farmer</span>
         </div>
 
+        <div class="unverified-warning" id="farmerUnverifiedWarning" style="display:none;">
+          <i data-lucide="alert-triangle"></i>
+          <span>Your account is not verified. <a href="#" id="startVerificationBtn">Upload verification documents</a> to get your verified badge ✓</span>
+        </div>
+
         <div class="attention-banner farmer-banner" id="farmerAttentionBanner" style="display:none;">
           <i data-lucide="info"></i>
           <span id="farmerAttentionText">Your data is up to date.</span>
@@ -82,6 +87,8 @@
         <div style="display:flex;gap:12px;margin-top:20px;">
           <button class="btn btn-primary" id="uploadDataBtn"><i data-lucide="upload"></i> Upload New Data</button>
           <button class="btn btn-secondary" id="viewHistoryBtn"><i data-lucide="bar-chart-3"></i> View History</button>
+          <button class="btn btn-secondary" id="downloadFarmerPdfBtn"><i data-lucide="file-down"></i> Download My Farm Report</button>
+          <button class="btn btn-secondary" id="downloadPlanPdfBtn"><i data-lucide="file-down"></i> Download Plan Report</button>
         </div>
 
         <div class="card" style="margin-top:24px;padding:24px;">
@@ -100,6 +107,28 @@
       // Welcome name
       var welcomeName = document.getElementById('farmerWelcomeName');
       if (welcomeName) welcomeName.textContent = user.name.split(' ')[0];
+
+      // === Verification Badge & Warning ===
+      var API_BASE = window.AGRICORE_API_BASE || 'http://localhost:3000/api';
+      var token = user.token || '';
+      fetch(API_BASE + '/verification/status', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(res) {
+        if (res.success && res.data) {
+          var badge = document.getElementById('farmerVerifiedBadge');
+          var warning = document.getElementById('farmerUnverifiedWarning');
+          if (res.data.status === 'verified') {
+            if (badge) { badge.style.display = 'inline-flex'; badge.innerHTML = '<span style="color:#2563eb;">✓</span> Verified Farmer'; }
+            if (warning) warning.style.display = 'none';
+          } else {
+            if (badge) badge.style.display = 'none';
+            if (warning) warning.style.display = 'flex';
+          }
+        }
+      })
+      .catch(function() {});
 
       // === Performance Scores ===
       var score = AgriCore.calculatePerformanceScore(farmerData);
@@ -192,6 +221,91 @@
 
       var historyBtn = document.getElementById('viewHistoryBtn');
       if (historyBtn) historyBtn.addEventListener('click', function() { ctx.switchPanel('analytics'); });
+
+      // === PDF Download ===
+      var pdfBtn = document.getElementById('downloadFarmerPdfBtn');
+      if (pdfBtn) {
+        pdfBtn.addEventListener('click', function() {
+          // Use the farmer's own farmer ID (from mock data for now, or user.farmerId)
+          var farmerId = farmerData.id || user.id;
+          pdfBtn.disabled = true;
+          pdfBtn.innerHTML = '<i data-lucide="loader"></i> Generating...';
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+
+          var token = user.token || '';
+          var API_BASE = window.AGRICORE_API_BASE || 'http://localhost:3000/api';
+
+          fetch(API_BASE + '/pdf/farmer/' + farmerId, {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + token },
+          })
+          .then(function(res) {
+            if (!res.ok) throw new Error('Failed to generate PDF');
+            return res.blob();
+          })
+          .then(function(blob) {
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'AgriCore_Farm_Report.pdf';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            AgriCore.showToast('Report downloaded!', 'success');
+          })
+          .catch(function() {
+            AgriCore.showToast('Failed to download report. Please try again.', 'error');
+          })
+          .finally(function() {
+            pdfBtn.disabled = false;
+            pdfBtn.innerHTML = '<i data-lucide="file-down"></i> Download My Farm Report';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        });
+      }
+
+      // === Plan PDF Download ===
+      var planPdfBtn = document.getElementById('downloadPlanPdfBtn');
+      if (planPdfBtn) {
+        planPdfBtn.addEventListener('click', function() {
+          var farmerId = farmerData.id || user.id;
+          planPdfBtn.disabled = true;
+          planPdfBtn.innerHTML = '<i data-lucide="loader"></i> Generating...';
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+
+          var token = user.token || '';
+          var API_BASE = window.AGRICORE_API_BASE || 'http://localhost:3000/api';
+
+          fetch(API_BASE + '/pdf/plans/' + farmerId, {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + token },
+          })
+          .then(function(res) {
+            if (!res.ok) throw new Error('Failed to generate PDF');
+            return res.blob();
+          })
+          .then(function(blob) {
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'AgriCore_Plan_Report.pdf';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            AgriCore.showToast('Plan report downloaded!', 'success');
+          })
+          .catch(function() {
+            AgriCore.showToast('Failed to download plan report.', 'error');
+          })
+          .finally(function() {
+            planPdfBtn.disabled = false;
+            planPdfBtn.innerHTML = '<i data-lucide="file-down"></i> Download Plan Report';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        });
+      }
     }
   });
 })();

@@ -25,6 +25,22 @@
               <option value="all">All Provinces</option>
             </select>
           </div>
+          <div class="form-group">
+            <label class="form-label">Data Types</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <label style="font-size:.8125rem;display:flex;align-items:center;gap:4px;"><input type="checkbox" value="livestock" class="compare-data-type" checked> Livestock</label>
+              <label style="font-size:.8125rem;display:flex;align-items:center;gap:4px;"><input type="checkbox" value="crops" class="compare-data-type" checked> Crops</label>
+              <label style="font-size:.8125rem;display:flex;align-items:center;gap:4px;"><input type="checkbox" value="soil" class="compare-data-type" checked> Soil</label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Time Range</label>
+            <div style="display:flex;gap:8px;">
+              <input type="date" class="form-input" id="compareFromDate" placeholder="From" style="max-width:150px;">
+              <input type="date" class="form-input" id="compareToDate" placeholder="To" style="max-width:150px;">
+            </div>
+          </div>
+          <button class="btn btn-primary" id="downloadComparisonPdfBtn"><i data-lucide="file-down"></i> Download Comparison PDF</button>
         </div>
 
         <div class="card">
@@ -106,6 +122,81 @@
       }
 
       populateComparisonTable('all');
+
+      // === Comparison PDF Download ===
+      var compPdfBtn = document.getElementById('downloadComparisonPdfBtn');
+      if (compPdfBtn) {
+        compPdfBtn.addEventListener('click', function() {
+          // Get selected farmer IDs from the current, visible table
+          var farmerIds = AgriCore.mockFarmers.map(function(f) { return f.id; });
+          var province = select ? select.value : 'all';
+          if (province && province !== 'all') {
+            farmerIds = AgriCore.mockFarmers.filter(function(f) { return f.province === province; }).map(function(f) { return f.id; });
+          }
+
+          if (farmerIds.length < 2) {
+            AgriCore.showToast('At least 2 farmers are needed for comparison.', 'error');
+            return;
+          }
+
+          // Get selected data types
+          var dataTypes = [];
+          document.querySelectorAll('.compare-data-type:checked').forEach(function(cb) {
+            dataTypes.push(cb.value);
+          });
+          if (dataTypes.length === 0) dataTypes = ['livestock', 'crops', 'soil'];
+
+          // Get time range
+          var fromDate = document.getElementById('compareFromDate');
+          var toDate = document.getElementById('compareToDate');
+          var timeRange = {};
+          if (fromDate && fromDate.value) timeRange.from = fromDate.value;
+          if (toDate && toDate.value) timeRange.to = toDate.value;
+
+          compPdfBtn.disabled = true;
+          compPdfBtn.innerHTML = '<i data-lucide="loader"></i> Generating...';
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+
+          var token = ctx.user.token || '';
+          var API_BASE = window.AGRICORE_API_BASE || 'http://localhost:3000/api';
+
+          fetch(API_BASE + '/pdf/compare', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + token,
+            },
+            body: JSON.stringify({
+              farmerIds: farmerIds,
+              dataTypes: dataTypes,
+              timeRange: timeRange,
+            }),
+          })
+          .then(function(res) {
+            if (!res.ok) throw new Error('Failed to generate comparison PDF');
+            return res.blob();
+          })
+          .then(function(blob) {
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'AgriCore_Comparison_Report.pdf';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            AgriCore.showToast('Comparison report downloaded!', 'success');
+          })
+          .catch(function() {
+            AgriCore.showToast('Failed to generate comparison report.', 'error');
+          })
+          .finally(function() {
+            compPdfBtn.disabled = false;
+            compPdfBtn.innerHTML = '<i data-lucide="file-down"></i> Download Comparison PDF';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        });
+      }
     }
   });
 })();

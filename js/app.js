@@ -804,7 +804,7 @@ const AgriCore = (() => {
       .then(function (res) {
         if (res.status === 401) {
           clearCurrentUser();
-          window.location.href = 'login.html';
+          window.location.href = '/auth/login';
           return { success: false, error: 'Session expired. Please log in again.' };
         }
         return res.json();
@@ -828,6 +828,10 @@ const AgriCore = (() => {
 
   function apiDelete(path) {
     return apiFetch(path, { method: 'DELETE' });
+  }
+
+  function apiPatch(path, body) {
+    return apiFetch(path, { method: 'PATCH', body: JSON.stringify(body) });
   }
 
   // ===== UI State Helpers (Loading / Error / Empty) =====
@@ -869,6 +873,7 @@ const AgriCore = (() => {
     apiGet,
     apiPost,
     apiPut,
+    apiPatch,
     apiDelete,
     showLoading,
     showError,

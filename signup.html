@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="robots" content="noindex, nofollow">
   <title>Sign Up — AgriCore</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -71,19 +74,19 @@
         </div>
 
         <div class="step-actions">
-          <a href="login.html" class="btn btn-ghost">Already have account?</a>
+          <a href="/auth/login" class="btn btn-ghost">Already have account?</a>
           <button class="btn btn-primary" id="step1Next">Continue</button>
         </div>
       </div>
 
       <!-- ====== STEP 2: Contact Verification ====== -->
       <div class="step-panel" id="step2">
-        <h2 class="step-title">Contact Verification</h2>
-        <p class="step-description">Verify your phone number for account security.</p>
+        <h2 class="step-title">Email Verification</h2>
+        <p class="step-description">We'll send a verification code to the email you provided.</p>
 
         <div class="form-group">
-          <label class="form-label" for="phoneNumber">Phone Number</label>
-          <input type="tel" id="phoneNumber" class="form-input" placeholder="+27 XX XXX XXXX" required>
+          <label class="form-label">Email Address</label>
+          <input type="email" id="verifyEmailDisplay" class="form-input" disabled>
         </div>
 
         <div id="sendOtpBtnContainer">
@@ -91,7 +94,7 @@
         </div>
 
         <div id="otpSection" style="display:none;">
-          <p class="otp-hint">Enter the 6-digit code sent to your phone</p>
+          <p class="otp-hint">Enter the 6-digit code sent to your email</p>
           <div class="otp-group">
             <input type="text" class="otp-input" maxlength="1" data-otp="1" inputmode="numeric">
             <input type="text" class="otp-input" maxlength="1" data-otp="2" inputmode="numeric">
@@ -252,7 +255,7 @@
 
         <div class="review-terms" id="termsCheck">
           <input type="checkbox" id="agreeTerms">
-          <label for="agreeTerms">I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></label>
+          <label for="agreeTerms">I agree to the <a href="/legal/terms-and-services" target="_blank">Terms &amp; Services</a> and <a href="/legal/terms-and-services" target="_blank">Privacy Policy</a></label>
         </div>
 
         <div class="step-actions">
@@ -262,7 +265,7 @@
       </div>
 
       <p class="signup-footer">
-        Already have an account? <a href="login.html">Sign In</a>
+        Already have an account? <a href="/auth/login">Sign In</a>
       </p>
     </div>
   </div>
