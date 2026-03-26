@@ -5,7 +5,7 @@
   "description": "AgriCore — Frontend server with clean URL routing & security",
   "scripts": {
     "start": "node server.js",
-    "build": "cd backend && npm install && npm run build && cd .. && node build.js"
+    "build": "npm install --prefix backend && npx --prefix backend tsc --project backend/tsconfig.json && node build.js"
   },
   "dependencies": {
     "compression": "^1.7.4",
