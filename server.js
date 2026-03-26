@@ -1,7 +1,7 @@
 /* ============================================
    AgriCore — Frontend Server
    Clean URL routing, security headers,
-   and static file serving.
+   static file serving, and backend integration.
    ============================================ */
 
 const express = require('express');
@@ -10,8 +10,29 @@ const compression = require('compression');
 const path = require('path');
 const fs = require('fs');
 
+// =============================================
+//  START BACKEND IN SAME PROCESS
+// =============================================
+const BACKEND_INTERNAL_PORT = process.env.BACKEND_PORT || 3001;
+
+// Set PORT for backend before loading it
+const originalPort = process.env.PORT;
+process.env.PORT = String(BACKEND_INTERNAL_PORT);
+
+try {
+  require('./backend/dist/server');
+  console.log(`Backend API started on internal port ${BACKEND_INTERNAL_PORT}`);
+} catch (err) {
+  console.error('Failed to start backend:', err.message);
+}
+
+// Restore PORT for frontend
+process.env.PORT = originalPort;
+
+const BACKEND_URL = `http://localhost:${BACKEND_INTERNAL_PORT}`;
+
 const app = express();
-const PORT = process.env.FRONTEND_PORT || 3000;
+const PORT = process.env.PORT || 3000;
 const IS_PROD = process.env.NODE_ENV === 'production';
 
 // In production, serve from dist/ (minified files)
@@ -83,7 +104,6 @@ app.use(compression());
 // =============================================
 //  API PROXY — Forward /api/* to backend
 // =============================================
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
 app.use('/api', async (req, res) => {
   try {
