@@ -81,6 +81,51 @@ app.use((_req, res, next) => {
 app.use(compression());
 
 // =============================================
+//  API PROXY — Forward /api/* to backend
+// =============================================
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
+
+app.use('/api', async (req, res) => {
+  try {
+    const targetUrl = `${BACKEND_URL}/api${req.url}`;
+
+    // Forward headers (auth, content-type, etc.)
+    const headers = {};
+    if (req.headers['content-type']) headers['Content-Type'] = req.headers['content-type'];
+    if (req.headers['authorization']) headers['Authorization'] = req.headers['authorization'];
+
+    // Collect request body for non-GET methods
+    let body = undefined;
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      body = await new Promise((resolve) => {
+        const chunks = [];
+        req.on('data', (chunk) => chunks.push(chunk));
+        req.on('end', () => resolve(Buffer.concat(chunks)));
+      });
+      if (body.length === 0) body = undefined;
+    }
+
+    const response = await fetch(targetUrl, {
+      method: req.method,
+      headers,
+      body,
+      signal: AbortSignal.timeout(30000),
+    });
+
+    // Forward status and response headers
+    res.status(response.status);
+    const contentType = response.headers.get('content-type');
+    if (contentType) res.setHeader('Content-Type', contentType);
+
+    const responseBody = await response.text();
+    res.send(responseBody);
+  } catch (err) {
+    console.error('API proxy error:', err.message);
+    res.status(502).json({ success: false, error: 'Backend unavailable' });
+  }
+});
+
+// =============================================
 //  CLEAN URL → HTML FILE MAPPING
 // =============================================
 //  These paths are designed to look like deep
