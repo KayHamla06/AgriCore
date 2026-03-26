@@ -787,7 +787,7 @@ const AgriCore = (() => {
   // ===== Secure API Fetch Utility =====
   // Wraps fetch with auth headers, error handling, and friendly user messages.
   // Never exposes raw errors to the user.
-  var API_BASE = window.AGRICORE_API_BASE || 'http://localhost:3000/api';
+  var API_BASE = window.AGRICORE_API_BASE || '/api';
 
   function apiFetch(path, options) {
     options = options || {};
@@ -852,6 +852,7 @@ const AgriCore = (() => {
 
   // ===== Public API =====
   return {
+    API_URL: API_BASE,
     mockFarmers,
     mockPlans,
     mockUsers,

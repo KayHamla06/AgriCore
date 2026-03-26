@@ -47,7 +47,8 @@ app.use(helmet({
       connectSrc: [
         "'self'",
         "https://*.supabase.co",
-        "https://api.open-meteo.com"
+        "https://api.open-meteo.com",
+        "https://unpkg.com"
       ],
       frameSrc: ["'none'"],
       objectSrc: ["'none'"],
