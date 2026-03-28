@@ -159,6 +159,7 @@ const ROUTE_MAP = {
   '/platform/dashboard':                'dashboard.html',
   '/platform/admin/console':            'admin.html',
   '/legal/terms-and-services':          'terms.html',
+  '/verify':                            'verify.html',
 };
 
 // =============================================

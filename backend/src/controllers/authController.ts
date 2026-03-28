@@ -75,23 +75,31 @@ export class AuthController {
     }
   }
 
-  async sendVerificationCode(req: Request, res: Response, next: NextFunction) {
+  async sendVerificationEmail(req: Request, res: Response, next: NextFunction) {
     try {
       const { email } = req.body;
-      await emailVerificationService.sendCode(email);
+      await emailVerificationService.sendVerificationEmail(email);
 
-      res.json({ success: true, message: 'Verification code sent' });
+      res.json({ success: true, message: 'Verification email sent. Please check your inbox.' });
     } catch (err) {
       next(err);
     }
   }
 
-  async verifyCode(req: Request, res: Response, next: NextFunction) {
+  async verifyEmailToken(req: Request, res: Response, next: NextFunction) {
     try {
-      const { email, code } = req.body;
-      emailVerificationService.verifyCode(email, code);
+      const { token } = req.query;
 
-      res.json({ success: true, message: 'Email verified successfully' });
+      if (!token || typeof token !== 'string') {
+        res.status(400).json({ success: false, message: 'Missing or invalid token.' });
+        return;
+      }
+
+      const email = emailVerificationService.verifyToken(token);
+
+      logger.info('Email verified via link', { email });
+
+      res.json({ success: true, message: 'Email verified successfully', data: { email } });
     } catch (err) {
       next(err);
     }

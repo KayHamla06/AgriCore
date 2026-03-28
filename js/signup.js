@@ -148,20 +148,20 @@ document.addEventListener('DOMContentLoaded', () => {
     lucide.createIcons();
   }
 
-  // --- Email Verification via Resend ---
-  const sendOtpBtn = document.getElementById('sendOtpBtn');
-  const otpSection = document.getElementById('otpSection');
-  const sendOtpBtnContainer = document.getElementById('sendOtpBtnContainer');
+  // --- Email Verification via TurboSMTP ---
+  const sendVerifyBtn = document.getElementById('sendVerifyBtn');
+  const verifyEmailSent = document.getElementById('verifyEmailSent');
+  const sendVerifyBtnContainer = document.getElementById('sendVerifyBtnContainer');
 
-  sendOtpBtn.addEventListener('click', async () => {
+  async function sendVerificationEmail() {
     const email = document.getElementById('signupEmail').value.trim();
     if (!email) {
       AgriCore.showToast('No email address found. Please go back to Step 1.', 'error');
       return;
     }
 
-    sendOtpBtn.disabled = true;
-    sendOtpBtn.textContent = 'Sending...';
+    sendVerifyBtn.disabled = true;
+    sendVerifyBtn.textContent = 'Sending...';
 
     try {
       const res = await fetch(AgriCore.API_URL + '/auth/send-verification', {
@@ -172,61 +172,27 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
 
       if (!res.ok) {
-        AgriCore.showToast(data.message || 'Failed to send code.', 'error');
-        sendOtpBtn.disabled = false;
-        sendOtpBtn.textContent = 'Send Verification Code';
+        AgriCore.showToast(data.message || 'Failed to send verification email.', 'error');
+        sendVerifyBtn.disabled = false;
+        sendVerifyBtn.textContent = 'Send Verification Email';
         return;
       }
 
-      sendOtpBtnContainer.style.display = 'none';
-      otpSection.style.display = 'block';
-      AgriCore.showToast('Verification code sent to your email!', 'success');
+      sendVerifyBtnContainer.style.display = 'none';
+      verifyEmailSent.style.display = 'block';
+      emailVerified = true;
+      lucide.createIcons();
+      AgriCore.showToast('Verification email sent! Check your inbox.', 'success');
     } catch {
       AgriCore.showToast('Network error. Please try again.', 'error');
-      sendOtpBtn.disabled = false;
-      sendOtpBtn.textContent = 'Send Verification Code';
+      sendVerifyBtn.disabled = false;
+      sendVerifyBtn.textContent = 'Send Verification Email';
     }
-  });
+  }
 
-  // OTP auto-advance + auto-verify
-  document.querySelectorAll('.otp-input').forEach((input, idx, inputs) => {
-    input.addEventListener('input', async (e) => {
-      const val = e.target.value.replace(/[^0-9]/g, '');
-      e.target.value = val;
-      if (val && idx < inputs.length - 1) inputs[idx + 1].focus();
+  sendVerifyBtn.addEventListener('click', sendVerificationEmail);
 
-      // Auto-verify when all 6 digits entered
-      const otpCode = Array.from(inputs).map(i => i.value).join('');
-      if (otpCode.length === 6) {
-        const email = document.getElementById('signupEmail').value.trim();
-        try {
-          const res = await fetch(AgriCore.API_URL + '/auth/verify-code', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, code: otpCode }),
-          });
-          const data = await res.json();
-
-          if (res.ok) {
-            emailVerified = true;
-            AgriCore.showToast('Email verified successfully!', 'success');
-            inputs.forEach(i => { i.disabled = true; });
-          } else {
-            AgriCore.showToast(data.message || 'Invalid code.', 'error');
-            inputs.forEach(i => { i.value = ''; });
-            inputs[0].focus();
-          }
-        } catch {
-          AgriCore.showToast('Network error. Please try again.', 'error');
-        }
-      }
-    });
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Backspace' && !input.value && idx > 0) inputs[idx - 1].focus();
-    });
-  });
-
-  document.getElementById('resendOtpBtn').addEventListener('click', async (e) => {
+  document.getElementById('resendVerifyBtn').addEventListener('click', async (e) => {
     e.preventDefault();
     const email = document.getElementById('signupEmail').value.trim();
     try {
@@ -238,12 +204,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
 
       if (res.ok) {
-        AgriCore.showToast('New verification code sent to your email!', 'success');
-        document.querySelectorAll('.otp-input').forEach(i => { i.value = ''; i.disabled = false; });
-        document.querySelector('.otp-input').focus();
-        emailVerified = false;
+        AgriCore.showToast('New verification email sent! Check your inbox.', 'success');
       } else {
-        AgriCore.showToast(data.message || 'Failed to resend code.', 'error');
+        AgriCore.showToast(data.message || 'Failed to resend. Please try again.', 'error');
       }
     } catch {
       AgriCore.showToast('Network error. Please try again.', 'error');

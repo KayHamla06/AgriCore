@@ -83,29 +83,31 @@
       <!-- ====== STEP 2: Contact Verification ====== -->
       <div class="step-panel" id="step2">
         <h2 class="step-title">Email Verification</h2>
-        <p class="step-description">We'll send a verification code to the email you provided.</p>
+        <p class="step-description">We'll send a verification link to the email you provided.</p>
 
         <div class="form-group">
           <label class="form-label">Email Address</label>
           <input type="email" id="verifyEmailDisplay" class="form-input" disabled>
         </div>
 
-        <div id="sendOtpBtnContainer">
-          <button class="btn btn-secondary w-full" id="sendOtpBtn">Send Verification Code</button>
+        <div id="sendVerifyBtnContainer">
+          <button class="btn btn-secondary w-full" id="sendVerifyBtn">Send Verification Email</button>
         </div>
 
-        <div id="otpSection" style="display:none;">
-          <p class="otp-hint">Enter the 6-digit code sent to your email</p>
-          <div class="otp-group">
-            <input type="text" class="otp-input" maxlength="1" data-otp="1" inputmode="numeric">
-            <input type="text" class="otp-input" maxlength="1" data-otp="2" inputmode="numeric">
-            <input type="text" class="otp-input" maxlength="1" data-otp="3" inputmode="numeric">
-            <input type="text" class="otp-input" maxlength="1" data-otp="4" inputmode="numeric">
-            <input type="text" class="otp-input" maxlength="1" data-otp="5" inputmode="numeric">
-            <input type="text" class="otp-input" maxlength="1" data-otp="6" inputmode="numeric">
+        <div id="verifyEmailSent" style="display:none;">
+          <div style="text-align:center; padding: 24px 0;">
+            <i data-lucide="mail-check" style="width:48px; height:48px; color: var(--primary); margin-bottom: 12px;"></i>
+            <p style="color: var(--text-primary); font-size: 16px; font-weight: 600; margin-bottom: 8px;">Verification Email Sent!</p>
+            <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">
+              We've sent a verification link to your email address.<br>
+              Please check your inbox (and spam folder) and click the link to verify.
+            </p>
+            <p style="color: var(--text-muted); font-size: 13px; margin-top: 16px;">
+              The link expires in 24 hours.
+            </p>
           </div>
-          <div class="otp-resend">
-            <a href="#" id="resendOtpBtn">Resend Code</a>
+          <div style="text-align:center; margin-top: 8px;">
+            <a href="#" id="resendVerifyBtn" style="color: var(--primary); font-size: 14px;">Resend Verification Email</a>
           </div>
         </div>
 

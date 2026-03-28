@@ -6,7 +6,7 @@
 // GET  /api/auth/me
 // POST /api/auth/refresh
 // POST /api/auth/send-verification
-// POST /api/auth/verify-code
+// GET  /api/auth/verify-email
 // ============================================
 
 import { Router } from 'express';
@@ -38,11 +38,6 @@ const sendVerificationSchema = z.object({
   email: z.string().email('Invalid email address'),
 });
 
-const verifyCodeSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  code: z.string().length(6, 'Code must be 6 digits'),
-});
-
 // Rate limit for verification emails: 3 requests per 15 minutes per IP
 const verificationRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -56,8 +51,8 @@ const verificationRateLimit = rateLimit({
 router.post('/signup', validate(signUpSchema), authController.signUp);
 router.post('/login', validate(loginSchema), authController.login);
 router.post('/refresh', validate(refreshSchema), authController.refreshToken);
-router.post('/send-verification', verificationRateLimit, validate(sendVerificationSchema), authController.sendVerificationCode);
-router.post('/verify-code', validate(verifyCodeSchema), authController.verifyCode);
+router.post('/send-verification', verificationRateLimit, validate(sendVerificationSchema), authController.sendVerificationEmail);
+router.get('/verify-email', authController.verifyEmailToken);
 
 // Protected routes
 router.get('/me', authMiddleware, authController.me);
