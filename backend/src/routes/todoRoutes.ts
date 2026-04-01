@@ -5,7 +5,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { todoController } from '../controllers/todoController';
-import { authMiddleware, validate } from '../middleware';
+import { authMiddleware, validate, requireVerified } from '../middleware';
 
 const router = Router();
 
@@ -24,7 +24,7 @@ const updateTodoSchema = z.object({
 });
 
 // All routes require authentication (private to user)
-router.use(authMiddleware);
+router.use(authMiddleware, requireVerified);
 
 // Get all todos
 router.get('/', todoController.getAll);

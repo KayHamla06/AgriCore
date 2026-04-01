@@ -155,6 +155,7 @@ export class VerificationService {
 
   /**
    * Admin: approve user verification.
+   * For government users: enables dashboard access.
    */
   async approveUser(
     userId: string,
@@ -163,7 +164,9 @@ export class VerificationService {
   ): Promise<void> {
     const { error } = await supabaseAdmin
       .from('users')
-      .update({ verification_status: 'verified' })
+      .update({
+        verification_status: 'verified',
+      })
       .eq('id', userId);
 
     if (error) throw new AppError('Failed to approve verification', 500);
@@ -180,12 +183,12 @@ export class VerificationService {
       .eq('user_id', userId)
       .eq('status', 'pending');
 
-    // Notify the user
+    // Notify the user — they'll see this on next login (no SMTP)
     await notificationService.create({
       user_id: userId,
       type: 'verification_approved',
-      title: 'Account Verified',
-      body: 'Your account has been verified. You now have a verified badge.',
+      title: 'Account Verified ✅',
+      body: 'Your account has been verified. You now have full access to the dashboard.',
     });
 
     await activityLogService.log({

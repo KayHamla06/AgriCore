@@ -288,6 +288,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (analyticsCharts[key]) { analyticsCharts[key].destroy(); }
     });
     analyticsCharts = {};
+    window._analyticsWeatherAPI = null;
 
     const user = AgriCore.getCurrentUser();
     const isFarmer = user && user.role === 'farmer';
@@ -444,68 +445,126 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
 
-    // ---- Weather Chart (temperature range + rainfall as combo) ----
+    // ---- Weather Chart (temperature + rainfall from Open-Meteo Archive API) ----
     const weatherCtx = document.getElementById('analyticsWeatherChart');
     if (weatherCtx) {
-      // Use all farmers' weather to create a comparison or show single farmer's simulated monthly data
-      const w = primaryFarmer.weatherData || {};
-      // Simulate monthly variation around the averages
-      const baseTemp = w.avgTemp || 22;
-      const baseRain = w.rainfall || 400;
-      const monthlyTemp = months.map((m, i) => {
-        const seasonal = Math.sin((i - 1) * Math.PI / 6) * 5;
-        return Math.round((baseTemp + seasonal) * 10) / 10;
-      });
-      const monthlyRain = months.map((m, i) => {
-        const seasonal = Math.max(0, Math.sin((i - 1) * Math.PI / 6));
-        return Math.round(baseRain / 12 * (0.3 + seasonal * 1.4));
-      });
+      // Show loading state
+      weatherCtx.parentElement.insertAdjacentHTML('beforeend', '<div id="weatherChartLoader" class="chart-loader"><div class="chart-loader-spinner"></div><span>Loading weather data…</span></div>');
 
-      analyticsCharts.weather = new Chart(weatherCtx, {
-        type: 'bar',
-        data: {
-          labels: months,
-          datasets: [
-            {
-              type: 'line',
-              label: 'Temperature (°C)',
-              data: monthlyTemp,
-              borderColor: chartColors.orange,
-              backgroundColor: 'rgba(255,152,0,0.1)',
-              fill: true,
-              tension: 0.4,
-              pointRadius: 4,
-              yAxisID: 'yTemp',
+      const coords = primaryFarmer.coordinates || { lat: -25.75, lng: 28.19 };
+      const now = new Date();
+      // Build last 12 months date range
+      const endDate = new Date(now.getFullYear(), now.getMonth(), 0); // last day of previous month
+      const startDate = new Date(endDate.getFullYear() - 1, endDate.getMonth() + 1, 1); // 12 months back
+      const fmt = d => d.toISOString().slice(0, 10);
+
+      const archiveUrl = 'https://archive-api.open-meteo.com/v1/archive'
+        + '?latitude=' + coords.lat
+        + '&longitude=' + coords.lng
+        + '&start_date=' + fmt(startDate)
+        + '&end_date=' + fmt(endDate)
+        + '&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_sum,relative_humidity_2m_mean,et0_fao_evapotranspiration'
+        + '&timezone=auto';
+
+      fetch(archiveUrl)
+        .then(r => r.json())
+        .then(data => {
+          const loader = document.getElementById('weatherChartLoader');
+          if (loader) loader.remove();
+
+          if (!data.daily || !data.daily.time) throw new Error('No data');
+
+          const daily = data.daily;
+          // Aggregate to monthly averages/totals
+          const monthBuckets = {};
+          daily.time.forEach((dateStr, i) => {
+            const key = dateStr.slice(0, 7); // YYYY-MM
+            if (!monthBuckets[key]) monthBuckets[key] = { temps: [], rains: [], humidity: [], et0: [] };
+            if (daily.temperature_2m_mean[i] != null) monthBuckets[key].temps.push(daily.temperature_2m_mean[i]);
+            if (daily.precipitation_sum[i] != null) monthBuckets[key].rains.push(daily.precipitation_sum[i]);
+            if (daily.relative_humidity_2m_mean && daily.relative_humidity_2m_mean[i] != null) monthBuckets[key].humidity.push(daily.relative_humidity_2m_mean[i]);
+            if (daily.et0_fao_evapotranspiration && daily.et0_fao_evapotranspiration[i] != null) monthBuckets[key].et0.push(daily.et0_fao_evapotranspiration[i]);
+          });
+
+          const sortedKeys = Object.keys(monthBuckets).sort();
+          const monthLabels = sortedKeys.map(k => {
+            const d = new Date(k + '-01');
+            return d.toLocaleString('default', { month: 'short', year: '2-digit' });
+          });
+          const avg = arr => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length * 10) / 10 : 0;
+          const sum = arr => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) * 10) / 10 : 0;
+
+          const monthlyTemp = sortedKeys.map(k => avg(monthBuckets[k].temps));
+          const monthlyRain = sortedKeys.map(k => sum(monthBuckets[k].rains));
+
+          // Store aggregated data for the weather summary panel
+          window._analyticsWeatherAPI = {
+            monthBuckets: monthBuckets,
+            sortedKeys: sortedKeys,
+            dailyData: daily,
+            totalRainfall: sum(Object.values(monthBuckets).map(b => sum(b.rains))),
+            avgTemp: avg(Object.values(monthBuckets).flatMap(b => b.temps)),
+            minTemp: Math.round(Math.min.apply(null, daily.temperature_2m_min.filter(v => v != null)) * 10) / 10,
+            maxTemp: Math.round(Math.max.apply(null, daily.temperature_2m_max.filter(v => v != null)) * 10) / 10,
+            avgHumidity: avg(Object.values(monthBuckets).flatMap(b => b.humidity)),
+            totalET0: sum(Object.values(monthBuckets).map(b => sum(b.et0))),
+          };
+
+          // Dispatch event so the summary panel can update
+          window.dispatchEvent(new CustomEvent('analyticsWeatherReady'));
+
+          analyticsCharts.weather = new Chart(weatherCtx, {
+            type: 'bar',
+            data: {
+              labels: monthLabels,
+              datasets: [
+                {
+                  type: 'line',
+                  label: 'Avg Temperature (°C)',
+                  data: monthlyTemp,
+                  borderColor: chartColors.orange,
+                  backgroundColor: 'rgba(255,152,0,0.1)',
+                  fill: true,
+                  tension: 0.4,
+                  pointRadius: 4,
+                  yAxisID: 'yTemp',
+                },
+                {
+                  type: 'bar',
+                  label: 'Rainfall (mm)',
+                  data: monthlyRain,
+                  backgroundColor: 'rgba(33, 150, 243, 0.6)',
+                  borderRadius: 4,
+                  borderSkipped: false,
+                  yAxisID: 'yRain',
+                }
+              ]
             },
-            {
-              type: 'bar',
-              label: 'Rainfall (mm)',
-              data: monthlyRain,
-              backgroundColor: 'rgba(33, 150, 243, 0.6)',
-              borderRadius: 4,
-              borderSkipped: false,
-              yAxisID: 'yRain',
+            options: {
+              plugins: { legend: { position: 'bottom' } },
+              scales: {
+                yTemp: {
+                  position: 'left',
+                  title: { display: true, text: '°C' },
+                  grid: { color: 'rgba(0,0,0,.04)' },
+                },
+                yRain: {
+                  position: 'right',
+                  title: { display: true, text: 'mm' },
+                  grid: { display: false },
+                  beginAtZero: true,
+                },
+                x: { grid: { display: false } }
+              }
             }
-          ]
-        },
-        options: {
-          plugins: { legend: { position: 'bottom' } },
-          scales: {
-            yTemp: {
-              position: 'left',
-              title: { display: true, text: '°C' },
-              grid: { color: 'rgba(0,0,0,.04)' },
-            },
-            yRain: {
-              position: 'right',
-              title: { display: true, text: 'mm' },
-              grid: { display: false },
-              beginAtZero: true,
-            },
-            x: { grid: { display: false } }
-          }
-        }
-      });
+          });
+        })
+        .catch(() => {
+          const loader = document.getElementById('weatherChartLoader');
+          if (loader) loader.remove();
+          weatherCtx.parentElement.insertAdjacentHTML('beforeend',
+            '<p style="text-align:center;color:var(--gray-400);padding:20px;">Unable to load weather data. Please try again later.</p>');
+        });
     }
 
     // ---- Regional Performance (horizontal bar — all provinces) ----

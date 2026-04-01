@@ -69,6 +69,7 @@ app.use(helmet({
         "'self'",
         "https://*.supabase.co",
         "https://api.open-meteo.com",
+        "https://archive-api.open-meteo.com",
         "https://unpkg.com"
       ],
       frameSrc: ["'none'"],

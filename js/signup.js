@@ -1,12 +1,13 @@
 /* ============================================
    AgriCore — Signup Page JS
+   Uses Supabase Auth — no SMTP.
+   Email verification is handled by Supabase automatically.
    ============================================ */
 
 document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons();
 
   let currentStep = 1;
-  let emailVerified = false;
 
   // --- Role Card Selection ---
   const roleCards = document.querySelectorAll('.role-card');
@@ -20,23 +21,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // --- Step Navigation ---
+  // --- Step Navigation (3 steps now: Account → Details → Review) ---
   function goToStep(step) {
     if (step > currentStep && !validateStep(currentStep)) return;
 
     if (step === 2) {
-      // Pre-fill the email display from Step 1
-      document.getElementById('verifyEmailDisplay').value = document.getElementById('signupEmail').value.trim();
-    }
-
-    if (step === 3) {
       const role = roleInput.value;
       document.getElementById('farmerForm').classList.toggle('active', role === 'farmer');
       document.getElementById('govForm').classList.toggle('active', role === 'government');
       lucide.createIcons();
     }
 
-    if (step === 4) {
+    if (step === 3) {
       buildReview();
     }
 
@@ -46,12 +42,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Update dots & lines
     for (let i = 1; i <= 4; i++) {
       const dot = document.getElementById('stepDot' + i);
+      if (!dot) continue;
       dot.classList.remove('active', 'completed');
       if (i < step) dot.classList.add('completed');
       else if (i === step) dot.classList.add('active');
     }
     for (let i = 1; i <= 3; i++) {
-      document.getElementById('stepLine' + i).classList.toggle('filled', i < step);
+      const line = document.getElementById('stepLine' + i);
+      if (line) line.classList.toggle('filled', i < step);
     }
 
     currentStep = step;
@@ -63,8 +61,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('step2Back').addEventListener('click', () => goToStep(1));
   document.getElementById('step2Next').addEventListener('click', () => goToStep(3));
   document.getElementById('step3Back').addEventListener('click', () => goToStep(2));
-  document.getElementById('step3Next').addEventListener('click', () => goToStep(4));
-  document.getElementById('step4Back').addEventListener('click', () => goToStep(3));
 
   // --- Validation ---
   function validateStep(step) {
@@ -82,11 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (step === 2) {
-      if (!emailVerified) { AgriCore.showToast('Please verify your email address.', 'error'); return false; }
-      return true;
-    }
-
-    if (step === 3) {
       const role = roleInput.value;
       if (role === 'farmer') {
         if (!document.getElementById('farmName').value.trim()) { AgriCore.showToast('Please enter your farm name.', 'error'); return false; }
@@ -148,76 +139,13 @@ document.addEventListener('DOMContentLoaded', () => {
     lucide.createIcons();
   }
 
-  // --- Email Verification via TurboSMTP ---
-  const sendVerifyBtn = document.getElementById('sendVerifyBtn');
-  const verifyEmailSent = document.getElementById('verifyEmailSent');
-  const sendVerifyBtnContainer = document.getElementById('sendVerifyBtnContainer');
-
-  async function sendVerificationEmail() {
-    const email = document.getElementById('signupEmail').value.trim();
-    if (!email) {
-      AgriCore.showToast('No email address found. Please go back to Step 1.', 'error');
-      return;
-    }
-
-    sendVerifyBtn.disabled = true;
-    sendVerifyBtn.textContent = 'Sending...';
-
-    try {
-      const res = await fetch(AgriCore.API_URL + '/auth/send-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        AgriCore.showToast(data.message || 'Failed to send verification email.', 'error');
-        sendVerifyBtn.disabled = false;
-        sendVerifyBtn.textContent = 'Send Verification Email';
-        return;
-      }
-
-      sendVerifyBtnContainer.style.display = 'none';
-      verifyEmailSent.style.display = 'block';
-      emailVerified = true;
-      lucide.createIcons();
-      AgriCore.showToast('Verification email sent! Check your inbox.', 'success');
-    } catch {
-      AgriCore.showToast('Network error. Please try again.', 'error');
-      sendVerifyBtn.disabled = false;
-      sendVerifyBtn.textContent = 'Send Verification Email';
-    }
-  }
-
-  sendVerifyBtn.addEventListener('click', sendVerificationEmail);
-
-  document.getElementById('resendVerifyBtn').addEventListener('click', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('signupEmail').value.trim();
-    try {
-      const res = await fetch(AgriCore.API_URL + '/auth/send-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
-
-      if (res.ok) {
-        AgriCore.showToast('New verification email sent! Check your inbox.', 'success');
-      } else {
-        AgriCore.showToast(data.message || 'Failed to resend. Please try again.', 'error');
-      }
-    } catch {
-      AgriCore.showToast('Network error. Please try again.', 'error');
-    }
-  });
-
   // --- File Upload ---
   function setupFileUpload(uploadAreaId, inputId, listId) {
     const area = document.getElementById(uploadAreaId);
     const input = document.getElementById(inputId);
     const list = document.getElementById(listId);
+
+    if (!area || !input || !list) return;
 
     area.addEventListener('click', () => input.click());
 
@@ -249,8 +177,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setupFileUpload('photoUpload', 'farmPhotos', 'photoList');
   setupFileUpload('docUpload', 'farmDocs', 'docList');
 
-  // --- Submit Application ---
-  document.getElementById('submitApplicationBtn').addEventListener('click', () => {
+  // --- Submit Application (calls real /api/auth/signup) ---
+  document.getElementById('submitApplicationBtn').addEventListener('click', async () => {
     const termsCheckbox = document.getElementById('agreeTerms');
     if (!termsCheckbox || !termsCheckbox.checked) {
       AgriCore.showToast('You must accept the Terms & Services before creating your account.', 'error');
@@ -260,28 +188,87 @@ document.addEventListener('DOMContentLoaded', () => {
     const role = roleInput.value;
     const name = document.getElementById('fullName').value.trim();
     const email = document.getElementById('signupEmail').value.trim();
+    const password = document.getElementById('signupPassword').value;
 
-    const newUser = { name, email, role, id: Date.now().toString() };
+    const submitBtn = document.getElementById('submitApplicationBtn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Creating Account...';
 
-    if (role === 'farmer') {
-      newUser.farmName = document.getElementById('farmName').value.trim();
-      newUser.province = document.getElementById('farmProvince').value;
-      newUser.district = document.getElementById('farmDistrict').value.trim();
-      newUser.farmSize = document.getElementById('farmSize').value;
-      newUser.farmerType = document.getElementById('farmerType').value;
-      newUser.mainActivity = document.getElementById('mainActivity').value;
-    } else {
-      newUser.department = document.getElementById('deptName').value.trim();
-      newUser.employeeId = document.getElementById('employeeId').value.trim();
-      newUser.province = document.getElementById('govProvince').value;
-      newUser.position = document.getElementById('govPosition').value.trim();
+    try {
+      const payload = { name, email, password, role };
+
+      // Add role-specific fields
+      if (role === 'farmer') {
+        payload.farmName = document.getElementById('farmName').value.trim();
+        payload.province = document.getElementById('farmProvince').value;
+        payload.district = document.getElementById('farmDistrict').value.trim();
+        payload.farmSize = document.getElementById('farmSize').value;
+        payload.farmerType = document.getElementById('farmerType').value;
+        payload.mainActivity = document.getElementById('mainActivity').value;
+      } else {
+        payload.department = document.getElementById('deptName').value.trim();
+        payload.employeeId = document.getElementById('employeeId').value.trim();
+        payload.province = document.getElementById('govProvince').value;
+        payload.position = document.getElementById('govPosition').value.trim();
+      }
+
+      const res = await AgriCore.apiPost('/auth/signup', payload);
+
+      if (res.success) {
+        AgriCore.showToast('Account created! Please check your email to verify your account.', 'success');
+
+        // Show confirmation panel instead of redirecting to dashboard
+        document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+
+        const confirmPanel = document.createElement('div');
+        confirmPanel.className = 'step-panel active';
+        confirmPanel.innerHTML = `
+          <div style="text-align:center; padding:2rem;">
+            <div style="font-size:3rem; margin-bottom:1rem;">📧</div>
+            <h2>Check Your Email</h2>
+            <p style="color:var(--text-secondary); margin:1rem 0;">
+              We've sent a verification link to <strong>${AgriCore.escapeHtml(email)}</strong>.
+              Click the link in the email to verify your account and log in.
+            </p>
+            ${role === 'government' ? '<p style="color:var(--warning); margin:1rem 0;"><strong>Note:</strong> Government accounts require additional admin verification after email verification.</p>' : ''}
+            <div style="margin-top:2rem;">
+              <a href="/login" class="btn btn-primary">Go to Login</a>
+            </div>
+            <p style="margin-top:1rem; font-size:0.85rem; color:var(--text-muted);">
+              Didn't receive the email? Check your spam folder or
+              <a href="#" id="resendSignupVerify">click here to resend</a>.
+            </p>
+          </div>
+        `;
+        document.querySelector('.signup-steps').appendChild(confirmPanel);
+        lucide.createIcons();
+
+        // Resend handler
+        const resendLink = document.getElementById('resendSignupVerify');
+        if (resendLink) {
+          resendLink.addEventListener('click', async (e) => {
+            e.preventDefault();
+            try {
+              const rr = await AgriCore.apiPost('/auth/resend-verification', { email });
+              if (rr.success) {
+                AgriCore.showToast('Verification email resent!', 'success');
+              } else {
+                AgriCore.showToast(rr.error || 'Failed to resend. Try again later.', 'error');
+              }
+            } catch {
+              AgriCore.showToast('Network error.', 'error');
+            }
+          });
+        }
+      } else {
+        AgriCore.showToast(res.error || res.message || 'Signup failed. Please try again.', 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create Account';
+      }
+    } catch (err) {
+      AgriCore.showToast('Network error. Please try again.', 'error');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Create Account';
     }
-
-    AgriCore.setCurrentUser(newUser);
-    AgriCore.showToast('Application submitted successfully!', 'success');
-
-    setTimeout(() => {
-      window.location.href = '/platform/dashboard';
-    }, 1200);
   });
 });

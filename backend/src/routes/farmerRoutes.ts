@@ -10,12 +10,13 @@ import {
   authMiddleware,
   requireRole,
   requireOwnerOrGov,
+  requireVerified,
 } from '../middleware';
 
 const router = Router();
 
-// All farmer routes require auth
-router.use(authMiddleware);
+// All farmer routes require auth + verified status
+router.use(authMiddleware, requireVerified);
 
 // GET /api/farmers — list all farmers (gov only)
 router.get('/', requireRole('government'), farmerController.getAll);

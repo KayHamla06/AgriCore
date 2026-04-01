@@ -1,5 +1,6 @@
 // ============================================
 // AgriCore — Password Reset Controller
+// Delegates to Supabase Auth — no SMTP.
 // ============================================
 
 import { Request, Response, NextFunction } from 'express';
@@ -12,7 +13,7 @@ export class PasswordResetController {
       const { email } = req.body;
       const result = await passwordResetService.requestReset(email);
 
-      logger.info('Password reset requested', { email });
+      logger.info('Password reset requested via Supabase', { email });
 
       // Always return 200 — don't reveal whether email exists
       res.json({ success: true, message: result.message });
@@ -21,10 +22,14 @@ export class PasswordResetController {
     }
   }
 
+  /**
+   * After the user clicks the Supabase reset link, they arrive at /auth/callback
+   * with a valid session. They can then call this endpoint with their token + new password.
+   */
   async resetPassword(req: Request, res: Response, next: NextFunction) {
     try {
-      const { token, newPassword } = req.body;
-      await passwordResetService.resetPassword(token, newPassword);
+      const { accessToken, newPassword } = req.body;
+      await passwordResetService.resetPassword(accessToken, newPassword);
 
       res.json({ success: true, message: 'Password has been reset successfully.' });
     } catch (err) {

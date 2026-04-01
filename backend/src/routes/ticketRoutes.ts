@@ -7,7 +7,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import rateLimit from 'express-rate-limit';
 import { ticketController } from '../controllers/ticketController';
-import { authMiddleware, requireRole } from '../middleware';
+import { authMiddleware, requireRole, requireVerified } from '../middleware';
 
 const router = Router();
 
@@ -26,7 +26,7 @@ const ticketCreateLimiter = rateLimit({
   message: { success: false, error: 'Too many tickets created. Please wait before submitting another.' },
 });
 
-router.use(authMiddleware);
+router.use(authMiddleware, requireVerified);
 
 // ─── User Endpoints ──────────────────────────
 

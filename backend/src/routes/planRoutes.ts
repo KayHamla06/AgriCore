@@ -9,12 +9,13 @@ import { planController } from '../controllers/planController';
 import {
   authMiddleware,
   requireRole,
+  requireVerified,
   validate,
 } from '../middleware';
 
 const router = Router();
 
-router.use(authMiddleware);
+router.use(authMiddleware, requireVerified);
 
 const createPlanSchema = z.object({
   farmer_id: z.string().uuid(),

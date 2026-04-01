@@ -44,6 +44,42 @@ export function requireRole(...allowedRoles: UserRole[]) {
 }
 
 /**
+ * Middleware that blocks government users whose verification is not approved.
+ * Farmers and admins pass through. Government users must have verification_status = 'verified'.
+ *
+ * Usage:
+ *   router.get('/dashboard-data', authMiddleware, requireVerified, getDashboardData);
+ */
+export function requireVerified(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
+  if (!req.user) {
+    res.status(401).json({ success: false, error: 'Authentication required' });
+    return;
+  }
+
+  // Only enforce verification requirement for government users
+  if (req.user.role === 'government' && req.user.verification_status !== 'verified') {
+    logger.warn('RBAC: unverified government user blocked', {
+      userId: req.user.id,
+      status: req.user.verification_status,
+      path: req.path,
+    });
+
+    res.status(403).json({
+      success: false,
+      error: 'Your account is pending verification. An admin will review your application.',
+      verification_status: req.user.verification_status,
+    });
+    return;
+  }
+
+  next();
+}
+
+/**
  * Ensures a farmer can only access their own data.
  * Compares req.user.id against the :farmerId route param.
  * Government users bypass this check (they can view any farmer).

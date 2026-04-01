@@ -2,6 +2,7 @@
 // AgriCore — Password Reset Routes
 // POST /api/auth/forgot-password
 // POST /api/auth/reset-password
+// All handled by Supabase Auth — no SMTP.
 // ============================================
 
 import { Router } from 'express';
@@ -16,18 +17,18 @@ const forgotPasswordSchema = z.object({
 });
 
 const resetPasswordSchema = z.object({
-  token: z.string().min(1, 'Reset token is required'),
+  accessToken: z.string().min(1, 'Access token is required'),
   newPassword: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
-// POST /api/auth/forgot-password — request a reset link
+// POST /api/auth/forgot-password — request a reset link via Supabase
 router.post(
   '/forgot-password',
   validate(forgotPasswordSchema),
   passwordResetController.requestReset
 );
 
-// POST /api/auth/reset-password — use token to set new password
+// POST /api/auth/reset-password — use Supabase session to set new password
 router.post(
   '/reset-password',
   validate(resetPasswordSchema),

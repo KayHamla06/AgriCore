@@ -50,7 +50,7 @@ export async function authMiddleware(
     // 2. Get role and profile from our users table
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('users')
-      .select('id, email, role, name')
+      .select('id, email, role, name, verification_status')
       .eq('auth_id', user.id)
       .single();
 
@@ -66,6 +66,7 @@ export async function authMiddleware(
       email: profile.email,
       role: profile.role as UserRole,
       name: profile.name,
+      verification_status: profile.verification_status,
     };
 
     next();
@@ -99,7 +100,7 @@ export async function optionalAuth(
     if (user) {
       const { data: profile } = await supabaseAdmin
         .from('users')
-        .select('id, email, role, name')
+        .select('id, email, role, name, verification_status')
         .eq('auth_id', user.id)
         .single();
 
@@ -109,6 +110,7 @@ export async function optionalAuth(
           email: profile.email,
           role: profile.role as UserRole,
           name: profile.name,
+          verification_status: profile.verification_status,
         };
       }
     }

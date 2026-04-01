@@ -19,6 +19,35 @@
           <span class="verified-badge" id="govVerifiedBadge" style="display:none;"><i data-lucide="badge-check"></i> Verified Gov Official</span>
         </div>
 
+        <!-- Date/Time & Weather Strip -->
+        <div class="datetime-weather-strip">
+          <div class="datetime-widget">
+            <div class="datetime-icon"><i data-lucide="calendar-clock"></i></div>
+            <div class="datetime-info">
+              <div class="datetime-date" id="govLiveDate">--</div>
+              <div class="datetime-time" id="govLiveTime">--:--:--</div>
+            </div>
+          </div>
+          <div class="weather-widget" id="govWeatherWidget">
+            <div class="weather-widget-loading" id="govWeatherLoading">
+              <i data-lucide="loader"></i> Loading regional weather...
+            </div>
+            <div class="weather-widget-content" id="govWeatherContent" style="display:none;">
+              <div class="weather-main">
+                <span class="weather-icon" id="govWeatherIcon"></span>
+                <span class="weather-temp" id="govWeatherTemp">--°C</span>
+                <span class="weather-desc" id="govWeatherDesc">--</span>
+              </div>
+              <div class="weather-details">
+                <div class="weather-detail"><i data-lucide="droplets"></i> <span id="govWeatherHumidity">--%</span></div>
+                <div class="weather-detail"><i data-lucide="wind"></i> <span id="govWeatherWind">-- km/h</span></div>
+                <div class="weather-detail"><i data-lucide="cloud-rain"></i> <span id="govWeatherRain">-- mm</span></div>
+              </div>
+              <div class="weather-location" id="govWeatherLocation">Regional average</div>
+            </div>
+          </div>
+        </div>
+
         <div class="unverified-warning" id="govUnverifiedWarning" style="display:none;">
           <i data-lucide="alert-triangle"></i>
           <span>Your account is not verified. Please upload verification documents in Settings to get your verified badge ✓</span>
@@ -113,6 +142,26 @@
             <tbody id="govRecentFarmersTbody"></tbody>
           </table>
         </div>
+
+        <!-- Weather History Lookup -->
+        <div class="card weather-history-card" style="margin-top:28px;padding:24px;">
+          <div class="weather-history-header">
+            <h3 class="chart-card-title"><i data-lucide="cloud-sun" style="width:18px;height:18px;display:inline;"></i> Weather History Lookup</h3>
+            <p style="color:var(--gray-500);font-size:.813rem;margin-top:4px;">Select a farmer and date to view historical weather conditions.</p>
+          </div>
+          <div class="weather-history-controls">
+            <div class="weather-history-field">
+              <label for="govWeatherFarmerSelect">Farmer</label>
+              <select id="govWeatherFarmerSelect" class="form-input"></select>
+            </div>
+            <div class="weather-history-field">
+              <label for="govWeatherDateInput">Date</label>
+              <input type="date" id="govWeatherDateInput" class="form-input">
+            </div>
+            <button class="btn btn-primary btn-sm" id="govWeatherLookupBtn"><i data-lucide="search"></i> Lookup</button>
+          </div>
+          <div class="weather-history-result" id="govWeatherHistoryResult" style="display:none;"></div>
+        </div>
       `;
     },
 
@@ -120,6 +169,144 @@
       if (!ctx.isGov) return;
 
       var escape = AgriCore.escapeHtml;
+
+      // === Real-Time Date & Time ===
+      function updateGovDateTime() {
+        var now = new Date();
+        var dateEl = document.getElementById('govLiveDate');
+        var timeEl = document.getElementById('govLiveTime');
+        if (dateEl) {
+          dateEl.textContent = now.toLocaleDateString('en-ZA', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+          });
+        }
+        if (timeEl) {
+          timeEl.textContent = now.toLocaleTimeString('en-ZA', {
+            hour: '2-digit', minute: '2-digit', second: '2-digit'
+          });
+        }
+      }
+      updateGovDateTime();
+      setInterval(updateGovDateTime, 1000);
+
+      // === Real-Time Regional Weather (using first farmer's coords) ===
+      var firstFarmer = AgriCore.mockFarmers[0];
+      var coords = firstFarmer && firstFarmer.coordinates;
+      if (coords && coords.lat && coords.lng) {
+        var weatherUrl = 'https://api.open-meteo.com/v1/forecast?latitude=' + coords.lat +
+          '&longitude=' + coords.lng +
+          '&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation' +
+          '&timezone=auto';
+
+        fetch(weatherUrl)
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            if (data && data.current) {
+              var c = data.current;
+              var loading = document.getElementById('govWeatherLoading');
+              var content = document.getElementById('govWeatherContent');
+              if (loading) loading.style.display = 'none';
+              if (content) content.style.display = 'flex';
+
+              var wmo = AgriCore.getWeatherFromCode ? AgriCore.getWeatherFromCode(c.weather_code) :
+                ({ 0:'☀️ Clear sky',1:'🌤️ Mainly clear',2:'⛅ Partly cloudy',3:'☁️ Overcast',
+                  45:'🌫️ Foggy',51:'🌦️ Light drizzle',61:'🌧️ Slight rain',63:'🌧️ Moderate rain',
+                  65:'🌧️ Heavy rain',80:'🌦️ Rain showers',95:'⛈️ Thunderstorm' }[c.weather_code] || '🌡️ Unknown').split(' ');
+              var icon = wmo[0] || '🌡️';
+              var desc = wmo.slice(1).join(' ') || 'Unknown';
+
+              var iconEl = document.getElementById('govWeatherIcon');
+              var tempEl = document.getElementById('govWeatherTemp');
+              var descEl = document.getElementById('govWeatherDesc');
+              var humidEl = document.getElementById('govWeatherHumidity');
+              var windEl = document.getElementById('govWeatherWind');
+              var rainEl = document.getElementById('govWeatherRain');
+              var locEl = document.getElementById('govWeatherLocation');
+
+              if (iconEl) iconEl.textContent = icon;
+              if (tempEl) tempEl.textContent = Math.round(c.temperature_2m) + '°C';
+              if (descEl) descEl.textContent = desc;
+              if (humidEl) humidEl.textContent = c.relative_humidity_2m + '%';
+              if (windEl) windEl.textContent = Math.round(c.wind_speed_10m) + ' km/h';
+              if (rainEl) rainEl.textContent = c.precipitation + ' mm';
+              if (locEl) locEl.textContent = (firstFarmer.district || '') + ', ' + (firstFarmer.province || '');
+            }
+          })
+          .catch(function() {
+            var loading = document.getElementById('govWeatherLoading');
+            if (loading) loading.innerHTML = '<i data-lucide="cloud-off"></i> Weather unavailable';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+      }
+
+      // === Weather History Lookup (Gov) ===
+      var farmerSelect = document.getElementById('govWeatherFarmerSelect');
+      if (farmerSelect) {
+        AgriCore.mockFarmers.forEach(function(f) {
+          var opt = document.createElement('option');
+          opt.value = f.id;
+          opt.textContent = f.name + ' — ' + f.district + ', ' + f.province;
+          farmerSelect.appendChild(opt);
+        });
+      }
+      var dateInput = document.getElementById('govWeatherDateInput');
+      if (dateInput) {
+        dateInput.value = new Date().toISOString().split('T')[0];
+        dateInput.max = new Date().toISOString().split('T')[0];
+      }
+      var lookupBtn = document.getElementById('govWeatherLookupBtn');
+      if (lookupBtn) {
+        lookupBtn.addEventListener('click', function() {
+          var farmerId = farmerSelect ? farmerSelect.value : '';
+          var dateVal = dateInput ? dateInput.value : '';
+          if (!farmerId || !dateVal) return;
+          var farmer = AgriCore.mockFarmers.find(function(f) { return f.id === farmerId; });
+          if (!farmer || !farmer.coordinates) return;
+          var resultDiv = document.getElementById('govWeatherHistoryResult');
+          if (resultDiv) {
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="weather-history-loading"><i data-lucide="loader"></i> Fetching weather for ' + escape(dateVal) + '...</div>';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          }
+          // Use Open-Meteo Archive API for historical weather
+          var archiveUrl = 'https://archive-api.open-meteo.com/v1/archive?latitude=' + farmer.coordinates.lat +
+            '&longitude=' + farmer.coordinates.lng +
+            '&start_date=' + dateVal + '&end_date=' + dateVal +
+            '&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max' +
+            '&hourly=relative_humidity_2m' +
+            '&timezone=auto';
+          fetch(archiveUrl)
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+              if (resultDiv) {
+                if (data && data.daily && data.daily.temperature_2m_max && data.daily.temperature_2m_max[0] !== null) {
+                  var d = data.daily;
+                  var humArr = data.hourly && data.hourly.relative_humidity_2m ? data.hourly.relative_humidity_2m : [];
+                  var avgHumidity = humArr.length > 0 ? Math.round(humArr.reduce(function(s,v){return s+v;},0)/humArr.length) : '--';
+                  resultDiv.innerHTML =
+                    '<div class="weather-history-result-card">' +
+                    '<div class="weather-history-result-title"><i data-lucide="map-pin"></i> ' + escape(farmer.name) + ' — ' + escape(farmer.district) + ', ' + escape(farmer.province) + ' <span class="weather-history-date-badge">' + escape(dateVal) + '</span></div>' +
+                    '<div class="weather-history-grid">' +
+                    '<div class="weather-history-stat"><div class="weather-history-stat-icon red"><i data-lucide="thermometer"></i></div><div><div class="weather-history-stat-value">' + d.temperature_2m_max[0] + '°C</div><div class="weather-history-stat-label">Max Temp</div></div></div>' +
+                    '<div class="weather-history-stat"><div class="weather-history-stat-icon blue"><i data-lucide="thermometer-snowflake"></i></div><div><div class="weather-history-stat-value">' + d.temperature_2m_min[0] + '°C</div><div class="weather-history-stat-label">Min Temp</div></div></div>' +
+                    '<div class="weather-history-stat"><div class="weather-history-stat-icon cyan"><i data-lucide="cloud-rain"></i></div><div><div class="weather-history-stat-value">' + d.precipitation_sum[0] + ' mm</div><div class="weather-history-stat-label">Rainfall</div></div></div>' +
+                    '<div class="weather-history-stat"><div class="weather-history-stat-icon green"><i data-lucide="droplets"></i></div><div><div class="weather-history-stat-value">' + avgHumidity + '%</div><div class="weather-history-stat-label">Avg Humidity</div></div></div>' +
+                    '<div class="weather-history-stat"><div class="weather-history-stat-icon amber"><i data-lucide="wind"></i></div><div><div class="weather-history-stat-value">' + d.wind_speed_10m_max[0] + ' km/h</div><div class="weather-history-stat-label">Max Wind</div></div></div>' +
+                    '</div></div>';
+                } else {
+                  resultDiv.innerHTML = '<div class="weather-history-empty"><i data-lucide="cloud-off"></i> No weather data available for this date. Historical data may not be available for dates before 1940 or future dates.</div>';
+                }
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+              }
+            })
+            .catch(function() {
+              if (resultDiv) {
+                resultDiv.innerHTML = '<div class="weather-history-empty"><i data-lucide="cloud-off"></i> Failed to fetch weather data. Please try again.</div>';
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+              }
+            });
+        });
+      }
 
       // === Verification Badge & Warning ===
       var API_BASE = window.AGRICORE_API_BASE || 'http://localhost:3000/api';

@@ -5,8 +5,9 @@
 // POST /api/auth/logout
 // GET  /api/auth/me
 // POST /api/auth/refresh
-// POST /api/auth/send-verification
-// GET  /api/auth/verify-email
+// POST /api/auth/resend-verification
+// POST /api/auth/callback
+// POST /api/auth/set-role
 // ============================================
 
 import { Router } from 'express';
@@ -22,7 +23,7 @@ const signUpSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
-  role: z.enum(['farmer', 'government', 'supervisor', 'field_agent', 'office_staff']), // Admin accounts are created internally only
+  role: z.enum(['farmer', 'government', 'supervisor', 'field_agent', 'office_staff']),
 });
 
 const loginSchema = z.object({
@@ -34,8 +35,16 @@ const refreshSchema = z.object({
   refresh_token: z.string().min(1, 'Refresh token is required'),
 });
 
-const sendVerificationSchema = z.object({
+const resendVerificationSchema = z.object({
   email: z.string().email('Invalid email address'),
+});
+
+const callbackSchema = z.object({
+  code: z.string().min(1, 'Auth code is required'),
+});
+
+const setRoleSchema = z.object({
+  role: z.enum(['farmer', 'government']),
 });
 
 // Rate limit for verification emails: 3 requests per 15 minutes per IP
@@ -51,11 +60,12 @@ const verificationRateLimit = rateLimit({
 router.post('/signup', validate(signUpSchema), authController.signUp);
 router.post('/login', validate(loginSchema), authController.login);
 router.post('/refresh', validate(refreshSchema), authController.refreshToken);
-router.post('/send-verification', verificationRateLimit, validate(sendVerificationSchema), authController.sendVerificationEmail);
-router.get('/verify-email', authController.verifyEmailToken);
+router.post('/resend-verification', verificationRateLimit, validate(resendVerificationSchema), authController.resendVerificationEmail);
+router.post('/callback', validate(callbackSchema), authController.handleAuthCallback);
 
 // Protected routes
 router.get('/me', authMiddleware, authController.me);
 router.post('/logout', authMiddleware, authController.logout);
+router.post('/set-role', authMiddleware, validate(setRoleSchema), authController.setRole);
 
 export default router;

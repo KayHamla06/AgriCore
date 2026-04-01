@@ -13,13 +13,6 @@ export const config = {
     apiUrl: process.env.WEATHER_API_URL || '',
     apiKey: process.env.WEATHER_API_KEY || '',
   },
-  smtp: {
-    host: process.env.SMTP_HOST || 'pro.turbo-smtp.com',
-    port: parseInt(process.env.SMTP_PORT || '587', 10),
-    user: process.env.SMTP_USER || '',
-    pass: process.env.SMTP_PASS || '',
-    fromEmail: process.env.SMTP_FROM_EMAIL || 'AgriCore Support <noreply@agricore.site>',
-  },
 } as const;
 
 // Validate critical config at startup

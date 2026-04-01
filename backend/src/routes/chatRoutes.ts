@@ -5,7 +5,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { chatController } from '../controllers/chatController';
-import { authMiddleware, validate } from '../middleware';
+import { authMiddleware, validate, requireVerified } from '../middleware';
 
 const router = Router();
 
@@ -23,8 +23,8 @@ const sendMessageSchema = z.object({
   content: z.string().min(1).max(5000),
 });
 
-// All routes require authentication
-router.use(authMiddleware);
+// All routes require authentication + verified status
+router.use(authMiddleware, requireVerified);
 
 // Get my chat rooms
 router.get('/rooms', chatController.getRooms);

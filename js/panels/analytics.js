@@ -204,20 +204,69 @@
           }
         }
 
-        // --- Weather Summary ---
+        // --- Weather Summary (populated from Open-Meteo API data) ---
         var weatherSummary = document.getElementById('analyticsWeatherSummary');
         if (weatherSummary) {
-          var w = primaryFarmer.weatherData || {};
           var s = primaryFarmer.soilData || {};
-          var droughtColor = w.droughtRisk === 'Very High' || w.droughtRisk === 'High' ? 'danger' : w.droughtRisk === 'Moderate' ? 'warning' : 'good';
-          weatherSummary.innerHTML =
-            '<div class="weather-summary-item"><div class="weather-summary-icon rain"><i data-lucide="cloud-rain"></i></div><div class="weather-summary-text"><div class="weather-summary-value">' + (w.rainfall || 0) + ' mm</div><div class="weather-summary-label">Seasonal Rainfall</div></div></div>' +
-            '<div class="weather-summary-item"><div class="weather-summary-icon temp"><i data-lucide="thermometer"></i></div><div class="weather-summary-text"><div class="weather-summary-value">' + (w.avgTemp || 0) + '\u00B0C</div><div class="weather-summary-label">Avg Temperature (' + (w.minTemp || 0) + '\u2013' + (w.maxTemp || 0) + '\u00B0C)</div></div></div>' +
-            '<div class="weather-summary-item"><div class="weather-summary-icon humidity"><i data-lucide="droplets"></i></div><div class="weather-summary-text"><div class="weather-summary-value">' + (w.humidity || 0) + '%</div><div class="weather-summary-label">Humidity</div></div></div>' +
-            '<div class="weather-summary-item"><div class="weather-summary-icon drought"><i data-lucide="sun"></i></div><div class="weather-summary-text"><div class="weather-summary-value ' + droughtColor + '">' + (w.droughtRisk || 'N/A') + '</div><div class="weather-summary-label">Drought Risk</div></div></div>' +
-            '<div class="weather-summary-item"><div class="weather-summary-icon soil"><i data-lucide="mountain"></i></div><div class="weather-summary-text"><div class="weather-summary-value">' + (s.soilType || 'N/A') + '</div><div class="weather-summary-label">Soil Type \u2014 ' + (s.landGradient || 'N/A') + '</div></div></div>' +
-            '<div class="weather-summary-item"><div class="weather-summary-icon water"><i data-lucide="waves"></i></div><div class="weather-summary-text"><div class="weather-summary-value">' + (s.irrigation ? s.irrigationType : 'None') + '</div><div class="weather-summary-label">Irrigation \u2014 ' + (s.waterSource || 'N/A') + '</div></div></div>';
-          if (typeof lucide !== 'undefined') lucide.createIcons();
+
+          function renderWeatherSummaryFromAPI() {
+            var api = window._analyticsWeatherAPI;
+            if (!api) return;
+
+            // Drought risk assessment based on rainfall vs evapotranspiration
+            var droughtRisk = 'Low';
+            var droughtColor = 'good';
+            if (api.totalET0 > 0 && api.totalRainfall > 0) {
+              var waterBalance = api.totalRainfall / api.totalET0;
+              if (waterBalance < 0.3) { droughtRisk = 'Very High'; droughtColor = 'danger'; }
+              else if (waterBalance < 0.5) { droughtRisk = 'High'; droughtColor = 'danger'; }
+              else if (waterBalance < 0.75) { droughtRisk = 'Moderate'; droughtColor = 'warning'; }
+              else { droughtRisk = 'Low'; droughtColor = 'good'; }
+            }
+
+            // Rainy days count
+            var rainyDays = 0;
+            if (api.dailyData && api.dailyData.precipitation_sum) {
+              rainyDays = api.dailyData.precipitation_sum.filter(function(v) { return v != null && v > 1; }).length;
+            }
+
+            // Wettest month
+            var wettestMonth = '—';
+            var maxRain = 0;
+            if (api.sortedKeys) {
+              api.sortedKeys.forEach(function(k) {
+                var monthTotal = api.monthBuckets[k].rains.reduce(function(a, b) { return a + b; }, 0);
+                if (monthTotal > maxRain) {
+                  maxRain = monthTotal;
+                  var d = new Date(k + '-01');
+                  wettestMonth = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+                }
+              });
+            }
+
+            weatherSummary.innerHTML =
+              '<div class="weather-summary-item"><div class="weather-summary-icon rain"><i data-lucide="cloud-rain"></i></div><div class="weather-summary-text"><div class="weather-summary-value">' + api.totalRainfall.toFixed(1) + ' mm</div><div class="weather-summary-label">Total Rainfall (12 months)</div></div></div>' +
+              '<div class="weather-summary-item"><div class="weather-summary-icon temp"><i data-lucide="thermometer"></i></div><div class="weather-summary-text"><div class="weather-summary-value">' + api.avgTemp + '\u00B0C</div><div class="weather-summary-label">Avg Temperature (' + api.minTemp + '\u2013' + api.maxTemp + '\u00B0C range)</div></div></div>' +
+              '<div class="weather-summary-item"><div class="weather-summary-icon humidity"><i data-lucide="droplets"></i></div><div class="weather-summary-text"><div class="weather-summary-value">' + api.avgHumidity + '%</div><div class="weather-summary-label">Avg Relative Humidity</div></div></div>' +
+              '<div class="weather-summary-item"><div class="weather-summary-icon drought"><i data-lucide="sun"></i></div><div class="weather-summary-text"><div class="weather-summary-value ' + droughtColor + '">' + droughtRisk + '</div><div class="weather-summary-label">Drought Risk (rain vs evapotranspiration)</div></div></div>' +
+              '<div class="weather-summary-item"><div class="weather-summary-icon rain"><i data-lucide="cloud-drizzle"></i></div><div class="weather-summary-text"><div class="weather-summary-value">' + rainyDays + ' days</div><div class="weather-summary-label">Rainy Days (&gt;1mm) &mdash; Wettest: ' + AgriCore.escapeHtml(wettestMonth) + '</div></div></div>' +
+              '<div class="weather-summary-item"><div class="weather-summary-icon soil"><i data-lucide="mountain"></i></div><div class="weather-summary-text"><div class="weather-summary-value">' + (s.soilType || 'N/A') + '</div><div class="weather-summary-label">Soil Type \u2014 ' + (s.landGradient || 'N/A') + '</div></div></div>';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          }
+
+          // Show loading state initially
+          weatherSummary.innerHTML = '<div class="chart-loader"><div class="chart-loader-spinner"></div><span>Loading weather data…</span></div>';
+
+          // If API data is already available, render immediately
+          if (window._analyticsWeatherAPI) {
+            renderWeatherSummaryFromAPI();
+          } else {
+            // Wait for the chart fetch to complete
+            window.addEventListener('analyticsWeatherReady', function handler() {
+              renderWeatherSummaryFromAPI();
+              window.removeEventListener('analyticsWeatherReady', handler);
+            });
+          }
         }
 
         // --- Ranking Cards ---

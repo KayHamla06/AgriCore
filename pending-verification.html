@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <base href="/">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Verification Pending — AgriCore</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/global.css">
+  <link rel="stylesheet" href="css/login.css">
+  <style>
+    .pending-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-main, #f9fafb);
+      padding: 24px;
+    }
+    .pending-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.08);
+      padding: 48px;
+      text-align: center;
+      max-width: 560px;
+      width: 100%;
+    }
+    .pending-card .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 32px;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--primary, #16a34a);
+    }
+    .pending-card .logo img { height: 36px; }
+    .pending-icon {
+      width: 80px; height: 80px; margin: 0 auto 24px;
+      background: #fef3c7; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 40px;
+    }
+    .pending-card h1 { font-size: 24px; color: #111827; margin-bottom: 12px; }
+    .pending-card .subtitle { color: #6b7280; line-height: 1.7; margin-bottom: 32px; font-size: 15px; }
+    .status-box {
+      background: #fffbeb; border: 1px solid #fbbf24; border-radius: 12px;
+      padding: 20px; margin-bottom: 24px; text-align: left;
+    }
+    .status-box .status-label { font-weight: 600; color: #92400e; margin-bottom: 8px; font-size: 14px; }
+    .status-box .status-value { color: #78350f; font-size: 14px; line-height: 1.6; }
+    .info-list {
+      text-align: left; margin-bottom: 32px; padding: 0;
+    }
+    .info-list li {
+      list-style: none; padding: 10px 0;
+      border-bottom: 1px solid #f3f4f6;
+      display: flex; align-items: flex-start; gap: 10px;
+      color: #374151; font-size: 14px; line-height: 1.5;
+    }
+    .info-list li:last-child { border-bottom: none; }
+    .info-list li .dot {
+      width: 8px; height: 8px; min-width: 8px;
+      border-radius: 50%; margin-top: 6px;
+    }
+    .info-list li .dot.orange { background: #f59e0b; }
+    .info-list li .dot.green { background: #16a34a; }
+    .info-list li .dot.blue { background: #3b82f6; }
+    .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .actions .btn {
+      padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px;
+      text-decoration: none; display: inline-block; border: none; cursor: pointer;
+    }
+    .btn-check { background: #16a34a; color: #fff; }
+    .btn-check:hover { background: #15803d; }
+    .btn-logout { background: #f3f4f6; color: #374151; }
+    .btn-logout:hover { background: #e5e7eb; }
+
+    /* Upload section for government verification docs */
+    .upload-section {
+      margin-top: 32px;
+      padding-top: 32px;
+      border-top: 1px solid #e5e7eb;
+      text-align: left;
+    }
+    .upload-section h3 { font-size: 16px; color: #111827; margin-bottom: 16px; }
+    .upload-form .form-group { margin-bottom: 16px; }
+    .upload-form .form-label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+    .upload-form .form-input {
+      width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px;
+      font-size: 14px; color: #111827; box-sizing: border-box;
+    }
+    .upload-form .form-input:focus { outline: none; border-color: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,.1); }
+    .upload-area {
+      border: 2px dashed #d1d5db; border-radius: 12px; padding: 24px;
+      text-align: center; cursor: pointer; transition: border-color .2s;
+    }
+    .upload-area:hover { border-color: #16a34a; }
+    .upload-area p { color: #6b7280; font-size: 13px; margin-top: 8px; }
+    .upload-area .upload-icon { font-size: 28px; margin-bottom: 8px; }
+    .file-list { margin-top: 8px; font-size: 13px; color: #374151; }
+    .btn-submit-docs {
+      margin-top: 16px; width: 100%;
+      background: #16a34a; color: #fff; padding: 12px;
+      border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer;
+    }
+    .btn-submit-docs:hover { background: #15803d; }
+    .btn-submit-docs:disabled { background: #9ca3af; cursor: not-allowed; }
+
+    .rejected-box {
+      background: #fef2f2; border: 1px solid #f87171; border-radius: 12px;
+      padding: 20px; margin-bottom: 24px; text-align: left;
+    }
+    .rejected-box .status-label { font-weight: 600; color: #991b1b; margin-bottom: 8px; font-size: 14px; }
+    .rejected-box .status-value { color: #7f1d1d; font-size: 14px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+  <div class="pending-container">
+    <div class="pending-card">
+      <div class="logo">
+        <img src="assets/AgriCore Logo.png" alt="AgriCore Logo">
+        AgriCore 🌱
+      </div>
+
+      <div class="pending-icon">⏳</div>
+
+      <h1 id="pageTitle">Your application is under review</h1>
+
+      <p class="subtitle" id="pageSubtitle">
+        An admin has been notified and will verify your details.
+        You will be notified once your account is approved.
+      </p>
+
+      <div class="status-box" id="pendingStatusBox">
+        <div class="status-label">📋 Application Status</div>
+        <div class="status-value">Pending Admin Review</div>
+      </div>
+
+      <div class="rejected-box hidden" id="rejectedStatusBox">
+        <div class="status-label">❌ Application Rejected</div>
+        <div class="status-value" id="rejectedReason">Your verification was rejected. Please re-upload valid documents.</div>
+      </div>
+
+      <ul class="info-list">
+        <li><span class="dot orange"></span> You cannot access the dashboard until verified</li>
+        <li><span class="dot blue"></span> An admin is reviewing your submitted documents</li>
+        <li><span class="dot green"></span> You'll see a confirmation on your next login once approved</li>
+      </ul>
+
+      <!-- Document upload section for users who haven't submitted yet -->
+      <div class="upload-section" id="uploadSection">
+        <h3>📄 Submit Verification Documents</h3>
+        <p style="color:#6b7280;font-size:13px;margin-bottom:16px;">Upload your ID document and proof of employment for admin review.</p>
+
+        <div class="upload-form">
+          <div class="form-group">
+            <label class="form-label" for="govFullName">Full Name</label>
+            <input type="text" id="govFullName" class="form-input" placeholder="Your full legal name">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="govIdNumber">ID Number</label>
+            <input type="text" id="govIdNumber" class="form-input" placeholder="Your national ID number">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="govDepartment">Department</label>
+            <input type="text" id="govDepartment" class="form-input" placeholder="e.g. Department of Agriculture">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">ID Document</label>
+            <div class="upload-area" id="idDocUploadArea">
+              <div class="upload-icon">📤</div>
+              <p>Click to upload ID document (JPG, PNG, PDF — max 10MB)</p>
+            </div>
+            <input type="file" id="idDocFile" accept=".jpg,.jpeg,.png,.pdf" style="display:none">
+            <div class="file-list" id="idDocList"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Proof of Employment</label>
+            <div class="upload-area" id="proofUploadArea">
+              <div class="upload-icon">📤</div>
+              <p>Click to upload proof of employment (JPG, PNG, PDF — max 10MB)</p>
+            </div>
+            <input type="file" id="proofFile" accept=".jpg,.jpeg,.png,.pdf" style="display:none">
+            <div class="file-list" id="proofList"></div>
+          </div>
+
+          <button class="btn-submit-docs" id="submitDocsBtn">Submit for Verification</button>
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:24px;">
+        <button class="btn btn-check" id="checkStatusBtn">Check Status</button>
+        <button class="btn btn-logout" id="logoutBtn">Sign Out</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="js/app.js"></script>
+  <script>
+    (function() {
+      'use strict';
+
+      var user = AgriCore.getCurrentUser();
+      if (!user) {
+        window.location.href = '/auth/login';
+        return;
+      }
+
+      // If user is verified, redirect to dashboard
+      if (user.role === 'government' && user.verification_status === 'verified') {
+        window.location.href = '/platform/dashboard';
+        return;
+      }
+
+      // If user is not government, they shouldn't be here
+      if (user.role !== 'government') {
+        window.location.href = '/platform/dashboard';
+        return;
+      }
+
+      var pageTitle = document.getElementById('pageTitle');
+      var pageSubtitle = document.getElementById('pageSubtitle');
+      var pendingStatusBox = document.getElementById('pendingStatusBox');
+      var rejectedStatusBox = document.getElementById('rejectedStatusBox');
+      var uploadSection = document.getElementById('uploadSection');
+
+      // Show rejected state if applicable
+      if (user.verification_status === 'rejected') {
+        pageTitle.textContent = 'Verification Rejected';
+        pageSubtitle.textContent = 'Your previous application was rejected. You can re-submit your documents below.';
+        pendingStatusBox.classList.add('hidden');
+        rejectedStatusBox.classList.remove('hidden');
+      }
+
+      // Pre-fill name
+      var nameInput = document.getElementById('govFullName');
+      if (user.name) nameInput.value = user.name;
+
+      // File upload wiring
+      var idDocUploadArea = document.getElementById('idDocUploadArea');
+      var idDocFile = document.getElementById('idDocFile');
+      var idDocList = document.getElementById('idDocList');
+      var proofUploadArea = document.getElementById('proofUploadArea');
+      var proofFile = document.getElementById('proofFile');
+      var proofList = document.getElementById('proofList');
+
+      idDocUploadArea.addEventListener('click', function() { idDocFile.click(); });
+      proofUploadArea.addEventListener('click', function() { proofFile.click(); });
+
+      idDocFile.addEventListener('change', function() {
+        if (idDocFile.files.length) {
+          idDocList.textContent = '✅ ' + idDocFile.files[0].name;
+        }
+      });
+      proofFile.addEventListener('change', function() {
+        if (proofFile.files.length) {
+          proofList.textContent = '✅ ' + proofFile.files[0].name;
+        }
+      });
+
+      // Submit documents
+      var submitDocsBtn = document.getElementById('submitDocsBtn');
+      submitDocsBtn.addEventListener('click', async function() {
+        var fullName = document.getElementById('govFullName').value.trim();
+        var idNumber = document.getElementById('govIdNumber').value.trim();
+        var department = document.getElementById('govDepartment').value.trim();
+
+        if (!fullName || !idNumber || !department) {
+          AgriCore.showToast('Please fill in all required fields.', 'error');
+          return;
+        }
+
+        if (!idDocFile.files.length) {
+          AgriCore.showToast('Please upload your ID document.', 'error');
+          return;
+        }
+
+        if (!proofFile.files.length) {
+          AgriCore.showToast('Please upload your proof of employment.', 'error');
+          return;
+        }
+
+        submitDocsBtn.disabled = true;
+        submitDocsBtn.textContent = 'Uploading...';
+
+        try {
+          // Upload ID document
+          var formData1 = new FormData();
+          formData1.append('file', idDocFile.files[0]);
+          formData1.append('documentType', 'id_document');
+
+          var res1 = await fetch((window.AGRICORE_API_BASE || '/api') + '/verification/upload', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + user.token },
+            body: formData1,
+          });
+
+          if (!res1.ok) {
+            var err1 = await res1.json();
+            throw new Error(err1.error || 'Failed to upload ID document');
+          }
+
+          // Upload proof of employment
+          var formData2 = new FormData();
+          formData2.append('file', proofFile.files[0]);
+          formData2.append('documentType', 'proof_of_employment');
+
+          var res2 = await fetch((window.AGRICORE_API_BASE || '/api') + '/verification/upload', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + user.token },
+            body: formData2,
+          });
+
+          if (!res2.ok) {
+            var err2 = await res2.json();
+            throw new Error(err2.error || 'Failed to upload proof of employment');
+          }
+
+          AgriCore.showToast('Documents submitted successfully! An admin will review them.', 'success');
+          uploadSection.innerHTML = '<p style="color:#16a34a;font-weight:600;text-align:center;padding:24px;">✅ Documents submitted. Awaiting admin review.</p>';
+        } catch (err) {
+          AgriCore.showToast(err.message || 'Upload failed. Please try again.', 'error');
+          submitDocsBtn.disabled = false;
+          submitDocsBtn.textContent = 'Submit for Verification';
+        }
+      });
+
+      // Check status button
+      document.getElementById('checkStatusBtn').addEventListener('click', async function() {
+        try {
+          var res = await fetch((window.AGRICORE_API_BASE || '/api') + '/auth/me', {
+            headers: { 'Authorization': 'Bearer ' + user.token }
+          });
+          var data = await res.json();
+
+          if (data.success && data.data) {
+            var updatedUser = data.data;
+            updatedUser.token = user.token;
+            AgriCore.setCurrentUser(updatedUser);
+
+            if (updatedUser.verification_status === 'verified') {
+              AgriCore.showToast('Your account has been verified! Redirecting...', 'success');
+              setTimeout(function() { window.location.href = '/platform/dashboard'; }, 1200);
+            } else if (updatedUser.verification_status === 'rejected') {
+              user = updatedUser;
+              pageTitle.textContent = 'Verification Rejected';
+              pageSubtitle.textContent = 'Your application was rejected. You can re-submit your documents below.';
+              pendingStatusBox.classList.add('hidden');
+              rejectedStatusBox.classList.remove('hidden');
+              AgriCore.showToast('Your application was rejected. Please re-submit documents.', 'error');
+            } else {
+              AgriCore.showToast('Your application is still under review.', 'info');
+            }
+          }
+        } catch (err) {
+          AgriCore.showToast('Unable to check status. Please try again.', 'error');
+        }
+      });
+
+      // Logout button
+      document.getElementById('logoutBtn').addEventListener('click', function() {
+        AgriCore.clearCurrentUser();
+        window.location.href = '/auth/login';
+      });
+    })();
+  </script>
+
+</body>
+</html>

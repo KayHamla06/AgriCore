@@ -17,6 +17,12 @@ document.addEventListener('DOMContentLoaded', function() {
     return;
   }
 
+  // Government users must be verified to access the dashboard
+  if (user.role === 'government' && user.verification_status !== 'verified') {
+    window.location.href = '/pending-verification';
+    return;
+  }
+
   var isFarmer = user.role === 'farmer';
   var isGov = user.role === 'government';
 

@@ -5,7 +5,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { fieldVisitController } from '../controllers/fieldVisitController';
-import { authMiddleware, validate, requireRole } from '../middleware';
+import { authMiddleware, validate, requireRole, requireVerified } from '../middleware';
 
 const router = Router();
 
@@ -31,8 +31,8 @@ const shareVisitSchema = z.object({
   shared_with: z.array(z.string().uuid()).min(1).max(20),
 });
 
-// All routes require authentication
-router.use(authMiddleware);
+// All routes require authentication + verified status
+router.use(authMiddleware, requireVerified);
 
 // List visits (role-aware)
 router.get('/', fieldVisitController.getAll);

@@ -5,7 +5,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { departmentController } from '../controllers/departmentController';
-import { authMiddleware, validate, requireRole } from '../middleware';
+import { authMiddleware, validate, requireRole, requireVerified } from '../middleware';
 
 const router = Router();
 
@@ -23,8 +23,8 @@ const assignUserSchema = z.object({
   user_id: z.string().uuid(),
 });
 
-// All routes require authentication
-router.use(authMiddleware);
+// All routes require authentication + verified status
+router.use(authMiddleware, requireVerified);
 
 // List all departments (any authenticated user)
 router.get('/', departmentController.getAll);

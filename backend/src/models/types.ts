@@ -10,6 +10,7 @@ export interface AuthUser {
   role: UserRole;
   name: string;
   department_id?: string;
+  verification_status?: VerificationStatus;
 }
 
 export interface FarmerProfile {
@@ -317,7 +318,7 @@ export interface ActivityLog {
 //  VERIFICATION SYSTEM
 // =============================================
 
-export type VerificationStatus = 'pending' | 'verified' | 'rejected';
+export type VerificationStatus = 'none' | 'pending' | 'verified' | 'rejected';
 
 export type VerificationDocumentType =
   | 'id_document'

@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { uploadController } from '../controllers/uploadController';
-import { authMiddleware, requireOwnerOrGov } from '../middleware';
+import { authMiddleware, requireOwnerOrGov, requireVerified } from '../middleware';
 
 const router = Router();
 
@@ -16,7 +16,7 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
 });
 
-router.use(authMiddleware);
+router.use(authMiddleware, requireVerified);
 
 // POST /api/upload/:farmerId/farm-image
 router.post(

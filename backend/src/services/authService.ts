@@ -1,6 +1,8 @@
 // ============================================
 // AgriCore — Auth Service
-// Handles signup, login, token refresh via Supabase Auth
+// Handles signup, login, token refresh via Supabase Auth.
+// No SMTP — Supabase handles all email flows.
+// PKCE code exchange for email verification callbacks.
 // ============================================
 
 import { supabaseAdmin } from '../config/supabaseClient';
@@ -13,6 +15,7 @@ export class AuthService {
   /**
    * Register a new user.
    * Creates Supabase Auth user + row in `users` table.
+   * Supabase sends verification email automatically.
    */
   async signUp(
     email: string,
@@ -20,11 +23,14 @@ export class AuthService {
     name: string,
     role: UserRole
   ): Promise<AuthResponse> {
-    // 1. Create auth user in Supabase
+    // Determine initial verification_status based on role
+    const verificationStatus = role === 'government' ? 'pending' : 'none';
+
+    // 1. Create auth user in Supabase — email_confirm: false lets Supabase send verification email
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // auto-confirm for dev; remove in production
+      email_confirm: false, // Supabase will send verification email
       user_metadata: { name, role },
     });
 
@@ -43,8 +49,9 @@ export class AuthService {
         email,
         name,
         role,
+        verification_status: verificationStatus,
       })
-      .select('id, email, role, name')
+      .select('id, email, role, name, verification_status')
       .single();
 
     if (profileError) {
@@ -57,19 +64,14 @@ export class AuthService {
       throw new AppError('Failed to create user profile', 500);
     }
 
-    // Sign in to get a real session token
-    const { data: signInData, error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+    // Send verification email via Supabase
+    await supabaseAdmin.auth.resend({
+      type: 'signup',
       email,
-      password,
+      options: {
+        emailRedirectTo: `${process.env.APP_URL || 'https://agricore.site'}/auth/callback`,
+      },
     });
-
-    if (signInError || !signInData.session) {
-      logger.error('SignUp: could not generate session after creation', {
-        email,
-        error: signInError?.message,
-      });
-      throw new AppError('Account created but failed to generate session', 500);
-    }
 
     return {
       user: {
@@ -77,14 +79,15 @@ export class AuthService {
         email: profile.email,
         role: profile.role as UserRole,
         name: profile.name,
+        verification_status: profile.verification_status,
       },
-      token: signInData.session.access_token,
+      token: '', // No token until email is verified
     };
   }
 
   /**
    * Authenticate existing user.
-   * Returns JWT access token + user profile.
+   * Returns JWT access token + user profile + verification_status.
    */
   async login(
     email: string,
@@ -100,10 +103,10 @@ export class AuthService {
       throw new AppError('Invalid email or password', 401);
     }
 
-    // Fetch user profile
+    // Fetch user profile including verification_status
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('users')
-      .select('id, email, role, name')
+      .select('id, email, role, name, verification_status')
       .eq('auth_id', data.user.id)
       .single();
 
@@ -124,9 +127,61 @@ export class AuthService {
         email: profile.email,
         role: profile.role as UserRole,
         name: profile.name,
+        verification_status: profile.verification_status,
       },
       token: data.session.access_token,
     };
+  }
+
+  /**
+   * Exchange a Supabase auth code for a session.
+   * Used when Supabase redirects back after email verification (PKCE flow).
+   */
+  async exchangeCodeForSession(code: string): Promise<AuthResponse> {
+    const { data, error } = await supabaseAdmin.auth.exchangeCodeForSession(code);
+
+    if (error || !data.session) {
+      throw new AppError('Invalid or expired auth code', 400);
+    }
+
+    // Fetch existing user profile
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('users')
+      .select('id, email, role, name, verification_status')
+      .eq('auth_id', data.user.id)
+      .single();
+
+    if (profileError || !profile) {
+      throw new AppError('User profile not found. Please sign up first.', 404);
+    }
+
+    return {
+      user: {
+        id: profile.id,
+        email: profile.email,
+        role: profile.role as UserRole,
+        name: profile.name,
+        verification_status: profile.verification_status,
+      },
+      token: data.session.access_token,
+    };
+  }
+
+  /**
+   * Set user role (e.g. during onboarding).
+   * If user selects 'government', set verification_status = 'pending'.
+   */
+  async setUserRole(userId: string, role: UserRole): Promise<void> {
+    const verificationStatus = role === 'government' ? 'pending' : 'none';
+
+    const { error } = await supabaseAdmin
+      .from('users')
+      .update({ role, verification_status: verificationStatus })
+      .eq('id', userId);
+
+    if (error) {
+      throw new AppError('Failed to set user role', 500);
+    }
   }
 
   /**
@@ -160,7 +215,7 @@ export class AuthService {
   async getUserByAuthId(authId: string): Promise<AuthUser | null> {
     const { data, error } = await supabaseAdmin
       .from('users')
-      .select('id, email, role, name')
+      .select('id, email, role, name, verification_status')
       .eq('auth_id', authId)
       .single();
 
@@ -171,6 +226,7 @@ export class AuthService {
       email: data.email,
       role: data.role as UserRole,
       name: data.name,
+      verification_status: data.verification_status,
     };
   }
 }

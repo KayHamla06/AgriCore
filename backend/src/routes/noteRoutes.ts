@@ -5,7 +5,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { noteController } from '../controllers/noteController';
-import { authMiddleware, validate } from '../middleware';
+import { authMiddleware, validate, requireVerified } from '../middleware';
 
 const router = Router();
 
@@ -27,8 +27,8 @@ const shareNoteSchema = z.object({
   shared_with: z.array(z.string().uuid()).min(1).max(20),
 });
 
-// All routes require authentication
-router.use(authMiddleware);
+// All routes require authentication + verified status
+router.use(authMiddleware, requireVerified);
 
 router.get('/', noteController.getAll);
 router.post('/', validate(createNoteSchema), noteController.create);

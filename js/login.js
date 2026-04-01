@@ -1,5 +1,6 @@
 /* ============================================
    AgriCore — Login Page JS
+   Uses Supabase Auth — no SMTP.
    ============================================ */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -8,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const loginForm = document.getElementById('loginForm');
   const loginError = document.getElementById('loginError');
 
-  loginForm.addEventListener('submit', (e) => {
+  loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     loginError.style.display = 'none';
 
@@ -27,16 +28,46 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const user = AgriCore.authenticateUser(email, password);
-    if (user) {
-      AgriCore.setCurrentUser(user);
-      AgriCore.showToast('Login successful! Redirecting...', 'success');
-      setTimeout(() => {
-        window.location.href = user.role === 'admin' ? '/platform/admin/console' : '/platform/dashboard';
-      }, 800);
-    } else {
-      loginError.textContent = 'Invalid email or password. Try farmer@agricore.com / farmer123 or gov@gov.za / gov123';
+    // Disable button during request
+    const submitBtn = loginForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Signing in...';
+
+    try {
+      const res = await AgriCore.apiPost('/auth/login', { email, password });
+
+      if (res.success && res.data) {
+        const user = res.data.user;
+        user.token = res.data.token;
+        AgriCore.setCurrentUser(user);
+
+        // Check for pending verification notification
+        if (user.verification_status === 'verified' && user.role === 'government') {
+          AgriCore.showToast('✅ Your account has been verified. You now have access to the dashboard.', 'success');
+        }
+
+        AgriCore.showToast('Login successful! Redirecting...', 'success');
+
+        setTimeout(() => {
+          // Government users with pending verification go to pending page
+          if (user.role === 'government' && user.verification_status !== 'verified') {
+            window.location.href = '/pending-verification';
+          } else if (user.role === 'admin') {
+            window.location.href = '/platform/admin/console';
+          } else {
+            window.location.href = '/platform/dashboard';
+          }
+        }, 800);
+      } else {
+        loginError.textContent = res.error || res.message || 'Invalid email or password.';
+        loginError.style.display = 'block';
+      }
+    } catch (err) {
+      loginError.textContent = 'Network error. Please try again.';
       loginError.style.display = 'block';
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Sign In';
     }
   });
 
@@ -79,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
     AgriCore.apiPost('/auth/forgot-password', { email: resetEmail })
       .then(function (res) {
         if (res.success) {
-          AgriCore.showToast('If that email exists, a reset link has been sent.', 'success');
+          AgriCore.showToast('If that email exists, a reset link has been sent to your inbox.', 'success');
         } else {
           AgriCore.showToast('Something went wrong. Please try again.', 'error');
         }

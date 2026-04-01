@@ -259,66 +259,84 @@
   animation: fadeInUp .8s ease .2s backwards;
 }
 
-.hero-card-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+/* Phone Mockup Showcase */
+.hero-phone-showcase {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  aspect-ratio: 4 / 3;
+  margin: 0 auto;
 }
 
-.hero-mini-card {
-  background: var(--white);
-  border-radius: var(--radius-lg);
-  padding: 24px;
-  box-shadow: var(--shadow-md);
-  border: 1px solid var(--gray-100);
-  transition: var(--transition);
+.hero-phone {
+  position: absolute;
+  transition: transform .5s cubic-bezier(.22,1,.36,1), box-shadow .4s ease;
 }
 
-.hero-mini-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
+.hero-phone-frame {
+  background: #1a1a1a;
+  border-radius: 22px;
+  padding: 10px;
+  box-shadow:
+    0 25px 60px rgba(0,0,0,.18),
+    0 8px 20px rgba(0,0,0,.10),
+    inset 0 1px 0 rgba(255,255,255,.08);
+  overflow: hidden;
+  position: relative;
 }
 
-.hero-mini-card:nth-child(2) { margin-top: 24px; }
-.hero-mini-card:nth-child(3) { margin-top: -24px; }
-
-.hero-mini-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 14px;
+.hero-phone-notch {
+  width: 80px;
+  height: 6px;
+  background: #333;
+  border-radius: 4px;
+  margin: 2px auto 8px;
 }
 
-.hero-mini-icon .lucide {
-  width: 22px;
-  height: 22px;
+.hero-phone-screen {
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+  line-height: 0;
 }
 
-.hero-mini-icon.green  { background: var(--primary-50);   color: var(--primary); }
-.hero-mini-icon.blue   { background: var(--info-light);   color: var(--info); }
-.hero-mini-icon.orange { background: var(--warning-light); color: var(--warning); }
-.hero-mini-icon.red    { background: var(--danger-light);  color: var(--danger); }
-
-.hero-mini-title {
-  font-weight: 700;
-  font-size: .938rem;
-  color: var(--gray-800);
-  margin-bottom: 4px;
+.hero-phone-screen img {
+  width: 100%;
+  height: auto;
+  display: block;
 }
 
-.hero-mini-value {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--primary);
+/* Back phone — analytics screen, slightly behind and offset */
+.hero-phone-back {
+  width: 82%;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  transform: rotate(2deg);
 }
 
-.hero-mini-sub {
-  font-size: .75rem;
-  color: var(--gray-500);
-  margin-top: 2px;
+.hero-phone-back:hover {
+  transform: rotate(2deg) translateY(-6px);
+}
+
+/* Front phone — dashboard screen, overlapping and tilted opposite */
+.hero-phone-front {
+  width: 82%;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  transform: rotate(-3deg);
+}
+
+.hero-phone-front:hover {
+  transform: rotate(-3deg) translateY(-6px);
+}
+
+.hero-phone-front .hero-phone-frame {
+  box-shadow:
+    0 30px 70px rgba(0,0,0,.22),
+    0 10px 25px rgba(0,0,0,.12),
+    inset 0 1px 0 rgba(255,255,255,.08);
 }
 
 /* --- Features Section --- */
@@ -606,6 +624,10 @@
     margin: 0 auto;
   }
 
+  .hero-phone-showcase {
+    max-width: 440px;
+  }
+
   .features-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -639,15 +661,24 @@
     align-items: center;
   }
 
-  .hero-card-grid {
-    grid-template-columns: 1fr;
-    max-width: 280px;
-    margin: 0 auto;
+  .hero-phone-showcase {
+    max-width: 360px;
+    aspect-ratio: 4 / 3;
   }
 
-  .hero-mini-card:nth-child(2),
-  .hero-mini-card:nth-child(3) {
-    margin-top: 0;
+  .hero-phone-frame {
+    border-radius: 16px;
+    padding: 7px;
+  }
+
+  .hero-phone-notch {
+    width: 60px;
+    height: 5px;
+    margin: 2px auto 6px;
+  }
+
+  .hero-phone-screen {
+    border-radius: 10px;
   }
 
   .features-grid {
@@ -676,5 +707,24 @@
 @media (max-width: 480px) {
   .hero-title {
     font-size: 1.875rem;
+  }
+
+  .hero-phone-showcase {
+    max-width: 280px;
+  }
+
+  .hero-phone-frame {
+    border-radius: 12px;
+    padding: 5px;
+  }
+
+  .hero-phone-notch {
+    width: 48px;
+    height: 4px;
+    margin: 1px auto 4px;
+  }
+
+  .hero-phone-screen {
+    border-radius: 8px;
   }
 }

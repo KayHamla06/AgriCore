@@ -802,7 +802,7 @@ const AgriCore = (() => {
 
     return fetch(API_BASE + path, Object.assign({}, options, { headers: headers }))
       .then(function (res) {
-        if (res.status === 401) {
+        if (res.status === 401 && user && user.token) {
           clearCurrentUser();
           window.location.href = '/auth/login';
           return { success: false, error: 'Session expired. Please log in again.' };

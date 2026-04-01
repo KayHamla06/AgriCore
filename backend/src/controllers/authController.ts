@@ -1,5 +1,7 @@
 // ============================================
 // AgriCore — Auth Controller
+// All email/password-reset handled by Supabase Auth.
+// No SMTP.
 // ============================================
 
 import { Request, Response, NextFunction } from 'express';
@@ -18,7 +20,7 @@ export class AuthController {
       res.status(201).json({
         success: true,
         data: result,
-        message: 'Account created successfully',
+        message: 'Account created successfully. Please check your email to verify your account.',
       });
     } catch (err) {
       next(err);
@@ -75,7 +77,10 @@ export class AuthController {
     }
   }
 
-  async sendVerificationEmail(req: Request, res: Response, next: NextFunction) {
+  /**
+   * Resend Supabase-managed verification email.
+   */
+  async resendVerificationEmail(req: Request, res: Response, next: NextFunction) {
     try {
       const { email } = req.body;
       await emailVerificationService.sendVerificationEmail(email);
@@ -86,20 +91,31 @@ export class AuthController {
     }
   }
 
-  async verifyEmailToken(req: Request, res: Response, next: NextFunction) {
+  /**
+   * Handle Supabase auth callback — exchange PKCE code for session.
+   * Used after email verification redirects back to the app.
+   */
+  async handleAuthCallback(req: Request, res: Response, next: NextFunction) {
     try {
-      const { token } = req.query;
+      const result = await authService.exchangeCodeForSession(req.body.code);
 
-      if (!token || typeof token !== 'string') {
-        res.status(400).json({ success: false, message: 'Missing or invalid token.' });
-        return;
-      }
+      res.json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
 
-      const email = emailVerificationService.verifyToken(token);
+  /**
+   * Set role for a user (e.g. during onboarding).
+   */
+  async setRole(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { role } = req.body;
+      await authService.setUserRole(req.user!.id, role);
 
-      logger.info('Email verified via link', { email });
+      logger.info('User role set', { userId: req.user!.id, role });
 
-      res.json({ success: true, message: 'Email verified successfully', data: { email } });
+      res.json({ success: true, message: 'Role set successfully' });
     } catch (err) {
       next(err);
     }
