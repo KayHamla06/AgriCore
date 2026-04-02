@@ -11,7 +11,81 @@ import { loginActivityService } from './loginActivityService';
 import logger from '../utils/logger';
 import type { AuthUser, UserRole, AuthResponse } from '../models/types';
 
+type ProfileRow = {
+  id: string;
+  email: string;
+  role: UserRole;
+  name: string;
+  verification_status: 'none' | 'pending' | 'verified' | 'rejected';
+};
+
 export class AuthService {
+  private isUserRole(value: unknown): value is UserRole {
+    return ['farmer', 'government', 'admin', 'supervisor', 'field_agent', 'office_staff'].includes(
+      String(value)
+    );
+  }
+
+  /**
+   * Ensure a row exists in public.users for this Supabase Auth user.
+   * This repairs out-of-sync auth/database states without blocking login.
+   */
+  private async getOrCreateProfile(authUser: {
+    id: string;
+    email?: string | null;
+    user_metadata?: Record<string, unknown> | null;
+  }): Promise<ProfileRow> {
+    const { data: existing } = await supabaseAdmin
+      .from('users')
+      .select('id, email, role, name, verification_status')
+      .eq('auth_id', authUser.id)
+      .single();
+
+    if (existing) {
+      return existing as ProfileRow;
+    }
+
+    const metadata = authUser.user_metadata || {};
+    const roleFromMeta = metadata.role;
+    const role: UserRole = this.isUserRole(roleFromMeta) ? roleFromMeta : 'farmer';
+
+    const nameFromMeta = metadata.name;
+    const email = (authUser.email || '').trim();
+    const fallbackName = email ? email.split('@')[0] : 'New User';
+    const name = (typeof nameFromMeta === 'string' && nameFromMeta.trim()) ? nameFromMeta.trim() : fallbackName;
+
+    const verificationStatus = role === 'government' ? 'pending' : 'none';
+
+    const { data: created, error: createError } = await supabaseAdmin
+      .from('users')
+      .insert({
+        auth_id: authUser.id,
+        email,
+        name,
+        role,
+        verification_status: verificationStatus,
+      })
+      .select('id, email, role, name, verification_status')
+      .single();
+
+    if (createError || !created) {
+      logger.error('Auth sync: failed to auto-create missing users profile', {
+        authId: authUser.id,
+        email,
+        error: createError?.message,
+      });
+      throw new AppError('User profile not found', 401);
+    }
+
+    logger.info('Auth sync: auto-created missing users profile', {
+      authId: authUser.id,
+      userId: created.id,
+      role: created.role,
+    });
+
+    return created as ProfileRow;
+  }
+
   /**
    * Register a new user.
    * Creates Supabase Auth user + row in `users` table.
@@ -104,16 +178,12 @@ export class AuthService {
       throw new AppError('Invalid email or password', 401);
     }
 
-    // Fetch user profile including verification_status
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('users')
-      .select('id, email, role, name, verification_status')
-      .eq('auth_id', data.user.id)
-      .single();
-
-    if (profileError || !profile) {
-      throw new AppError('User profile not found', 401);
-    }
+    // Fetch (or auto-create) user profile including verification_status
+    const profile = await this.getOrCreateProfile({
+      id: data.user.id,
+      email: data.user.email,
+      user_metadata: data.user.user_metadata as Record<string, unknown> | null,
+    });
 
     // Record login activity (non-blocking)
     loginActivityService.recordLogin({
@@ -145,16 +215,12 @@ export class AuthService {
       throw new AppError('Invalid or expired auth code', 400);
     }
 
-    // Fetch existing user profile
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('users')
-      .select('id, email, role, name, verification_status')
-      .eq('auth_id', data.user.id)
-      .single();
-
-    if (profileError || !profile) {
-      throw new AppError('User profile not found. Please sign up first.', 404);
-    }
+    // Fetch (or auto-create) user profile
+    const profile = await this.getOrCreateProfile({
+      id: data.user.id,
+      email: data.user.email,
+      user_metadata: data.user.user_metadata as Record<string, unknown> | null,
+    });
 
     return {
       user: {
