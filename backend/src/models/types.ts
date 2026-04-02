@@ -122,6 +122,9 @@ export interface SignUpRequest {
   password: string;
   name: string;
   role: UserRole;
+  province?: string;
+  district?: string;
+  farmSize?: number | string;
 }
 
 export interface LoginRequest {

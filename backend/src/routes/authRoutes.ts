@@ -24,6 +24,9 @@ const signUpSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
   role: z.enum(['farmer', 'government', 'supervisor', 'field_agent', 'office_staff']),
+  province: z.string().trim().optional(),
+  district: z.string().trim().optional(),
+  farmSize: z.union([z.string(), z.number()]).optional(),
 });
 
 const loginSchema = z.object({

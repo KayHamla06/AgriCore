@@ -9,7 +9,7 @@ import { supabaseAdmin } from '../config/supabaseClient';
 import { AppError } from '../middleware/errorHandler';
 import { loginActivityService } from './loginActivityService';
 import logger from '../utils/logger';
-import type { AuthUser, UserRole, AuthResponse } from '../models/types';
+import type { AuthUser, UserRole, AuthResponse, SignUpRequest } from '../models/types';
 
 type ProfileRow = {
   id: string;
@@ -20,6 +20,41 @@ type ProfileRow = {
 };
 
 export class AuthService {
+  private async ensureFarmerProfile(userId: string, profile: { name: string; email: string }, details?: { province?: string; district?: string; farmSize?: string | number }): Promise<void> {
+    const { data: existing, error: existingError } = await supabaseAdmin
+      .from('farmers')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (existingError) {
+      throw new AppError('Failed to check farmer profile', 500);
+    }
+
+    if (existing) {
+      return;
+    }
+
+    const farmSizeValue = typeof details?.farmSize === 'number'
+      ? details.farmSize
+      : parseFloat(details?.farmSize || '0');
+
+    const { error: farmerError } = await supabaseAdmin
+      .from('farmers')
+      .insert({
+        user_id: userId,
+        name: profile.name,
+        email: profile.email,
+        province: details?.province?.trim() || 'Unknown',
+        district: details?.district?.trim() || 'Unknown',
+        farm_size_hectares: Number.isFinite(farmSizeValue) ? farmSizeValue : 0,
+      });
+
+    if (farmerError) {
+      throw new AppError('Failed to create farmer profile', 500);
+    }
+  }
+
   private isUserRole(value: unknown): value is UserRole {
     return ['farmer', 'government', 'admin', 'supervisor', 'field_agent', 'office_staff'].includes(
       String(value)
@@ -83,6 +118,13 @@ export class AuthService {
       role: created.role,
     });
 
+    if (created.role === 'farmer') {
+      await this.ensureFarmerProfile(created.id, {
+        name: created.name,
+        email: created.email,
+      });
+    }
+
     return created as ProfileRow;
   }
 
@@ -91,12 +133,9 @@ export class AuthService {
    * Creates Supabase Auth user + row in `users` table.
    * Supabase sends verification email automatically.
    */
-  async signUp(
-    email: string,
-    password: string,
-    name: string,
-    role: UserRole
-  ): Promise<AuthResponse> {
+  async signUp(payload: SignUpRequest): Promise<AuthResponse> {
+    const { email, password, name, role, province, district, farmSize } = payload;
+
     // Determine initial verification_status based on role
     const verificationStatus = role === 'government' ? 'pending' : 'none';
 
@@ -140,6 +179,23 @@ export class AuthService {
         error: profileError.message,
       });
       throw new AppError('Failed to create user profile', 500);
+    }
+
+    try {
+      if (profile.role === 'farmer') {
+        await this.ensureFarmerProfile(profile.id, {
+          name: profile.name,
+          email: profile.email,
+        }, {
+          province,
+          district,
+          farmSize,
+        });
+      }
+    } catch (farmerProfileError) {
+      await supabaseAdmin.from('users').delete().eq('id', profile.id);
+      await supabaseAdmin.auth.admin.deleteUser(authUser.id);
+      throw farmerProfileError;
     }
 
     return {

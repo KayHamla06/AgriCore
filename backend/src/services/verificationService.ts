@@ -15,6 +15,15 @@ import path from 'path';
 import type { VerificationDocument, VerificationStatus } from '../models/types';
 
 export class VerificationService {
+  private isMissingRelationError(error: { code?: string; message?: string } | null | undefined): boolean {
+    if (!error) return false;
+
+    return error.code === '42P01'
+      || error.code === 'PGRST205'
+      || /relation .* does not exist/i.test(error.message || '')
+      || /could not find the table/i.test(error.message || '');
+  }
+
   /**
    * Upload a verification document for a user.
    */
@@ -90,7 +99,15 @@ export class VerificationService {
       .eq('user_id', userId)
       .order('uploaded_at', { ascending: false });
 
-    if (error) throw new AppError('Failed to fetch documents', 500);
+    if (error) {
+      if (this.isMissingRelationError(error)) {
+        logger.warn('verification_documents table missing; returning empty document list', { userId, code: error.code });
+        return [];
+      }
+
+      throw new AppError('Failed to fetch documents', 500);
+    }
+
     return (data || []) as VerificationDocument[];
   }
 
@@ -110,11 +127,15 @@ export class VerificationService {
     // For each user, get their documents
     const results = [];
     for (const user of (data || [])) {
-      const { data: docs } = await supabaseAdmin
+      const { data: docs, error: docsError } = await supabaseAdmin
         .from('verification_documents')
         .select('*')
         .eq('user_id', user.id)
         .order('uploaded_at', { ascending: false });
+
+      if (docsError && !this.isMissingRelationError(docsError)) {
+        throw new AppError('Failed to fetch verification documents', 500);
+      }
 
       if (docs && docs.length > 0) {
         results.push({ ...user, documents: docs });
@@ -142,10 +163,14 @@ export class VerificationService {
 
     const results = [];
     for (const user of (data || [])) {
-      const { data: docs } = await supabaseAdmin
+      const { data: docs, error: docsError } = await supabaseAdmin
         .from('verification_documents')
         .select('*')
         .eq('user_id', user.id);
+
+      if (docsError && !this.isMissingRelationError(docsError)) {
+        throw new AppError('Failed to fetch verification documents', 500);
+      }
 
       results.push({ ...user, documents: docs || [] });
     }

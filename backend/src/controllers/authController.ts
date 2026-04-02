@@ -12,8 +12,8 @@ import logger from '../utils/logger';
 export class AuthController {
   async signUp(req: Request, res: Response, next: NextFunction) {
     try {
-      const { email, password, name, role } = req.body;
-      const result = await authService.signUp(email, password, name, role);
+      const { email, role } = req.body;
+      const result = await authService.signUp(req.body);
 
       logger.info('User signed up', { email, role });
 

@@ -158,7 +158,7 @@
           if (typeof lucide !== 'undefined') lucide.createIcons();
 
           var token = ctx.user.token || '';
-          var API_BASE = window.AGRICORE_API_BASE || 'http://localhost:3000/api';
+          var API_BASE = window.AGRICORE_API_BASE || '/api';
 
           fetch(API_BASE + '/pdf/compare', {
             method: 'POST',

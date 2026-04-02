@@ -60,8 +60,36 @@ export class FarmerService {
       .eq('user_id', userId)
       .single();
 
-    if (error || !data) throw new AppError('Farmer profile not found', 404);
-    return data as FarmerProfile;
+    if (!error && data) {
+      return data as FarmerProfile;
+    }
+
+    const { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('id, name, email, role')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user || user.role !== 'farmer') {
+      throw new AppError('Farmer profile not found', 404);
+    }
+
+    const { data: created, error: createError } = await supabaseAdmin
+      .from('farmers')
+      .insert({
+        user_id: user.id,
+        name: user.name,
+        email: user.email,
+        province: 'Unknown',
+        district: 'Unknown',
+        farm_size_hectares: 0,
+      })
+      .select('*')
+      .single();
+
+    if (createError || !created) throw new AppError('Failed to create farmer profile', 500);
+
+    return created as FarmerProfile;
   }
 
   async updateProfile(

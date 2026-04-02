@@ -8,6 +8,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
+import { URL } from 'url';
 
 // Load env — try backend/.env first, fall back to CWD
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -45,12 +46,40 @@ validateConfig();
 
 const app = express();
 
+const externalConnectSources = [
+  'https://api.open-meteo.com',
+  'https://archive-api.open-meteo.com',
+];
+
+if (process.env.SUPABASE_URL) {
+  try {
+    externalConnectSources.push(new URL(process.env.SUPABASE_URL).origin);
+  } catch {
+    logger.warn('Invalid SUPABASE_URL for CSP connect-src', { supabaseUrl: process.env.SUPABASE_URL });
+  }
+}
+
 // =============================================
 //  SECURITY MIDDLEWARE
 // =============================================
 
 // Helmet — HTTP security headers
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      baseUri: ["'self'"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'self'"],
+      imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+      fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://unpkg.com'],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://unpkg.com', 'https://cdn.jsdelivr.net'],
+      connectSrc: ["'self'", ...externalConnectSources],
+    },
+  },
+}));
 
 // CORS — restrict to allowed origins
 app.use(cors({
