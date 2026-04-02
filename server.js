@@ -156,11 +156,13 @@ app.use('/api', async (req, res) => {
 const ROUTE_MAP = {
   '/':                                  'index.html',
   '/auth/login':                        'login.html',
+  '/auth/callback':                     'auth-callback.html',
   '/create/new/account/signup':         'signup.html',
   '/platform/dashboard':                'dashboard.html',
   '/platform/admin/console':            'admin.html',
   '/legal/terms-and-services':          'terms.html',
   '/verify':                            'verify.html',
+  '/pending-verification':              'pending-verification.html',
 };
 
 // =============================================

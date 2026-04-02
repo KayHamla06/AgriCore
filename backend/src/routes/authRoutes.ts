@@ -47,6 +47,10 @@ const setRoleSchema = z.object({
   role: z.enum(['farmer', 'government']),
 });
 
+const checkEmailSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
 // Rate limit for verification emails: 3 requests per 15 minutes per IP
 const verificationRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -60,6 +64,7 @@ const verificationRateLimit = rateLimit({
 router.post('/signup', validate(signUpSchema), authController.signUp);
 router.post('/login', validate(loginSchema), authController.login);
 router.post('/refresh', validate(refreshSchema), authController.refreshToken);
+router.post('/check-email', validate(checkEmailSchema), authController.checkEmail);
 router.post('/resend-verification', verificationRateLimit, validate(resendVerificationSchema), authController.resendVerificationEmail);
 router.post('/callback', validate(callbackSchema), authController.handleAuthCallback);
 

@@ -120,6 +120,20 @@ export class AuthController {
       next(err);
     }
   }
+
+  /**
+   * Check whether an email address is already registered.
+   * Used by the signup form to give instant feedback on step 1.
+   */
+  async checkEmail(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { email } = req.body;
+      const available = await authService.isEmailAvailable(email);
+      res.json({ success: true, available });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const authController = new AuthController();

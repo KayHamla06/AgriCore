@@ -57,7 +57,29 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Wire navigation buttons
-  document.getElementById('step1Next').addEventListener('click', () => goToStep(2));
+  document.getElementById('step1Next').addEventListener('click', async () => {
+    if (!validateStep(1)) return;
+
+    const email = document.getElementById('signupEmail').value.trim();
+    const btn = document.getElementById('step1Next');
+    btn.disabled = true;
+    btn.textContent = 'Checking...';
+
+    try {
+      const res = await AgriCore.apiPost('/auth/check-email', { email });
+      if (res.success && res.available === false) {
+        AgriCore.showToast('That email is already registered. Please use a different email or log in.', 'error');
+        return;
+      }
+    } catch (_) {
+      // If check fails, let backend handle duplicate detection at signup
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Next';
+    }
+
+    goToStep(2);
+  });
   document.getElementById('step2Back').addEventListener('click', () => goToStep(1));
   document.getElementById('step2Next').addEventListener('click', () => goToStep(3));
   document.getElementById('step3Back').addEventListener('click', () => goToStep(2));

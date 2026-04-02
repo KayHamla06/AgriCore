@@ -250,27 +250,19 @@ export class AdminService {
     }>();
     if (cached) return cached;
 
-    const [users, farmers, plans, pendingDeletions, openTickets] = await Promise.all([
-      supabaseAdmin.from('users').select('id', { count: 'exact', head: true }),
-      supabaseAdmin.from('farmers').select('id', { count: 'exact', head: true }),
-      supabaseAdmin.from('support_plans').select('id', { count: 'exact', head: true }),
-      supabaseAdmin
-        .from('deletion_requests')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'pending'),
-      supabaseAdmin
-        .from('tickets')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'open'),
+    // Wrap each query in a real Promise so .catch() is available
+    const safeCount = (q: PromiseLike<{ count: number | null }>) =>
+      Promise.resolve(q).then(r => r.count ?? 0).catch(() => 0);
+
+    const [totalUsers, totalFarmers, totalPlans, pendingDeletions, openTickets] = await Promise.all([
+      safeCount(supabaseAdmin.from('users').select('id', { count: 'exact', head: true })),
+      safeCount(supabaseAdmin.from('farmers').select('id', { count: 'exact', head: true })),
+      safeCount(supabaseAdmin.from('support_plans').select('id', { count: 'exact', head: true })),
+      safeCount(supabaseAdmin.from('deletion_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending')),
+      safeCount(supabaseAdmin.from('tickets').select('id', { count: 'exact', head: true }).eq('status', 'open')),
     ]);
 
-    const stats = {
-      totalUsers: users.count || 0,
-      totalFarmers: farmers.count || 0,
-      totalPlans: plans.count || 0,
-      pendingDeletions: pendingDeletions.count || 0,
-      openTickets: openTickets.count || 0,
-    };
+    const stats = { totalUsers, totalFarmers, totalPlans, pendingDeletions, openTickets };
 
     cacheService.setAdminStats(stats);
     return stats;

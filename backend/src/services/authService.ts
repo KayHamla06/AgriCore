@@ -5,7 +5,7 @@
 // PKCE code exchange for email verification callbacks.
 // ============================================
 
-import { supabaseAdmin } from '../config/supabaseClient';
+import { supabase, supabaseAdmin } from '../config/supabaseClient';
 import { AppError } from '../middleware/errorHandler';
 import { loginActivityService } from './loginActivityService';
 import logger from '../utils/logger';
@@ -26,17 +26,23 @@ export class AuthService {
     // Determine initial verification_status based on role
     const verificationStatus = role === 'government' ? 'pending' : 'none';
 
-    // 1. Create auth user in Supabase — email_confirm: false lets Supabase send verification email
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    // 1. Create auth user via public signUp — supports emailRedirectTo for branded verification link
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
-      email_confirm: false, // Supabase will send verification email
-      user_metadata: { name, role },
+      options: {
+        emailRedirectTo: `${process.env.APP_URL || 'https://agricore.site'}/auth/callback`,
+        data: { name, role },
+      },
     });
 
     if (authError) {
       logger.warn('SignUp: Supabase auth error', { email, error: authError.message });
       throw new AppError(authError.message, 400);
+    }
+
+    if (!authData.user) {
+      throw new AppError('Email address is already registered', 400);
     }
 
     const authUser = authData.user;
@@ -63,15 +69,6 @@ export class AuthService {
       });
       throw new AppError('Failed to create user profile', 500);
     }
-
-    // Send verification email via Supabase
-    await supabaseAdmin.auth.resend({
-      type: 'signup',
-      email,
-      options: {
-        emailRedirectTo: `${process.env.APP_URL || 'https://agricore.site'}/auth/callback`,
-      },
-    });
 
     return {
       user: {
@@ -228,6 +225,19 @@ export class AuthService {
       name: data.name,
       verification_status: data.verification_status,
     };
+  }
+
+  /**
+   * Check whether an email address is already registered.
+   * Returns true if the email is NOT yet taken, false if it is.
+   */
+  async isEmailAvailable(email: string): Promise<boolean> {
+    const { count } = await supabaseAdmin
+      .from('users')
+      .select('id', { count: 'exact', head: true })
+      .eq('email', email.toLowerCase().trim());
+
+    return (count ?? 0) === 0;
   }
 }
 
