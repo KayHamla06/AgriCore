@@ -124,7 +124,7 @@ function build() {
   }
 
   // Copy HTML files (no minification, they're served by routes)
-  const htmlFiles = ['index.html', 'login.html', 'signup.html', 'dashboard.html', 'admin.html', 'terms.html', 'verify.html', 'auth-callback.html', 'pending-verification.html'];
+  const htmlFiles = ['index.html', 'login.html', 'signup.html', 'dashboard.html', 'admin.html', 'terms.html', 'verify.html', 'auth-callback.html', 'pending-verification.html', 'reset-password.html'];
   for (const file of htmlFiles) {
     const src = path.join(__dirname, file);
     if (fs.existsSync(src)) {

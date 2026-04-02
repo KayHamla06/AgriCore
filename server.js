@@ -157,6 +157,7 @@ const ROUTE_MAP = {
   '/':                                  'index.html',
   '/auth/login':                        'login.html',
   '/auth/callback':                     'auth-callback.html',
+  '/auth/reset-password':               'reset-password.html',
   '/create/new/account/signup':         'signup.html',
   '/platform/dashboard':                'dashboard.html',
   '/platform/admin/console':            'admin.html',
