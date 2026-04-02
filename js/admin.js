@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // API base: adjust this to match your backend URL
-  var API_BASE = window.AGRICORE_API_BASE || 'http://localhost:3000/api';
+  var API_BASE = window.AGRICORE_API_BASE || '/api';
   var token = user.token || '';
 
   function apiHeaders() {

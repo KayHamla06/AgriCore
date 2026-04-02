@@ -253,6 +253,31 @@
   margin-top: 2px;
 }
 
+.hero-stat-divider {
+  width: 1px;
+  height: 40px;
+  background: var(--gray-200);
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.hero-trust {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .813rem;
+  color: var(--gray-400);
+  margin-top: 20px;
+  margin-bottom: 0;
+}
+
+.hero-trust .lucide {
+  width: 14px;
+  height: 14px;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
 /* Hero visual cards */
 .hero-visual {
   position: relative;

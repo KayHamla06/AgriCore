@@ -35,147 +35,230 @@ document.addEventListener('DOMContentLoaded', function() {
     gray: 'rgba(158, 158, 158, 1)',
   };
 
-  // ===== FARMER CHARTS =====
+  // ===== FARMER CHARTS (real data from API) =====
   if (user.role === 'farmer') {
-    // Find farmer data (use first farmer as default mock)
-    const farmerData = AgriCore.mockFarmers[0];
+    var API_BASE_F = window.AGRICORE_API_BASE || '/api';
+    var tokenF = user.token || '';
 
-    // Yield Over Time (Line Chart)
-    const yieldCtx = document.getElementById('farmerYieldChart');
-    if (yieldCtx) {
-      new Chart(yieldCtx, {
-        type: 'line',
-        data: {
-          labels: months,
-          datasets: [{
-            label: 'Yield (t/ha)',
-            data: farmerData.yieldHistory,
-            borderColor: chartColors.green,
-            backgroundColor: chartColors.greenLight,
-            fill: true,
-            pointBackgroundColor: chartColors.green,
-            pointRadius: 4,
-            pointHoverRadius: 6,
-          }]
-        },
-        options: {
-          plugins: {
-            legend: { display: false },
-          },
-          scales: {
-            y: {
-              beginAtZero: false,
-              grid: { color: 'rgba(0,0,0,.04)' },
-              title: { display: true, text: 'Tons / Hectare' }
-            },
-            x: {
-              grid: { display: false }
-            }
-          }
-        }
-      });
+    function showEmptyFarmerChart(id, msg) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.style.display = 'none';
+      var wrapper = el.closest('.chart-canvas-wrapper') || el.parentNode;
+      if (wrapper && !wrapper.querySelector('.chart-empty-state')) {
+        var div = document.createElement('div');
+        div.className = 'chart-empty-state';
+        div.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;height:120px;color:var(--gray-400);font-size:.875rem;gap:10px;';
+        div.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.4"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg><span>' + (msg || 'No data yet &mdash; add your first crop record.') + '</span>';
+        wrapper.appendChild(div);
+      }
     }
 
-    // Monthly Production (Bar Chart)
-    const prodCtx = document.getElementById('farmerProductionChart');
-    if (prodCtx) {
-      new Chart(prodCtx, {
-        type: 'bar',
-        data: {
-          labels: months,
-          datasets: [{
-            label: 'Production (tons)',
-            data: farmerData.productionHistory,
-            backgroundColor: farmerData.productionHistory.map((v, i) =>
-              i >= farmerData.productionHistory.length - 1 ? chartColors.green : 'rgba(76, 175, 80, 0.5)'
-            ),
-            borderRadius: 6,
-            borderSkipped: false,
-          }]
-        },
-        options: {
-          plugins: {
-            legend: { display: false },
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              grid: { color: 'rgba(0,0,0,.04)' },
-            },
-            x: {
-              grid: { display: false }
-            }
-          }
+    fetch(API_BASE_F + '/farmers/me', { headers: { 'Authorization': 'Bearer ' + tokenF } })
+      .then(function(r) { return r.json(); })
+      .then(function(profileRes) {
+        if (!profileRes || !profileRes.success || !profileRes.data) {
+          showEmptyFarmerChart('farmerYieldChart', 'Could not load farm data.');
+          showEmptyFarmerChart('farmerProductionChart', 'Could not load farm data.');
+          return;
         }
+        var fid = profileRes.data.id;
+        return fetch(API_BASE_F + '/farmers/' + fid + '/crops', { headers: { 'Authorization': 'Bearer ' + tokenF } })
+          .then(function(r) { return r.json(); })
+          .then(function(cropsRes) {
+            var crops = (cropsRes && cropsRes.success && cropsRes.data) ? cropsRes.data : [];
+            if (crops.length === 0) {
+              showEmptyFarmerChart('farmerYieldChart', 'No crop records yet &mdash; upload data to see charts.');
+              showEmptyFarmerChart('farmerProductionChart', 'No production data yet.');
+              return;
+            }
+
+            var sorted = crops.slice().sort(function(a, b) {
+              return new Date(a.recorded_at || 0) - new Date(b.recorded_at || 0);
+            });
+            var labels = sorted.map(function(c) {
+              var d = new Date(c.recorded_at || c.created_at || 0);
+              return isNaN(d.getTime()) ? '--' : d.toLocaleString('default', { month: 'short', year: '2-digit' });
+            });
+            var yieldData = sorted.map(function(c) { return parseFloat(c.yield_tonnes) || 0; });
+            var yieldPerHaData = sorted.map(function(c) {
+              var ha = parseFloat(c.hectares_planted) || 1;
+              return Math.round((parseFloat(c.yield_tonnes) || 0) / ha * 100) / 100;
+            });
+
+            var yieldCtx = document.getElementById('farmerYieldChart');
+            if (yieldCtx) {
+              new Chart(yieldCtx, {
+                type: 'line',
+                data: {
+                  labels: labels,
+                  datasets: [{
+                    label: 'Yield (tonnes)',
+                    data: yieldData,
+                    borderColor: chartColors.green,
+                    backgroundColor: chartColors.greenLight,
+                    fill: true,
+                    pointBackgroundColor: chartColors.green,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                  }]
+                },
+                options: {
+                  plugins: { legend: { display: false } },
+                  scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,.04)' }, title: { display: true, text: 'Tonnes' } },
+                    x: { grid: { display: false } }
+                  }
+                }
+              });
+            }
+
+            var prodCtx = document.getElementById('farmerProductionChart');
+            if (prodCtx) {
+              new Chart(prodCtx, {
+                type: 'bar',
+                data: {
+                  labels: labels,
+                  datasets: [{
+                    label: 'Yield (t/ha)',
+                    data: yieldPerHaData,
+                    backgroundColor: yieldPerHaData.map(function(v, i, arr) {
+                      return i > 0 && v >= arr[i - 1] ? 'rgba(76,175,80,0.7)' : 'rgba(229,57,53,0.7)';
+                    }),
+                    borderRadius: 6,
+                    borderSkipped: false,
+                  }]
+                },
+                options: {
+                  plugins: { legend: { display: false } },
+                  scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,.04)' } },
+                    x: { grid: { display: false } }
+                  }
+                }
+              });
+            }
+          });
+      })
+      .catch(function() {
+        showEmptyFarmerChart('farmerYieldChart', 'Unable to load chart data.');
+        showEmptyFarmerChart('farmerProductionChart', 'Unable to load chart data.');
       });
-    }
   }
 
-  // ===== GOVERNMENT CHARTS =====
+  // ===== GOVERNMENT CHARTS (real data from API) =====
   if (user.role === 'government') {
-    // Farmer Performance Distribution (Line chart)
-    const perfCtx = document.getElementById('govPerformanceChart');
-    if (perfCtx) {
-      new Chart(perfCtx, {
-        type: 'line',
-        data: {
-          labels: months,
-          datasets: [
-            {
-              label: 'Improving Farmers',
-              data: [1520, 1560, 1600, 1640, 1680, 1720, 1750, 1780, 1810, 1840, 1870, 1892],
-              borderColor: chartColors.green,
-              backgroundColor: chartColors.greenLight,
-              fill: true,
-            },
-            {
-              label: 'Declining Farmers',
-              data: [780, 760, 720, 700, 680, 670, 660, 650, 640, 660, 655, 655],
-              borderColor: chartColors.red,
-              backgroundColor: chartColors.redLight,
-              fill: true,
-            }
-          ]
-        },
-        options: {
-          scales: {
-            y: {
-              beginAtZero: false,
-              grid: { color: 'rgba(0,0,0,.04)' },
-            },
-            x: { grid: { display: false } }
-          }
-        }
-      });
+    var API_BASE_G = window.AGRICORE_API_BASE || '/api';
+    var tokenG = user.token || '';
+
+    function showEmptyGovChart(id, msg) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.style.display = 'none';
+      var wrapper = el.closest('.chart-canvas-wrapper') || el.parentNode;
+      if (wrapper && !wrapper.querySelector('.chart-empty-state')) {
+        var div = document.createElement('div');
+        div.className = 'chart-empty-state';
+        div.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;height:120px;color:var(--gray-400);font-size:.875rem;gap:10px;';
+        div.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.4"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg><span>' + (msg || 'No data yet.') + '</span>';
+        wrapper.appendChild(div);
+      }
     }
 
-    // Plans by Month (Bar Chart)
-    const planCtx = document.getElementById('govPlansChart');
-    if (planCtx) {
-      new Chart(planCtx, {
-        type: 'bar',
-        data: {
-          labels: months,
-          datasets: [{
-            label: 'Plans Created',
-            data: [8, 12, 10, 15, 9, 11, 14, 13, 16, 12, 14, 14],
-            backgroundColor: chartColors.blue,
-            borderRadius: 6,
-            borderSkipped: false,
-          }]
-        },
-        options: {
-          plugins: { legend: { display: false } },
-          scales: {
-            y: {
-              beginAtZero: true,
-              grid: { color: 'rgba(0,0,0,.04)' },
-            },
-            x: { grid: { display: false } }
-          }
+    fetch(API_BASE_G + '/farmers?limit=200', { headers: { 'Authorization': 'Bearer ' + tokenG } })
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        var farmers = (res && res.success && res.data) ? (res.data.data || []) : [];
+        if (farmers.length === 0) {
+          showEmptyGovChart('govPerformanceChart', 'No farmers registered yet.');
+          showEmptyGovChart('govPlansChart', 'No plans created yet.');
+          return;
         }
+
+        var thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+        var now = Date.now();
+
+        // Group by province for farmer status distribution
+        var provinces = {};
+        farmers.forEach(function(f) {
+          var prov = f.province || 'Unknown';
+          if (!provinces[prov]) provinces[prov] = { active: 0, inactive: 0 };
+          if (f.updated_at && (now - new Date(f.updated_at).getTime()) < thirtyDaysMs) {
+            provinces[prov].active++;
+          } else {
+            provinces[prov].inactive++;
+          }
+        });
+        var provLabels = Object.keys(provinces).sort();
+        var activeData = provLabels.map(function(p) { return provinces[p].active; });
+        var inactiveData = provLabels.map(function(p) { return provinces[p].inactive; });
+
+        var perfCtx = document.getElementById('govPerformanceChart');
+        if (perfCtx) {
+          new Chart(perfCtx, {
+            type: 'bar',
+            data: {
+              labels: provLabels,
+              datasets: [
+                { label: 'Active (≤30 days)', data: activeData, backgroundColor: chartColors.green, borderRadius: 4, borderSkipped: false },
+                { label: 'Inactive', data: inactiveData, backgroundColor: chartColors.red, borderRadius: 4, borderSkipped: false }
+              ]
+            },
+            options: {
+              plugins: { legend: { position: 'bottom' } },
+              scales: {
+                y: { beginAtZero: true, stacked: true, grid: { color: 'rgba(0,0,0,.04)' } },
+                x: { stacked: true, grid: { display: false } }
+              }
+            }
+          });
+        }
+
+        // Plans per month
+        fetch(API_BASE_G + '/plans', { headers: { 'Authorization': 'Bearer ' + tokenG } })
+          .then(function(r) { return r.json(); }).catch(function() { return { success: false }; })
+          .then(function(plansRes) {
+            var planCtx = document.getElementById('govPlansChart');
+            if (!planCtx) return;
+            if (!plansRes || !plansRes.success || !plansRes.data || plansRes.data.length === 0) {
+              showEmptyGovChart('govPlansChart', 'No support plans created yet.');
+              return;
+            }
+            var plansByMonth = {};
+            var months12 = [];
+            var nowD = new Date();
+            for (var i = 11; i >= 0; i--) {
+              var d = new Date(nowD.getFullYear(), nowD.getMonth() - i, 1);
+              var key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+              var lbl = d.toLocaleString('default', { month: 'short', year: '2-digit' });
+              months12.push({ key: key, lbl: lbl });
+              plansByMonth[key] = 0;
+            }
+            plansRes.data.forEach(function(p) {
+              var pd = new Date(p.created_at || 0);
+              var pkey = pd.getFullYear() + '-' + String(pd.getMonth() + 1).padStart(2, '0');
+              if (Object.prototype.hasOwnProperty.call(plansByMonth, pkey)) plansByMonth[pkey]++;
+            });
+            new Chart(planCtx, {
+              type: 'bar',
+              data: {
+                labels: months12.map(function(m) { return m.lbl; }),
+                datasets: [{ label: 'Plans Created', data: months12.map(function(m) { return plansByMonth[m.key]; }), backgroundColor: chartColors.blue, borderRadius: 6, borderSkipped: false }]
+              },
+              options: {
+                plugins: { legend: { display: false } },
+                scales: {
+                  y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,.04)' } },
+                  x: { grid: { display: false } }
+                }
+              }
+            });
+          });
+      })
+      .catch(function() {
+        showEmptyGovChart('govPerformanceChart', 'Unable to load chart data.');
+        showEmptyGovChart('govPlansChart', 'Unable to load chart data.');
       });
-    }
   }
 
   // ===== PROFILE CHARTS (rendered on demand) =====
