@@ -147,7 +147,19 @@
       if (!ctx.isFarmer) return;
 
       var user = ctx.user;
-      var farmerData = AgriCore.mockFarmers.find(function(f) { return f.id === user.id; }) || AgriCore.mockFarmers[0];
+      var farmerData = AgriCore.mockFarmers.find(function(f) { return f.id === user.id; }) || {
+        id: user.id,
+        name: user.name,
+        farmName: 'My Farm',
+        province: '',
+        district: '',
+        coordinates: null,
+        yieldHistory: [0, 0],
+        productionHistory: [0, 0],
+        livestock: 0,
+        status: 'stable',
+        uploadHistory: [],
+      };
 
       // Welcome name
       var welcomeName = document.getElementById('farmerWelcomeName');
@@ -240,7 +252,7 @@
       }
 
       // === Verification Badge & Warning ===
-      var API_BASE = window.AGRICORE_API_BASE || 'http://localhost:3000/api';
+      var API_BASE = window.AGRICORE_API_BASE || '/api';
       var token = user.token || '';
       fetch(API_BASE + '/verification/status', {
         headers: { 'Authorization': 'Bearer ' + token }
@@ -409,22 +421,46 @@
       var historyBtn = document.getElementById('viewHistoryBtn');
       if (historyBtn) historyBtn.addEventListener('click', function() { ctx.switchPanel('analytics'); });
 
+      var cachedFarmerProfileId = null;
+      function getFarmerProfileId() {
+        if (cachedFarmerProfileId) {
+          return Promise.resolve(cachedFarmerProfileId);
+        }
+
+        var token = user.token || '';
+        var API_BASE = window.AGRICORE_API_BASE || '/api';
+        return fetch(API_BASE + '/farmers/me', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        })
+          .then(function(res) { return res.json(); })
+          .then(function(res) {
+            if (res.success && res.data && res.data.id) {
+              cachedFarmerProfileId = res.data.id;
+              return cachedFarmerProfileId;
+            }
+            return null;
+          })
+          .catch(function() { return null; });
+      }
+
       // === PDF Download ===
       var pdfBtn = document.getElementById('downloadFarmerPdfBtn');
       if (pdfBtn) {
         pdfBtn.addEventListener('click', function() {
-          // Use the farmer's own farmer ID (from mock data for now, or user.farmerId)
-          var farmerId = farmerData.id || user.id;
           pdfBtn.disabled = true;
           pdfBtn.innerHTML = '<i data-lucide="loader"></i> Generating...';
           if (typeof lucide !== 'undefined') lucide.createIcons();
 
           var token = user.token || '';
-          var API_BASE = window.AGRICORE_API_BASE || 'http://localhost:3000/api';
+          var API_BASE = window.AGRICORE_API_BASE || '/api';
 
-          fetch(API_BASE + '/pdf/farmer/' + farmerId, {
-            method: 'GET',
-            headers: { 'Authorization': 'Bearer ' + token },
+          getFarmerProfileId()
+          .then(function(farmerId) {
+            if (!farmerId) throw new Error('Farmer profile not found');
+            return fetch(API_BASE + '/pdf/farmer/' + farmerId, {
+              method: 'GET',
+              headers: { 'Authorization': 'Bearer ' + token },
+            });
           })
           .then(function(res) {
             if (!res.ok) throw new Error('Failed to generate PDF');
@@ -456,17 +492,20 @@
       var planPdfBtn = document.getElementById('downloadPlanPdfBtn');
       if (planPdfBtn) {
         planPdfBtn.addEventListener('click', function() {
-          var farmerId = farmerData.id || user.id;
           planPdfBtn.disabled = true;
           planPdfBtn.innerHTML = '<i data-lucide="loader"></i> Generating...';
           if (typeof lucide !== 'undefined') lucide.createIcons();
 
           var token = user.token || '';
-          var API_BASE = window.AGRICORE_API_BASE || 'http://localhost:3000/api';
+          var API_BASE = window.AGRICORE_API_BASE || '/api';
 
-          fetch(API_BASE + '/pdf/plans/' + farmerId, {
-            method: 'GET',
-            headers: { 'Authorization': 'Bearer ' + token },
+          getFarmerProfileId()
+          .then(function(farmerId) {
+            if (!farmerId) throw new Error('Farmer profile not found');
+            return fetch(API_BASE + '/pdf/plans/' + farmerId, {
+              method: 'GET',
+              headers: { 'Authorization': 'Bearer ' + token },
+            });
           })
           .then(function(res) {
             if (!res.ok) throw new Error('Failed to generate PDF');

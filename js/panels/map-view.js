@@ -28,6 +28,31 @@
 
     init: function(ctx) {
       var farmerMap = null;
+      var token = (ctx.user && ctx.user.token) || '';
+      var API_BASE = window.AGRICORE_API_BASE || '/api';
+
+      function addMarker(f) {
+        if (!f || f.latitude == null || f.longitude == null) return;
+
+        var marker = L.circleMarker([f.latitude, f.longitude], {
+          radius: 10,
+          fillColor: '#2e7d32',
+          color: '#fff',
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.85
+        }).addTo(farmerMap);
+
+        marker.bindPopup(
+          '<div style="min-width:180px;">' +
+          '<strong>' + AgriCore.escapeHtml(f.name || 'Unknown Farmer') + '</strong><br>' +
+          '<span style="color:var(--gray-500);font-size:.8rem;">' +
+            AgriCore.escapeHtml(f.province || 'N/A') + ', ' + AgriCore.escapeHtml(f.district || 'N/A') +
+          '</span><br>' +
+          '<span style="font-size:.75rem;color:#666;">Lat: ' + f.latitude + ', Lng: ' + f.longitude + '</span>' +
+          '</div>'
+        );
+      }
 
       window.initFarmerMap = function() {
         if (farmerMap) {
@@ -45,40 +70,32 @@
           maxZoom: 18
         }).addTo(farmerMap);
 
-        var colorMap = { good: '#2e7d32', stable: '#f9a825', declining: '#c62828' };
-        var escape = AgriCore.escapeHtml;
+        var endpoint = ctx.isFarmer ? '/farmers/me' : '/farmers?limit=200';
+        fetch(API_BASE + endpoint, {
+          headers: { 'Authorization': 'Bearer ' + token }
+        })
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            var farmers = [];
+            if (ctx.isFarmer && data.success && data.data) {
+              farmers = [data.data];
+            } else if (!ctx.isFarmer && data.success && data.data && data.data.data) {
+              farmers = data.data.data;
+            }
 
-        AgriCore.mockFarmers.forEach(function(f) {
-          if (!f.coordinates) return;
-          var score = AgriCore.calculatePerformanceScore(f);
-          var level = AgriCore.getScoreLevel(score);
-          var warnings = AgriCore.detectWarnings(f);
-          var lastYield = f.yieldHistory[f.yieldHistory.length - 1];
+            var hasAny = false;
+            farmers.forEach(function(f) {
+              addMarker(f);
+              if (f && f.latitude != null && f.longitude != null) hasAny = true;
+            });
 
-          var warningText = warnings.length > 0
-            ? '<br><strong style="color:#c62828;">Warnings:</strong> ' + warnings.map(function(w) { return escape(w.message); }).join(', ')
-            : '';
-
-          var marker = L.circleMarker([f.coordinates.lat, f.coordinates.lng], {
-            radius: 10,
-            fillColor: colorMap[level.level] || '#999',
-            color: '#fff',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.85
-          }).addTo(farmerMap);
-
-          marker.bindPopup(
-            '<div style="min-width:180px;">' +
-            '<strong>' + escape(f.name) + '</strong><br>' +
-            escape(f.farmName) + '<br>' +
-            '<span style="color:var(--gray-500);font-size:.8rem;">' + escape(f.province) + ', ' + escape(f.district) + '</span><br><br>' +
-            'Score: <strong style="color:' + level.color + '">' + score + '</strong> &mdash; ' + escape(level.label) + '<br>' +
-            'Yield: <strong>' + lastYield + 't/ha</strong><br>' +
-            'Livestock: <strong>' + f.livestock + '</strong>' +
-            warningText + '</div>'
-          );
-        });
+            if (hasAny && farmers[0] && farmers[0].latitude != null && farmers[0].longitude != null) {
+              farmerMap.setView([farmers[0].latitude, farmers[0].longitude], ctx.isFarmer ? 11 : 6);
+            }
+          })
+          .catch(function() {
+            // Keep map visible even when API fails.
+          });
       };
     }
   });

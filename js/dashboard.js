@@ -55,10 +55,8 @@ document.addEventListener('DOMContentLoaded', function() {
   if (isFarmer) {
     var sidebarFarmers = document.getElementById('sidebarFarmers');
     var sidebarCompare = document.getElementById('sidebarCompare');
-    var sidebarMap = document.getElementById('sidebarMap');
     if (sidebarFarmers) sidebarFarmers.style.display = 'none';
     if (sidebarCompare) sidebarCompare.style.display = 'none';
-    if (sidebarMap) sidebarMap.style.display = 'none';
   }
 
   // =============================================

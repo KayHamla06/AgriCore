@@ -331,7 +331,7 @@
           if (selectedFile) formData.append('file', selectedFile);
 
           var token = user.token || '';
-          var API_BASE = window.AGRICORE_API_BASE || 'http://localhost:3000/api';
+          var API_BASE = window.AGRICORE_API_BASE || '/api';
 
           fetch(API_BASE + '/tickets', {
             method: 'POST',
