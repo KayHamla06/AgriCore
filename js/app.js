@@ -781,17 +781,18 @@ const AgriCore = (() => {
   function apiFetch(path, options) {
     options = options || {};
     var user = getCurrentUser();
+    var isPublicAuthPath = /^\/auth\/(login|signup|forgot-password|reset-password|refresh|check-email|resend-verification|callback)$/.test(path);
     var headers = Object.assign({
       'Content-Type': 'application/json',
     }, options.headers || {});
 
-    if (user && user.token) {
+    if (user && user.token && !isPublicAuthPath) {
       headers['Authorization'] = 'Bearer ' + user.token;
     }
 
     return fetch(API_BASE + path, Object.assign({}, options, { headers: headers }))
       .then(function (res) {
-        if (res.status === 401 && user && user.token) {
+        if (res.status === 401 && user && user.token && !isPublicAuthPath) {
           clearCurrentUser();
           window.location.href = '/auth/login';
           return { success: false, error: 'Session expired. Please log in again.' };
