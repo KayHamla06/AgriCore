@@ -292,9 +292,74 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const user = AgriCore.getCurrentUser();
     const isFarmer = user && user.role === 'farmer';
-    const primaryFarmer = isFarmer
-      ? (AgriCore.mockFarmers.find(f => f.id === user.id) || AgriCore.mockFarmers[0])
-      : AgriCore.mockFarmers[0];
+    const realData = window._analyticsRealData || null;
+
+    function toMonthlyYield(crops) {
+      const now = new Date();
+      const buckets = Array(12).fill(0);
+      (crops || []).forEach(c => {
+        const d = new Date(c.recorded_at || c.created_at || 0);
+        if (isNaN(d.getTime())) return;
+        const monthDiff = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
+        if (monthDiff >= 0 && monthDiff < 12) {
+          const idx = 11 - monthDiff;
+          buckets[idx] += (parseFloat(c.yield_tonnes) || 0);
+        }
+      });
+      return buckets;
+    }
+
+    function buildFarmerFromRealData(rd) {
+      const crops = rd && Array.isArray(rd.crops) ? rd.crops : [];
+      const livestock = rd && Array.isArray(rd.livestock) ? rd.livestock : [];
+      const monthlyYield = toMonthlyYield(crops);
+      const fallbackYield = (rd && Array.isArray(rd.yieldHistory) && rd.yieldHistory.length)
+        ? rd.yieldHistory.slice(-12)
+        : monthlyYield;
+      const paddedYield = Array(12 - Math.min(12, fallbackYield.length)).fill(0).concat(fallbackYield).slice(-12);
+
+      return {
+        id: rd && rd.profile ? rd.profile.id : 'me',
+        name: rd && rd.profile ? rd.profile.name : 'My Farm',
+        province: rd && rd.profile ? (rd.profile.province || '') : '',
+        district: rd && rd.profile ? (rd.profile.district || '') : '',
+        coordinates: {
+          lat: rd && rd.profile && rd.profile.latitude ? parseFloat(rd.profile.latitude) : -25.75,
+          lng: rd && rd.profile && rd.profile.longitude ? parseFloat(rd.profile.longitude) : 28.19
+        },
+        yieldHistory: paddedYield,
+        productionHistory: paddedYield,
+        cropRecords: crops.map(c => ({
+          cropType: c.crop_name || 'Crop',
+          areaPlanted: parseFloat(c.hectares_planted) || 0,
+          yieldTons: parseFloat(c.yield_tonnes) || 0,
+          plantingDate: c.season || '--',
+          harvestDate: c.recorded_at ? String(c.recorded_at).split('T')[0] : '--'
+        })),
+        livestockRecords: livestock.map(l => ({
+          animalType: l.animal_type || 'Animal',
+          total: parseInt(l.total || 0, 10) || 0,
+          born: parseInt(l.born || 0, 10) || 0,
+          twins: 0,
+          triplets: 0,
+          sold: parseInt(l.sold || 0, 10) || 0,
+          consumed: parseInt(l.consumed || 0, 10) || 0,
+          young: parseInt(l.young || 0, 10) || 0,
+          diseases: Array.isArray(l.diseases) ? l.diseases : []
+        }))
+      };
+    }
+
+    const primaryFarmer = (isFarmer && realData && realData.profile)
+      ? buildFarmerFromRealData(realData)
+      : (isFarmer
+        ? (AgriCore.mockFarmers.find(f => f.id === user.id) || AgriCore.mockFarmers[0])
+        : {
+            ...AgriCore.mockFarmers[0],
+            coordinates: (realData && Array.isArray(realData.farmers) && realData.farmers.length && realData.farmers[0].latitude && realData.farmers[0].longitude)
+              ? { lat: parseFloat(realData.farmers[0].latitude), lng: parseFloat(realData.farmers[0].longitude) }
+              : AgriCore.mockFarmers[0].coordinates
+          });
 
     // ---- Yield Trends (12-month line chart) ----
     const yieldCtx = document.getElementById('analyticsYieldChart');
@@ -571,9 +636,23 @@ document.addEventListener('DOMContentLoaded', function() {
     const regCtx = document.getElementById('analyticsRegionChart');
     if (regCtx) {
       const provinceScores = {};
-      AgriCore.mockFarmers.forEach(f => {
-        if (!provinceScores[f.province]) provinceScores[f.province] = [];
-        provinceScores[f.province].push(AgriCore.calculatePerformanceScore(f));
+      const regionFarmers = (realData && Array.isArray(realData.farmers) && realData.farmers.length)
+        ? realData.farmers
+        : AgriCore.mockFarmers;
+      const thirtyDaysAgoTs = Date.now() - (30 * 24 * 60 * 60 * 1000);
+      regionFarmers.forEach(f => {
+        const province = f.province || 'Unknown';
+        if (!provinceScores[province]) provinceScores[province] = [];
+        if (f.yieldHistory || f.productionHistory || f.livestockRecords) {
+          provinceScores[province].push(AgriCore.calculatePerformanceScore(f));
+        } else {
+          const updatedAt = f.updated_at ? new Date(f.updated_at).getTime() : 0;
+          let score = 45;
+          if (f.verified) score += 25;
+          if (updatedAt > thirtyDaysAgoTs) score += 20;
+          if (f.farm_size_hectares && Number(f.farm_size_hectares) > 0) score += 5;
+          provinceScores[province].push(Math.max(10, Math.min(95, score)));
+        }
       });
       const provinces = Object.keys(provinceScores);
       const avgScores = provinces.map(p => Math.round(provinceScores[p].reduce((a, b) => a + b, 0) / provinceScores[p].length));
@@ -607,9 +686,23 @@ document.addEventListener('DOMContentLoaded', function() {
     const riskCtx = document.getElementById('analyticsRiskChart');
     if (riskCtx) {
       let riskCounts = { Low: 0, Medium: 0, High: 0, Critical: 0 };
-      AgriCore.mockFarmers.forEach(f => {
-        const r = AgriCore.calculateRiskScore(f);
-        riskCounts[r.level] = (riskCounts[r.level] || 0) + 1;
+      const riskFarmers = (realData && Array.isArray(realData.farmers) && realData.farmers.length)
+        ? realData.farmers
+        : AgriCore.mockFarmers;
+      const thirtyDaysAgoTs = Date.now() - (30 * 24 * 60 * 60 * 1000);
+      riskFarmers.forEach(f => {
+        if (f.yieldHistory || f.productionHistory || f.livestockRecords) {
+          const r = AgriCore.calculateRiskScore(f);
+          riskCounts[r.level] = (riskCounts[r.level] || 0) + 1;
+          return;
+        }
+        const updatedAt = f.updated_at ? new Date(f.updated_at).getTime() : 0;
+        const isRecent = updatedAt > thirtyDaysAgoTs;
+        let bucket = 'High';
+        if (f.verified && isRecent) bucket = 'Low';
+        else if (f.verified || isRecent) bucket = 'Medium';
+        else if (!f.verified && !isRecent) bucket = 'Critical';
+        riskCounts[bucket] = (riskCounts[bucket] || 0) + 1;
       });
       analyticsCharts.risk = new Chart(riskCtx, {
         type: 'doughnut',

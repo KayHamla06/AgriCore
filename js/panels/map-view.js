@@ -31,12 +31,21 @@
       var token = (ctx.user && ctx.user.token) || '';
       var API_BASE = window.AGRICORE_API_BASE || '/api';
 
+      function getMarkerColor(f) {
+        var thirtyDays = 30 * 24 * 60 * 60 * 1000;
+        var lastUpdate = f.updated_at ? new Date(f.updated_at).getTime() : 0;
+        var isRecent = lastUpdate > 0 && (Date.now() - lastUpdate) < thirtyDays;
+        if (f.verified && isRecent) return '#2e7d32';  // Green: Verified + active
+        if (f.verified || isRecent) return '#f59e0b';  // Amber: Verified or recently active
+        return '#dc2626';                               // Red: Not verified + no recent data
+      }
+
       function addMarker(f) {
         if (!f || f.latitude == null || f.longitude == null) return;
 
         var marker = L.circleMarker([f.latitude, f.longitude], {
           radius: 10,
-          fillColor: '#2e7d32',
+          fillColor: getMarkerColor(f),
           color: '#fff',
           weight: 2,
           opacity: 1,

@@ -25,11 +25,15 @@ CREATE TABLE IF NOT EXISTS tickets (
 -- (Only if not already present)
 DO $$
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'deletion_requests' AND column_name = 'deletion_reason'
-  ) THEN
-    ALTER TABLE deletion_requests ADD COLUMN deletion_reason TEXT;
+  IF to_regclass('public.deletion_requests') IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1
+       FROM information_schema.columns
+       WHERE table_schema = 'public'
+         AND table_name = 'deletion_requests'
+         AND column_name = 'deletion_reason'
+     ) THEN
+    ALTER TABLE public.deletion_requests ADD COLUMN deletion_reason TEXT;
   END IF;
 END $$;
 
@@ -41,14 +45,31 @@ CREATE INDEX IF NOT EXISTS idx_tickets_urgency ON tickets(urgency);
 CREATE INDEX IF NOT EXISTS idx_tickets_created_at ON tickets(created_at);
 
 -- 4. RLS for tickets
-ALTER TABLE tickets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tickets ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own tickets" ON public.tickets;
+DROP POLICY IF EXISTS "Users can create own tickets" ON public.tickets;
 
 CREATE POLICY "Users can view own tickets"
-  ON tickets FOR SELECT
-  USING (auth.uid()::UUID = user_id);
+  ON public.tickets FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.users u
+      WHERE u.id = tickets.user_id
+        AND u.auth_id = auth.uid()
+    )
+  );
 
 CREATE POLICY "Users can create own tickets"
-  ON tickets FOR INSERT
-  WITH CHECK (auth.uid()::UUID = user_id);
+  ON public.tickets FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM public.users u
+      WHERE u.id = tickets.user_id
+        AND u.auth_id = auth.uid()
+    )
+  );
 
 -- Admin policies (service role bypasses RLS)

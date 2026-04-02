@@ -147,7 +147,8 @@
       if (!ctx.isFarmer) return;
 
       var user = ctx.user;
-      var farmerData = AgriCore.mockFarmers.find(function(f) { return f.id === user.id; }) || {
+      // Start with a placeholder — real data loaded asynchronously below
+      var farmerData = {
         id: user.id,
         name: user.name,
         farmName: 'My Farm',
@@ -357,6 +358,167 @@
           lucide.createIcons();
         }
       }
+
+      // === Load Real Farmer Data from API ===
+      // Fetches profile + crops + livestock, then updates KPIs and upload history in-place.
+      (function loadRealData() {
+        var API_BASE_R = window.AGRICORE_API_BASE || '/api';
+        var tokenR = user.token || '';
+
+        fetch(API_BASE_R + '/farmers/me', { headers: { 'Authorization': 'Bearer ' + tokenR } })
+          .then(function(r) { return r.json(); })
+          .then(function(profileRes) {
+            if (!profileRes || !profileRes.success || !profileRes.data) return;
+            var profile = profileRes.data;
+            var fid = profile.id;
+
+            // Sync profile fields into farmerData
+            farmerData.province = profile.province || '';
+            farmerData.district = profile.district || '';
+            farmerData.farmName = profile.farm_size_hectares ? profile.farm_size_hectares + ' ha Farm' : 'My Farm';
+            if (profile.latitude && profile.longitude) {
+              farmerData.coordinates = { lat: profile.latitude, lng: profile.longitude };
+              // Trigger weather for real location
+              var wUrl = 'https://api.open-meteo.com/v1/forecast?latitude=' + profile.latitude +
+                '&longitude=' + profile.longitude +
+                '&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation&timezone=auto';
+              fetch(wUrl).then(function(wr) { return wr.json(); }).then(function(wd) {
+                if (wd && wd.current) {
+                  var c = wd.current;
+                  var wCodes = { 0:{icon:'☀️',desc:'Clear sky'}, 1:{icon:'🌤️',desc:'Mainly clear'}, 2:{icon:'⛅',desc:'Partly cloudy'},
+                    3:{icon:'☁️',desc:'Overcast'}, 45:{icon:'🌫️',desc:'Foggy'}, 51:{icon:'🌦️',desc:'Light drizzle'},
+                    61:{icon:'🌧️',desc:'Slight rain'}, 63:{icon:'🌧️',desc:'Moderate rain'}, 65:{icon:'🌧️',desc:'Heavy rain'},
+                    80:{icon:'🌦️',desc:'Rain showers'}, 95:{icon:'⛈️',desc:'Thunderstorm'} };
+                  var wmo = wCodes[c.weather_code] || { icon: '🌡️', desc: 'Unknown' };
+                  var setEl = function(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
+                  setEl('farmerWeatherIcon', wmo.icon);
+                  setEl('farmerWeatherTemp', Math.round(c.temperature_2m) + '°C');
+                  setEl('farmerWeatherDesc', wmo.desc);
+                  setEl('farmerWeatherHumidity', c.relative_humidity_2m + '%');
+                  setEl('farmerWeatherWind', Math.round(c.wind_speed_10m) + ' km/h');
+                  setEl('farmerWeatherRain', c.precipitation + ' mm');
+                  setEl('farmerWeatherLocation', (profile.district || '') + ', ' + (profile.province || ''));
+                  var loading = document.getElementById('farmerWeatherLoading');
+                  var content = document.getElementById('farmerWeatherContent');
+                  if (loading) loading.style.display = 'none';
+                  if (content) content.style.display = 'flex';
+                }
+              }).catch(function() {});
+            }
+
+            return Promise.all([
+              fetch(API_BASE_R + '/farmers/' + fid + '/crops', { headers: { 'Authorization': 'Bearer ' + tokenR } })
+                .then(function(r) { return r.json(); }).catch(function() { return { success: false }; }),
+              fetch(API_BASE_R + '/farmers/' + fid + '/livestock', { headers: { 'Authorization': 'Bearer ' + tokenR } })
+                .then(function(r) { return r.json(); }).catch(function() { return { success: false }; })
+            ]);
+          })
+          .then(function(results) {
+            if (!results) return;
+            var cropsRes = results[0];
+            var livestockRes = results[1];
+
+            var crops = (cropsRes && cropsRes.success && cropsRes.data) ? cropsRes.data : [];
+            var livestock = (livestockRes && livestockRes.success && livestockRes.data) ? livestockRes.data : [];
+
+            // ── Livestock total ──
+            var totalLivestock = livestock.reduce(function(sum, l) { return sum + (parseInt(l.total) || 0); }, 0);
+            farmerData.livestock = totalLivestock;
+            var livestockVal = document.getElementById('farmerLivestockValue');
+            if (livestockVal) livestockVal.textContent = totalLivestock.toLocaleString();
+
+            // ── Crop yield history (sorted oldest → newest) ──
+            var sortedCrops = crops.slice().sort(function(a, b) {
+              return new Date(a.recorded_at || 0) - new Date(b.recorded_at || 0);
+            });
+            var yieldHistory = sortedCrops.map(function(c) { return parseFloat(c.yield_tonnes) || 0; });
+            if (yieldHistory.length === 0) yieldHistory = [0, 0];
+            farmerData.yieldHistory = yieldHistory;
+            farmerData.productionHistory = yieldHistory;
+
+            var latestYield = yieldHistory[yieldHistory.length - 1];
+            var prevYield = yieldHistory.length >= 2 ? yieldHistory[yieldHistory.length - 2] : latestYield;
+            var latestCrop = sortedCrops.length > 0 ? sortedCrops[sortedCrops.length - 1] : null;
+            var totalHa = latestCrop && latestCrop.hectares_planted ? parseFloat(latestCrop.hectares_planted) : 0;
+            var yieldPerHa = totalHa > 0 ? (latestYield / totalHa).toFixed(1) : latestYield.toFixed(1);
+
+            var yieldVal = document.getElementById('farmerYieldValue');
+            if (yieldVal) yieldVal.textContent = yieldPerHa + 't';
+
+            farmerData.status = (latestYield >= prevYield) ? 'improving' : 'declining';
+
+            // ── Performance score from real data ──
+            var score = AgriCore.calculatePerformanceScore ? AgriCore.calculatePerformanceScore(farmerData) : 50;
+            var level = AgriCore.getScoreLevel ? AgriCore.getScoreLevel(score) : { level: 'stable', label: 'Stable', color: '#f59e0b' };
+            var yieldChange = prevYield > 0 ? (((latestYield - prevYield) / prevYield) * 100).toFixed(1) : 0;
+
+            var scoreVal = document.getElementById('farmerScoreValue');
+            if (scoreVal) { scoreVal.textContent = score; scoreVal.style.color = level.color; }
+
+            var scoreTrend = document.getElementById('farmerScoreTrend');
+            if (scoreTrend) {
+              var tIcon = yieldChange >= 0 ? 'arrow-up-right' : 'arrow-down-right';
+              scoreTrend.className = 'overview-card-trend ' + (yieldChange >= 0 ? 'up' : 'down');
+              scoreTrend.innerHTML = '<i data-lucide="' + tIcon + '"></i> ' + (yieldChange >= 0 ? '+' : '') + yieldChange + '%';
+            }
+
+            var scoreIcon = document.getElementById('farmerScoreIcon');
+            if (scoreIcon) {
+              scoreIcon.className = 'overview-card-icon ' + (level.level === 'good' ? 'green' : level.level === 'stable' ? 'amber' : 'red');
+            }
+
+            var riskEl = document.getElementById('farmerRisk');
+            if (riskEl) { riskEl.textContent = level.label; riskEl.style.color = level.color; }
+
+            var statusBadge = document.getElementById('farmerStatusBadge');
+            if (statusBadge) {
+              statusBadge.textContent = farmerData.status === 'improving' ? 'Improving' : 'At Risk';
+              statusBadge.className = 'overview-card-trend ' + (farmerData.status === 'improving' ? 'up' : 'down');
+            }
+
+            // ── Warning banner from real data ──
+            var warnings = AgriCore.detectWarnings ? AgriCore.detectWarnings(farmerData) : [];
+            var banner = document.getElementById('farmerAttentionBanner');
+            var bannerText = document.getElementById('farmerAttentionText');
+            if (warnings.length > 0) {
+              if (banner) { banner.style.display = 'flex'; banner.classList.add('warning'); }
+              if (bannerText) bannerText.textContent = warnings[0].message + (warnings.length > 1 ? ' (+' + (warnings.length - 1) + ' more)' : '');
+            } else if (score >= 70 && banner) {
+              banner.style.display = 'flex';
+              if (bannerText) bannerText.textContent = 'Great work! Your performance score is ' + score + ' \u2014 keep it up.';
+            }
+
+            // ── Upload history from real crop data ──
+            var histContainer = document.getElementById('farmerUploadHistory');
+            if (histContainer && sortedCrops.length > 0) {
+              var monthNames = { '01':'Jan','02':'Feb','03':'Mar','04':'Apr','05':'May','06':'Jun',
+                '07':'Jul','08':'Aug','09':'Sep','10':'Oct','11':'Nov','12':'Dec' };
+              var escFn = AgriCore.escapeHtml;
+              var histDisplay = sortedCrops.slice().reverse();
+              histContainer.innerHTML = histDisplay.map(function(c, i) {
+                var prevC = i < histDisplay.length - 1 ? histDisplay[i + 1] : null;
+                var prevYld = prevC ? (parseFloat(prevC.yield_tonnes) || 0) : 0;
+                var thisYld = parseFloat(c.yield_tonnes) || 0;
+                var drop = prevYld > 0 ? ((prevYld - thisYld) / prevYld) * 100 : 0;
+                var isDrop = drop > 5;
+                var dotCls = isDrop ? 'danger' : (drop > 0 ? 'warning' : '');
+                var dateStr = c.recorded_at ? c.recorded_at.split('T')[0] : '';
+                var parts = dateStr.split('-');
+                var lbl = parts.length >= 2 ? ((monthNames[parts[1]] || parts[1]) + ' ' + parts[0]) : dateStr;
+                var warnHtml = isDrop ? ' <span class="upload-history-warning"><i data-lucide="alert-triangle"></i> -' + Math.round(drop) + '%</span>' : '';
+                return '<div class="upload-history-item">' +
+                  '<div class="upload-history-dot ' + dotCls + '"></div>' +
+                  '<div class="upload-history-date">' + lbl + '</div>' +
+                  '<div class="upload-history-values">Yield: <strong>' + thisYld + 't</strong>' +
+                  (c.hectares_planted ? ' &nbsp;|&nbsp; <strong>' + c.hectares_planted + ' ha</strong>' : '') +
+                  (c.crop_name ? ' &nbsp;|&nbsp; ' + escFn(c.crop_name) : '') +
+                  warnHtml + '</div></div>';
+              }).join('');
+              if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
+          })
+          .catch(function() { /* Keep placeholder data visible */ });
+      })();
 
       // === Weather History Lookup (Farmer) ===
       var farmerDateInput = document.getElementById('farmerWeatherDateInput');

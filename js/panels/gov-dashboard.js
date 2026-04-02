@@ -64,29 +64,29 @@
             <div class="overview-card-header">
               <div class="overview-card-icon blue"><i data-lucide="users"></i></div>
             </div>
-            <div class="overview-card-value">2,547</div>
+            <div class="overview-card-value" id="govTotalFarmersVal">--</div>
             <div class="overview-card-label">Total Farmers</div>
           </div>
           <div class="overview-card">
             <div class="overview-card-header">
               <div class="overview-card-icon green"><i data-lucide="trending-up"></i></div>
             </div>
-            <div class="overview-card-value">1,892</div>
-            <div class="overview-card-label">Farmers Improving</div>
+            <div class="overview-card-value" id="govActiveVal">--</div>
+            <div class="overview-card-label">Active (30 days)</div>
           </div>
           <div class="overview-card">
             <div class="overview-card-header">
               <div class="overview-card-icon red"><i data-lucide="trending-down"></i></div>
             </div>
-            <div class="overview-card-value">655</div>
-            <div class="overview-card-label">Farmers Declining</div>
+            <div class="overview-card-value" id="govInactiveVal">--</div>
+            <div class="overview-card-label">Inactive / Unverified</div>
           </div>
           <div class="overview-card">
             <div class="overview-card-header">
               <div class="overview-card-icon amber"><i data-lucide="clipboard-list"></i></div>
             </div>
-            <div class="overview-card-value">148</div>
-            <div class="overview-card-label">Plans Created</div>
+            <div class="overview-card-value" id="govDistrictsVal">--</div>
+            <div class="overview-card-label">Districts Covered</div>
           </div>
         </div>
 
@@ -169,6 +169,8 @@
       if (!ctx.isGov) return;
 
       var escape = AgriCore.escapeHtml;
+      var API_BASE = window.AGRICORE_API_BASE || '/api';
+      var token = (ctx.user && ctx.user.token) || '';
 
       // === Real-Time Date & Time ===
       function updateGovDateTime() {
@@ -189,12 +191,13 @@
       updateGovDateTime();
       setInterval(updateGovDateTime, 1000);
 
-      // === Real-Time Regional Weather (using first farmer's coords) ===
-      var firstFarmer = AgriCore.mockFarmers[0];
-      var coords = firstFarmer && firstFarmer.coordinates;
-      if (coords && coords.lat && coords.lng) {
-        var weatherUrl = 'https://api.open-meteo.com/v1/forecast?latitude=' + coords.lat +
-          '&longitude=' + coords.lng +
+      // === Real-Time Regional Weather (South Africa default, updated after farmer load) ===
+      var weatherLoaded = false;
+      function loadGovWeather(lat, lng, locationLabel) {
+        if (weatherLoaded) return;
+        weatherLoaded = true;
+        var weatherUrl = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat +
+          '&longitude=' + lng +
           '&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation' +
           '&timezone=auto';
 
@@ -229,7 +232,7 @@
               if (humidEl) humidEl.textContent = c.relative_humidity_2m + '%';
               if (windEl) windEl.textContent = Math.round(c.wind_speed_10m) + ' km/h';
               if (rainEl) rainEl.textContent = c.precipitation + ' mm';
-              if (locEl) locEl.textContent = (firstFarmer.district || '') + ', ' + (firstFarmer.province || '');
+              if (locEl) locEl.textContent = locationLabel;
             }
           })
           .catch(function() {
@@ -238,17 +241,10 @@
             if (typeof lucide !== 'undefined') lucide.createIcons();
           });
       }
+      loadGovWeather(-28.5, 25.5, 'South Africa');
 
-      // === Weather History Lookup (Gov) ===
+      // === Weather History Lookup (Gov) — dropdown populated after farmer load ===
       var farmerSelect = document.getElementById('govWeatherFarmerSelect');
-      if (farmerSelect) {
-        AgriCore.mockFarmers.forEach(function(f) {
-          var opt = document.createElement('option');
-          opt.value = f.id;
-          opt.textContent = f.name + ' — ' + f.district + ', ' + f.province;
-          farmerSelect.appendChild(opt);
-        });
-      }
       var dateInput = document.getElementById('govWeatherDateInput');
       if (dateInput) {
         dateInput.value = new Date().toISOString().split('T')[0];
@@ -260,8 +256,18 @@
           var farmerId = farmerSelect ? farmerSelect.value : '';
           var dateVal = dateInput ? dateInput.value : '';
           if (!farmerId || !dateVal) return;
-          var farmer = AgriCore.mockFarmers.find(function(f) { return f.id === farmerId; });
-          if (!farmer || !farmer.coordinates) return;
+          var selectedOpt = farmerSelect ? farmerSelect.options[farmerSelect.selectedIndex] : null;
+          var farmerLat = selectedOpt ? parseFloat(selectedOpt.dataset.lat) : NaN;
+          var farmerLng = selectedOpt ? parseFloat(selectedOpt.dataset.lng) : NaN;
+          var farmerName = selectedOpt ? (selectedOpt.dataset.name || 'Farmer') : 'Farmer';
+          var farmerDistrict = selectedOpt ? (selectedOpt.dataset.district || '') : '';
+          var farmerProvince = selectedOpt ? (selectedOpt.dataset.province || '') : '';
+          if (!farmerLat || !farmerLng || isNaN(farmerLat) || isNaN(farmerLng)) {
+            var resultDiv2 = document.getElementById('govWeatherHistoryResult');
+            if (resultDiv2) { resultDiv2.style.display = 'block'; resultDiv2.innerHTML = '<div class="weather-history-empty"><i data-lucide="map-pin-off"></i> No coordinates for this farmer yet.</div>'; }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            return;
+          }
           var resultDiv = document.getElementById('govWeatherHistoryResult');
           if (resultDiv) {
             resultDiv.style.display = 'block';
@@ -269,8 +275,8 @@
             if (typeof lucide !== 'undefined') lucide.createIcons();
           }
           // Use Open-Meteo Archive API for historical weather
-          var archiveUrl = 'https://archive-api.open-meteo.com/v1/archive?latitude=' + farmer.coordinates.lat +
-            '&longitude=' + farmer.coordinates.lng +
+          var archiveUrl = 'https://archive-api.open-meteo.com/v1/archive?latitude=' + farmerLat +
+            '&longitude=' + farmerLng +
             '&start_date=' + dateVal + '&end_date=' + dateVal +
             '&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max' +
             '&hourly=relative_humidity_2m' +
@@ -285,7 +291,7 @@
                   var avgHumidity = humArr.length > 0 ? Math.round(humArr.reduce(function(s,v){return s+v;},0)/humArr.length) : '--';
                   resultDiv.innerHTML =
                     '<div class="weather-history-result-card">' +
-                    '<div class="weather-history-result-title"><i data-lucide="map-pin"></i> ' + escape(farmer.name) + ' — ' + escape(farmer.district) + ', ' + escape(farmer.province) + ' <span class="weather-history-date-badge">' + escape(dateVal) + '</span></div>' +
+                    '<div class="weather-history-result-title"><i data-lucide="map-pin"></i> ' + escape(farmerName) + ' — ' + escape(farmerDistrict) + ', ' + escape(farmerProvince) + ' <span class="weather-history-date-badge">' + escape(dateVal) + '</span></div>' +
                     '<div class="weather-history-grid">' +
                     '<div class="weather-history-stat"><div class="weather-history-stat-icon red"><i data-lucide="thermometer"></i></div><div><div class="weather-history-stat-value">' + d.temperature_2m_max[0] + '°C</div><div class="weather-history-stat-label">Max Temp</div></div></div>' +
                     '<div class="weather-history-stat"><div class="weather-history-stat-icon blue"><i data-lucide="thermometer-snowflake"></i></div><div><div class="weather-history-stat-value">' + d.temperature_2m_min[0] + '°C</div><div class="weather-history-stat-label">Min Temp</div></div></div>' +
@@ -309,8 +315,6 @@
       }
 
       // === Verification Badge & Warning ===
-      var API_BASE = window.AGRICORE_API_BASE || 'http://localhost:3000/api';
-      var token = ctx.user.token || '';
       fetch(API_BASE + '/verification/status', {
         headers: { 'Authorization': 'Bearer ' + token }
       })
@@ -331,82 +335,173 @@
       .catch(function() {});
 
       // === Attention Count ===
-      var needAttention = AgriCore.getFarmersNeedingAttention();
-      var countEl = document.getElementById('attentionCount');
-      if (countEl) countEl.textContent = needAttention.length;
-
       var viewAttentionBtn = document.getElementById('viewAttentionBtn');
       if (viewAttentionBtn) viewAttentionBtn.addEventListener('click', function() { ctx.switchPanel('farmers'); });
-
-      // === Recent Farmers ===
-      var tbody = document.getElementById('govRecentFarmersTbody');
-      if (tbody) {
-        var recent = AgriCore.mockFarmers.slice(0, 5);
-        tbody.innerHTML = recent.map(function(f) {
-          var score = AgriCore.calculatePerformanceScore(f);
-          var level = AgriCore.getScoreLevel(score);
-          return '<tr>' +
-            '<td><strong>' + escape(f.name) + '</strong><br><small style="color:var(--gray-500)">' + escape(f.farmName) + '</small></td>' +
-            '<td>' + escape(f.province) + '</td>' +
-            '<td><span class="badge badge-' + (level.level === 'good' ? 'success' : level.level === 'stable' ? 'warning' : 'danger') + '">' + escape(level.label) + '</span></td>' +
-            '<td><button class="btn btn-ghost btn-sm view-farmer-btn" data-id="' + escape(f.id) + '">View</button></td>' +
-            '</tr>';
-        }).join('');
-
-        tbody.querySelectorAll('.view-farmer-btn').forEach(function(btn) {
-          btn.addEventListener('click', function() {
-            if (window.viewFarmerProfile) window.viewFarmerProfile(btn.dataset.id);
-          });
-        });
-      }
 
       // === View All Farmers Button ===
       var viewAllBtn = document.getElementById('viewAllFarmersBtn');
       if (viewAllBtn) viewAllBtn.addEventListener('click', function() { ctx.switchPanel('farmers'); });
 
-      // === District Cards ===
-      var distContainer = document.getElementById('govDistrictCards');
-      if (distContainer) {
-        var districts = AgriCore.getDistrictSummary();
-        distContainer.innerHTML = districts.map(function(d) {
-          var scoreLevel = AgriCore.getScoreLevel(d.avgScore);
-          var fillColor = d.avgScore >= 70 ? 'var(--success)' : d.avgScore >= 40 ? 'var(--warning)' : 'var(--danger)';
-          var diseaseTags = d.diseases.length > 0
-            ? '<div class="district-diseases">' + d.diseases.map(function(dis) { return '<span class="disease-tag">' + escape(dis) + '</span>'; }).join('') + '</div>'
-            : '';
-          return '<div class="district-card">' +
-            '<div class="district-card-title">' + escape(d.district) + '</div>' +
-            '<div class="district-card-province">' + escape(d.province) + '</div>' +
-            '<div class="district-stats">' +
-            '<div class="district-stat"><div class="district-stat-value">' + d.farmerCount + '</div><div class="district-stat-label">Farmers</div></div>' +
-            '<div class="district-stat"><div class="district-stat-value">' + d.totalLivestock.toLocaleString() + '</div><div class="district-stat-label">Livestock</div></div>' +
-            '<div class="district-stat"><div class="district-stat-value">' + d.totalCrops.toLocaleString() + 't</div><div class="district-stat-label">Crop Yield</div></div>' +
-            '<div class="district-stat"><div class="district-stat-value">' + d.decliningCount + '</div><div class="district-stat-label">At Risk</div></div>' +
-            '</div>' +
-            '<div class="district-score-bar"><span class="district-score-value" style="color:' + fillColor + '">' + d.avgScore + '</span>' +
-            '<div class="district-score-track"><div class="district-score-fill" style="width:' + d.avgScore + '%;background:' + fillColor + '"></div></div>' +
-            '<span style="color:var(--gray-500)">' + escape(scoreLevel.label) + '</span></div>' +
-            diseaseTags + '</div>';
-        }).join('');
-      }
-
-      // === Smart Alerts ===
-      var alertContainer = document.getElementById('govSmartAlerts');
-      if (alertContainer) {
-        var alerts = AgriCore.generateSmartAlerts();
-        if (alerts.length === 0) {
-          alertContainer.innerHTML = '<p style="color:var(--gray-400);font-size:.875rem;">No active alerts.</p>';
-        } else {
-          alertContainer.innerHTML = alerts.slice(0, 12).map(function(a) {
-            return '<div class="smart-alert ' + escape(a.type) + '">' +
-              '<div class="smart-alert-icon"><i data-lucide="' + escape(a.icon) + '"></i></div>' +
-              '<div class="smart-alert-text">' + escape(a.message) + '</div>' +
-              '<span class="smart-alert-district">' + escape(a.district) + '</span></div>';
-          }).join('');
-        }
-      }
-
       lucide.createIcons();
+
+      // === Load Real Farmer Data from API ===
+      fetch(API_BASE + '/farmers?limit=200', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (!res.success || !res.data) return;
+        var result = res.data;
+        var farmers = result.data || [];
+        var total = result.total || farmers.length;
+        var thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+        // --- Overview cards ---
+        var totalEl = document.getElementById('govTotalFarmersVal');
+        if (totalEl) totalEl.textContent = total.toLocaleString();
+
+        var activeFarmers = farmers.filter(function(f) { return f.updated_at && f.updated_at > thirtyDaysAgo; });
+        var inactiveFarmers = farmers.filter(function(f) { return !f.updated_at || f.updated_at <= thirtyDaysAgo; });
+        var districts = {};
+        farmers.forEach(function(f) { if (f.district) districts[f.district] = true; });
+
+        var activeEl = document.getElementById('govActiveVal');
+        if (activeEl) activeEl.textContent = activeFarmers.length.toLocaleString();
+        var inactiveEl = document.getElementById('govInactiveVal');
+        if (inactiveEl) inactiveEl.textContent = inactiveFarmers.length.toLocaleString();
+        var distEl = document.getElementById('govDistrictsVal');
+        if (distEl) distEl.textContent = Object.keys(districts).length.toLocaleString();
+
+        // --- Attention count ---
+        var needAttention = inactiveFarmers.length;
+        var countEl = document.getElementById('attentionCount');
+        if (countEl) countEl.textContent = needAttention;
+
+        // --- Update weather widget with first farmer's real coordinates ---
+        var firstWithCoords = farmers.find(function(f) { return f.latitude != null && f.longitude != null; });
+        if (firstWithCoords) {
+          loadGovWeather(firstWithCoords.latitude, firstWithCoords.longitude,
+            (firstWithCoords.district || '') + ', ' + (firstWithCoords.province || 'South Africa'));
+        }
+
+        // --- Populate weather history dropdown with real farmers ---
+        if (farmerSelect) {
+          farmerSelect.innerHTML = '';
+          if (farmers.length === 0) {
+            farmerSelect.innerHTML = '<option value="">No farmers registered yet</option>';
+          } else {
+            farmers.forEach(function(f) {
+              var opt = document.createElement('option');
+              opt.value = f.id;
+              opt.dataset.lat = f.latitude != null ? String(f.latitude) : '';
+              opt.dataset.lng = f.longitude != null ? String(f.longitude) : '';
+              opt.dataset.name = f.name || 'Farmer';
+              opt.dataset.district = f.district || '';
+              opt.dataset.province = f.province || '';
+              opt.textContent = (f.name || 'Farmer') + (f.district ? ' — ' + f.district + ', ' + (f.province || '') : '');
+              farmerSelect.appendChild(opt);
+            });
+          }
+        }
+
+        // --- Recent farmers table ---
+        var tbody = document.getElementById('govRecentFarmersTbody');
+        if (tbody) {
+          var recent = farmers.slice(0, 5);
+          if (recent.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--gray-400);">No farmers registered yet.</td></tr>';
+          } else {
+            tbody.innerHTML = recent.map(function(f) {
+              var isActive = f.updated_at && f.updated_at > thirtyDaysAgo;
+              var statusClass = f.verified ? 'badge-success' : (isActive ? 'badge-warning' : 'badge-danger');
+              var statusLabel = f.verified ? 'Verified' : (isActive ? 'Active' : 'Inactive');
+              return '<tr>' +
+                '<td><strong>' + escape(f.name || 'Farmer') + '</strong>' +
+                (f.district ? '<br><small style="color:var(--gray-500)">' + escape(f.district) + '</small>' : '') + '</td>' +
+                '<td>' + escape((f.province || '--')) + '</td>' +
+                '<td><span class="badge ' + statusClass + '">' + statusLabel + '</span></td>' +
+                '<td><button class="btn btn-ghost btn-sm view-farmer-btn" data-id="' + escape(f.id) + '">View</button></td>' +
+                '</tr>';
+            }).join('');
+            tbody.querySelectorAll('.view-farmer-btn').forEach(function(btn) {
+              btn.addEventListener('click', function() {
+                if (window.viewFarmerProfile) window.viewFarmerProfile(btn.dataset.id);
+              });
+            });
+          }
+        }
+
+        // --- District cards (computed from real farmer list) ---
+        var distContainer = document.getElementById('govDistrictCards');
+        if (distContainer) {
+          if (farmers.length === 0) {
+            distContainer.innerHTML = '<p style="color:var(--gray-400);font-size:.875rem;">No district data available.</p>';
+          } else {
+            var districtMap = {};
+            farmers.forEach(function(f) {
+              var key = (f.district || 'Unknown') + '||' + (f.province || '');
+              if (!districtMap[key]) {
+                districtMap[key] = { district: f.district || 'Unknown', province: f.province || '', count: 0, active: 0, verified: 0 };
+              }
+              districtMap[key].count++;
+              if (f.updated_at && f.updated_at > thirtyDaysAgo) districtMap[key].active++;
+              if (f.verified) districtMap[key].verified++;
+            });
+            var distList = Object.values(districtMap).sort(function(a, b) { return b.count - a.count; });
+            distContainer.innerHTML = distList.map(function(d) {
+              var pct = d.count > 0 ? Math.round((d.active / d.count) * 100) : 0;
+              var fillColor = pct >= 70 ? 'var(--success)' : pct >= 40 ? 'var(--warning)' : 'var(--danger)';
+              return '<div class="district-card">' +
+                '<div class="district-card-title">' + escape(d.district) + '</div>' +
+                '<div class="district-card-province">' + escape(d.province) + '</div>' +
+                '<div class="district-stats">' +
+                '<div class="district-stat"><div class="district-stat-value">' + d.count + '</div><div class="district-stat-label">Farmers</div></div>' +
+                '<div class="district-stat"><div class="district-stat-value">' + d.active + '</div><div class="district-stat-label">Active</div></div>' +
+                '<div class="district-stat"><div class="district-stat-value">' + d.verified + '</div><div class="district-stat-label">Verified</div></div>' +
+                '</div>' +
+                '<div class="district-score-bar"><span class="district-score-value" style="color:' + fillColor + '">' + pct + '%</span>' +
+                '<div class="district-score-track"><div class="district-score-fill" style="width:' + pct + '%;background:' + fillColor + '"></div></div>' +
+                '<span style="color:var(--gray-500)">Activity Rate</span></div>' +
+                '</div>';
+            }).join('');
+          }
+        }
+
+        // --- Smart alerts (from real data) ---
+        var alertContainer = document.getElementById('govSmartAlerts');
+        if (alertContainer) {
+          var alerts = [];
+          if (inactiveFarmers.length > 0) {
+            alerts.push({ type: 'warning', icon: 'clock', message: inactiveFarmers.length + ' farmer(s) have not updated their data in 30+ days.' });
+          }
+          var unverified = farmers.filter(function(f) { return !f.verified; });
+          if (unverified.length > 0) {
+            alerts.push({ type: 'info', icon: 'shield-alert', message: unverified.length + ' farmer(s) have not been verified yet.' });
+          }
+          if (farmers.length === 0) {
+            alerts.push({ type: 'info', icon: 'info', message: 'No farmers have registered yet. Share your platform link to onboard farmers.' });
+          }
+          if (alerts.length === 0) {
+            alertContainer.innerHTML = '<p style="color:var(--gray-400);font-size:.875rem;">No active alerts. All farmers are up to date.</p>';
+          } else {
+            alertContainer.innerHTML = alerts.map(function(a) {
+              return '<div class="smart-alert ' + escape(a.type) + '">' +
+                '<div class="smart-alert-icon"><i data-lucide="' + escape(a.icon) + '"></i></div>' +
+                '<div class="smart-alert-text">' + escape(a.message) + '</div>' +
+                '</div>';
+            }).join('');
+          }
+        }
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      })
+      .catch(function() {
+        // API failed - show 0 counts rather than fake mock numbers
+        var ids = ['govTotalFarmersVal', 'govActiveVal', 'govInactiveVal', 'govDistrictsVal', 'attentionCount'];
+        ids.forEach(function(id) { var el = document.getElementById(id); if (el) el.textContent = '0'; });
+        var tbody = document.getElementById('govRecentFarmersTbody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--gray-400);">Unable to load farmer data.</td></tr>';
+      });
     }
   });
 })();
