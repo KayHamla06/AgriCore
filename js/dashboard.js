@@ -312,8 +312,8 @@ document.addEventListener('DOMContentLoaded', function() {
   // =============================================
   //  TRUST / VERIFIED BADGES
   // =============================================
-  var currentMockUser = AgriCore.mockUsers.find(function(u) { return u.email === user.email; });
-  if (currentMockUser && currentMockUser.verified) {
+  var isVerified = user.verification_status === 'verified' || user.verification_status === 'none';
+  if (isVerified) {
     if (isFarmer) {
       var farmerBadge = document.getElementById('farmerVerifiedBadge');
       if (farmerBadge) farmerBadge.style.display = 'inline-flex';

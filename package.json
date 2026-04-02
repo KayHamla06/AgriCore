@@ -8,6 +8,7 @@
     "build": "npm install --include=dev --prefix backend && npx --prefix backend tsc --project backend/tsconfig.json && node build.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.101.1",
     "compression": "^1.7.4",
     "express": "^4.21.0",
     "helmet": "^7.1.0"

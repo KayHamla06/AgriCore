@@ -133,13 +133,6 @@ const AgriCore = (() => {
     { id: 'PLN-008', farmerId: 'F001', farmerName: 'Thabo Molefe', type: 'Livestock Expansion', created: '2026-03-01', budget: 20000, status: 'Draft', createdBy: 'Thabo Molefe', createdByRole: 'farmer', objectives: 'Increase goat herd by 10 head for milk production', timeline: '12 months', approvalStatus: null, approvedDate: null },
   ];
 
-  // ===== Mock Users for Login =====
-  const mockUsers = [
-    { email: 'farmer@agricore.com', password: 'farmer123', role: 'farmer', name: 'Thabo Molefe', id: 'F001', verified: true },
-    { email: 'gov@gov.za', password: 'gov123', role: 'government', name: 'Dr. Sarah Ndlovu', id: 'G001', verified: true },
-    { email: 'admin@agricore.com', password: 'admin123', role: 'admin', name: 'Josef Admin', id: 'A001', verified: true },
-  ];
-
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   // ===== Livestock Records (per farmer) =====
@@ -380,10 +373,6 @@ const AgriCore = (() => {
 
   function clearCurrentUser() {
     sessionStorage.removeItem('agricore_user');
-  }
-
-  function authenticateUser(email, password) {
-    return mockUsers.find(u => u.email === email && u.password === password) || null;
   }
 
   // ===== Toast Notifications =====
@@ -855,7 +844,6 @@ const AgriCore = (() => {
     API_URL: API_BASE,
     mockFarmers,
     mockPlans,
-    mockUsers,
     months,
     livestockRecords,
     cropRecords,
@@ -869,7 +857,6 @@ const AgriCore = (() => {
     setCurrentUser,
     getCurrentUser,
     clearCurrentUser,
-    authenticateUser,
     showToast,
     apiGet,
     apiPost,

@@ -32,8 +32,6 @@
         <div class="step-dot" id="stepDot2"></div>
         <div class="step-line" id="stepLine2"></div>
         <div class="step-dot" id="stepDot3"></div>
-        <div class="step-line" id="stepLine3"></div>
-        <div class="step-dot" id="stepDot4"></div>
       </div>
 
       <!-- ====== STEP 1: Basic Info ====== -->
@@ -80,45 +78,8 @@
         </div>
       </div>
 
-      <!-- ====== STEP 2: Contact Verification ====== -->
+      <!-- ====== STEP 2: Role-Based Form ====== -->
       <div class="step-panel" id="step2">
-        <h2 class="step-title">Email Verification</h2>
-        <p class="step-description">We'll send a verification link to the email you provided.</p>
-
-        <div class="form-group">
-          <label class="form-label">Email Address</label>
-          <input type="email" id="verifyEmailDisplay" class="form-input" disabled>
-        </div>
-
-        <div id="sendVerifyBtnContainer">
-          <button class="btn btn-secondary w-full" id="sendVerifyBtn">Send Verification Email</button>
-        </div>
-
-        <div id="verifyEmailSent" style="display:none;">
-          <div style="text-align:center; padding: 24px 0;">
-            <i data-lucide="mail-check" style="width:48px; height:48px; color: var(--primary); margin-bottom: 12px;"></i>
-            <p style="color: var(--text-primary); font-size: 16px; font-weight: 600; margin-bottom: 8px;">Verification Email Sent!</p>
-            <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">
-              We've sent a verification link to your email address.<br>
-              Please check your inbox (and spam folder) and click the link to verify.
-            </p>
-            <p style="color: var(--text-muted); font-size: 13px; margin-top: 16px;">
-              The link expires in 24 hours.
-            </p>
-          </div>
-          <div style="text-align:center; margin-top: 8px;">
-            <a href="#" id="resendVerifyBtn" style="color: var(--primary); font-size: 14px;">Resend Verification Email</a>
-          </div>
-        </div>
-
-        <div class="step-actions">
-          <button class="btn btn-ghost" id="step2Back">Back</button>
-          <button class="btn btn-primary" id="step2Next">Continue</button>
-        </div>
-      </div>
-
-      <!-- ====== STEP 3: Role-Based Form ====== -->
-      <div class="step-panel" id="step3">
 
         <!-- FARMER FORM -->
         <div id="farmerForm" class="role-fields">
@@ -244,13 +205,13 @@
         </div>
 
         <div class="step-actions">
-          <button class="btn btn-ghost" id="step3Back">Back</button>
-          <button class="btn btn-primary" id="step3Next">Continue</button>
+          <button class="btn btn-ghost" id="step2Back">Back</button>
+          <button class="btn btn-primary" id="step2Next">Continue</button>
         </div>
       </div>
 
-      <!-- ====== STEP 4: Review & Submit ====== -->
-      <div class="step-panel" id="step4">
+      <!-- ====== STEP 3: Review & Submit ====== -->
+      <div class="step-panel" id="step3">
         <h2 class="step-title">Review & Submit</h2>
         <p class="step-description">Please review your information before submitting.</p>
 
@@ -262,7 +223,7 @@
         </div>
 
         <div class="step-actions">
-          <button class="btn btn-ghost" id="step4Back">Back</button>
+          <button class="btn btn-ghost" id="step3Back">Back</button>
           <button class="btn btn-primary btn-lg" id="submitApplicationBtn">Submit Application</button>
         </div>
       </div>

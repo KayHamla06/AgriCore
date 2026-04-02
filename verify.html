@@ -80,50 +80,37 @@
   <script src="js/app.js"></script>
   <script>
     (function() {
-      const params = new URLSearchParams(window.location.search);
-      const token = params.get('token');
-      const icon = document.getElementById('verifyIcon');
-      const title = document.getElementById('verifyTitle');
-      const message = document.getElementById('verifyMessage');
-      const actions = document.getElementById('verifyActions');
+      // Supabase now handles email verification via redirect to /auth-callback.html.
+      // If a user lands here with old-style ?token= params, redirect them to login.
+      // If they land here from a Supabase email link, the URL will have hash tokens
+      // which should be handled by auth-callback.html instead.
+      var hash = window.location.hash;
+      var params = new URLSearchParams(window.location.search);
 
-      if (!token) {
-        icon.className = 'verify-icon error';
-        icon.innerHTML = '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>';
-        title.textContent = 'Invalid Link';
-        message.textContent = 'This verification link is missing or invalid. Please request a new one from the signup page.';
-        actions.style.display = 'block';
-        actions.innerHTML = '<a href="/create/new/account/signup" class="verify-btn">Go to Signup</a>';
+      // If Supabase tokens are present in the hash, redirect to auth-callback
+      if (hash && (hash.includes('access_token') || hash.includes('type='))) {
+        window.location.href = '/auth-callback.html' + hash;
         return;
       }
 
-      fetch(AgriCore.API_URL + '/auth/verify-email?token=' + encodeURIComponent(token))
-        .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
-        .then(function(result) {
-          if (result.ok) {
-            icon.className = 'verify-icon success';
-            icon.innerHTML = '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>';
-            title.textContent = 'Email Verified!';
-            message.textContent = 'Your email address has been verified successfully. You can now continue with your registration or log in.';
-            actions.style.display = 'block';
-            actions.innerHTML = '<a href="/auth/login" class="verify-btn">Go to Login</a>';
-          } else {
-            icon.className = 'verify-icon error';
-            icon.innerHTML = '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>';
-            title.textContent = 'Verification Failed';
-            message.textContent = result.data.message || 'This link is invalid or has expired. Please request a new verification email.';
-            actions.style.display = 'block';
-            actions.innerHTML = '<a href="/create/new/account/signup" class="verify-btn">Go to Signup</a>';
-          }
-        })
-        .catch(function() {
-          icon.className = 'verify-icon error';
-          icon.innerHTML = '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>';
-          title.textContent = 'Connection Error';
-          message.textContent = 'Could not reach the server. Please check your connection and try again.';
-          actions.style.display = 'block';
-          actions.innerHTML = '<a href="' + window.location.href + '" class="verify-btn">Try Again</a>';
-        });
+      // If a code query param is present, redirect to auth-callback
+      if (params.get('code')) {
+        window.location.href = '/auth-callback.html?code=' + encodeURIComponent(params.get('code'));
+        return;
+      }
+
+      // Otherwise show a message directing the user
+      var icon = document.getElementById('verifyIcon');
+      var title = document.getElementById('verifyTitle');
+      var message = document.getElementById('verifyMessage');
+      var actions = document.getElementById('verifyActions');
+
+      icon.className = 'verify-icon success';
+      icon.innerHTML = '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>';
+      title.textContent = 'Email Verification';
+      message.textContent = 'Please check your inbox and click the verification link we sent you. Once verified, you can log in to your account.';
+      actions.style.display = 'block';
+      actions.innerHTML = '<a href="/auth/login" class="verify-btn">Go to Login</a>';
     })();
   </script>
 </body>

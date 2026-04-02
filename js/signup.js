@@ -240,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </p>
           </div>
         `;
-        document.querySelector('.signup-steps').appendChild(confirmPanel);
+        document.querySelector('.signup-card').appendChild(confirmPanel);
         lucide.createIcons();
 
         // Resend handler
