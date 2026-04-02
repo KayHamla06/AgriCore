@@ -5,7 +5,7 @@
 // PKCE code exchange for email verification callbacks.
 // ============================================
 
-import { supabase, supabaseAdmin } from '../config/supabaseClient';
+import { supabaseAdmin } from '../config/supabaseClient';
 import { AppError } from '../middleware/errorHandler';
 import { loginActivityService } from './loginActivityService';
 import logger from '../utils/logger';
@@ -26,14 +26,12 @@ export class AuthService {
     // Determine initial verification_status based on role
     const verificationStatus = role === 'government' ? 'pending' : 'none';
 
-    // 1. Create auth user via public signUp — supports emailRedirectTo for branded verification link
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    // 1. Create auth user with unconfirmed email
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      options: {
-        emailRedirectTo: `${process.env.APP_URL || 'https://agricore.site'}/auth/callback`,
-        data: { name, role },
-      },
+      email_confirm: false,
+      user_metadata: { name, role },
     });
 
     if (authError) {
@@ -97,6 +95,12 @@ export class AuthService {
     });
 
     if (error || !data.session) {
+      const message = (error?.message || '').toLowerCase();
+
+      if (message.includes('email not confirmed') || message.includes('email not verified')) {
+        throw new AppError('Please verify your email before logging in. Check your inbox or resend verification email.', 403);
+      }
+
       throw new AppError('Invalid email or password', 401);
     }
 
