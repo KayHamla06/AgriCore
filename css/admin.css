@@ -274,6 +274,17 @@
 .role-badge.government { background: #e0e7ff; color: #3730a3; }
 .role-badge.admin { background: #fce7f3; color: #9d174d; }
 
+.admin-debug-pill {
+  margin-top: .625rem;
+  padding: .5rem .75rem;
+  border: 1px dashed #93c5fd;
+  border-radius: var(--radius-md);
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: .75rem;
+  font-weight: 600;
+}
+
 /* =============================================
    EMPTY STATE
    ============================================= */

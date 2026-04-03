@@ -83,7 +83,24 @@ document.addEventListener('DOMContentLoaded', function () {
   var overviewDeletionsList = document.getElementById('overviewDeletionsList');
   var deletionRequestList = document.getElementById('deletionRequestList');
   var usersTableBody = document.getElementById('usersTableBody');
+  var usersDebugMeta = document.getElementById('usersDebugMeta');
   var deletionDot = document.getElementById('deletionDot');
+
+  var usersDebugEnabled = (function () {
+    try {
+      var query = new URLSearchParams(window.location.search || '');
+      if (query.get('debugUsers') === '1') return true;
+      return localStorage.getItem('agricore_debug_users') === '1';
+    } catch (_e) {
+      return false;
+    }
+  })();
+
+  function setUsersDebugMeta(text) {
+    if (!usersDebugMeta || !usersDebugEnabled) return;
+    usersDebugMeta.style.display = 'block';
+    usersDebugMeta.textContent = text;
+  }
 
   // Modal
   var reviewModal = document.getElementById('reviewModal');
@@ -469,6 +486,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     return apiFetch(url).then(function (res) {
       var users = (res && res.success && Array.isArray(res.data)) ? res.data : [];
+      var at = new Date().toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      if (!res || !res.success) {
+        setUsersDebugMeta('[Users API] failed at ' + at + ' | filter=' + (currentUserFilter || 'all') + ' | error=' + ((res && res.error) || 'unknown'));
+      } else {
+        setUsersDebugMeta('[Users API] ok at ' + at + ' | filter=' + (currentUserFilter || 'all') + ' | returned=' + users.length);
+      }
 
       if (users.length === 0) {
         usersTableBody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>No users found</p></td></tr>';
@@ -510,6 +534,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
       });
     }).catch(function() {
+      var at = new Date().toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setUsersDebugMeta('[Users API] network/parsing error at ' + at + ' | filter=' + (currentUserFilter || 'all'));
       usersTableBody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>Failed to load users. Please refresh.</p></td></tr>';
     });
   }
