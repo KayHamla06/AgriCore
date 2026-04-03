@@ -251,11 +251,11 @@
               farmerData.coordinates = { lat: lat, lng: lng };
               return fetchWeatherForCoords(lat, lng, locationLabel);
             } else {
-              showWeatherError('Could not find your location');
+              showWeatherError('Location not found — pin your farm in Settings');
             }
           })
           .catch(function() {
-            showWeatherError('Failed to geocode location');
+            showWeatherError('Location lookup failed — pin your farm in Settings');
           });
       }
 
@@ -394,7 +394,7 @@
               geocodeAndFetchWeather(profile.town || profile.district, profile.province, profile.district);
             } else {
               // No location at all — prompt user
-              showWeatherError('Add your location in Settings to see weather');
+              showWeatherError('Pin your farm location in Settings to see weather');
             }
 
             return Promise.all([

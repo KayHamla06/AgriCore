@@ -109,6 +109,18 @@
             <button class="btn btn-primary btn-sm" id="saveAddressBtn">Save Address</button>
           </div>
 
+          <!-- Farm Location (Map Picker) -->
+          <div class="settings-card" style="grid-column:1/-1;">
+            <h3 class="settings-card-title">Farm Location</h3>
+            <p class="settings-card-desc">Pin your farm on the map for accurate weather and regional data. Click the map to set your location.</p>
+            <div id="settingsMapContainer" class="settings-map-container"></div>
+            <div class="farm-location-coords">
+              <span id="settingsLocationStatus" class="location-status">No location set</span>
+              <span id="settingsCoordDisplay" class="coord-display"></span>
+            </div>
+            <button class="btn btn-primary btn-sm" id="saveLocationBtn" disabled>Save Location</button>
+          </div>
+
           <!-- Notifications -->
           <div class="settings-card">
             <h3 class="settings-card-title">Notifications</h3>
@@ -396,6 +408,81 @@
               saveAddrBtn.textContent = 'Save Address';
             });
         });
+      }
+
+      // --- Farm Location Map Picker ---
+      var mapContainer = document.getElementById('settingsMapContainer');
+      if (mapContainer && typeof L !== 'undefined') {
+        var locationMap = L.map('settingsMapContainer').setView([-28.5, 25.5], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors',
+          maxZoom: 18
+        }).addTo(locationMap);
+
+        var locationMarker = null;
+        var selectedLat = null;
+        var selectedLng = null;
+        var statusEl = document.getElementById('settingsLocationStatus');
+        var coordEl = document.getElementById('settingsCoordDisplay');
+        var saveLocBtn = document.getElementById('saveLocationBtn');
+
+        // Load existing coordinates from farmer profile
+        AgriCore.apiGet('/farmers/me').then(function(res) {
+          if (res.success && res.data && res.data.latitude && res.data.longitude) {
+            selectedLat = res.data.latitude;
+            selectedLng = res.data.longitude;
+            locationMarker = L.marker([selectedLat, selectedLng]).addTo(locationMap);
+            locationMap.setView([selectedLat, selectedLng], 13);
+            if (statusEl) { statusEl.textContent = 'Location set'; statusEl.className = 'location-status active'; }
+            if (coordEl) coordEl.textContent = selectedLat.toFixed(5) + ', ' + selectedLng.toFixed(5);
+            if (saveLocBtn) saveLocBtn.disabled = false;
+          }
+        });
+
+        // Click-to-pin
+        locationMap.on('click', function(e) {
+          selectedLat = e.latlng.lat;
+          selectedLng = e.latlng.lng;
+
+          if (locationMarker) {
+            locationMap.removeLayer(locationMarker);
+          }
+          locationMarker = L.marker([selectedLat, selectedLng]).addTo(locationMap);
+
+          if (statusEl) { statusEl.textContent = 'Location selected — click Save'; statusEl.className = 'location-status active'; }
+          if (coordEl) coordEl.textContent = selectedLat.toFixed(5) + ', ' + selectedLng.toFixed(5);
+          if (saveLocBtn) saveLocBtn.disabled = false;
+        });
+
+        // Save location
+        if (saveLocBtn) {
+          saveLocBtn.addEventListener('click', function() {
+            if (selectedLat === null || selectedLng === null) {
+              AgriCore.showToast('Click the map to select your farm location first.', 'error');
+              return;
+            }
+
+            saveLocBtn.disabled = true;
+            saveLocBtn.textContent = 'Saving...';
+
+            AgriCore.apiPut('/farmers/me', { latitude: selectedLat, longitude: selectedLng })
+              .then(function(res) {
+                if (res.success) {
+                  AgriCore.showToast('Farm location saved!', 'success');
+                  if (statusEl) { statusEl.textContent = 'Location saved'; statusEl.className = 'location-status active'; }
+                } else {
+                  AgriCore.showToast(res.error || 'Failed to save location.', 'error');
+                }
+              })
+              .finally(function() {
+                saveLocBtn.disabled = false;
+                saveLocBtn.textContent = 'Save Location';
+              });
+          });
+        }
+
+        // Fix map rendering after tab switch
+        setTimeout(function() { locationMap.invalidateSize(); }, 300);
       }
 
       // --- Password ---

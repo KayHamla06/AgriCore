@@ -33,6 +33,9 @@ router.get('/me/livestock', requireRole('farmer'), farmerController.getMyLivesto
 // GET /api/farmers/me/soil — farmer's own soil data (token-based, no fid)
 router.get('/me/soil', requireRole('farmer'), farmerController.getMySoilData);
 
+// PUT /api/farmers/me — update farmer's own profile (token-based, no fid)
+router.put('/me', requireRole('farmer'), farmerController.updateMyProfile);
+
 // GET /api/farmers/district/:district — farmers by district (gov only)
 router.get('/district/:district', requireRole('government'), farmerController.getByDistrict);
 

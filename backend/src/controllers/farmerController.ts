@@ -66,6 +66,16 @@ export class FarmerController {
     }
   }
 
+  async updateMyProfile(req: Request, res: Response, next: NextFunction) {
+    try {
+      const farmer = await farmerService.getByUserId(req.user!.id);
+      const updated = await farmerService.updateProfile(farmer.id, req.body);
+      res.json({ success: true, data: updated, message: 'Profile updated' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async updateProfile(req: Request, res: Response, next: NextFunction) {
     try {
       const farmer = await farmerService.updateProfile(req.params.farmerId, req.body);
