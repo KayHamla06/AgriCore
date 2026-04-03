@@ -19,6 +19,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // API base: adjust this to match your backend URL
   var API_BASE = window.AGRICORE_API_BASE || '/api';
+  var authRedirecting = false;
+  var notifPollTimer = null;
+  var notifPollDelayMs = 60000;
 
   function getToken() {
     var u = AgriCore.getCurrentUser();
@@ -30,6 +33,31 @@ document.addEventListener('DOMContentLoaded', function () {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + getToken(),
     };
+  }
+
+  function handleUnauthorized() {
+    if (authRedirecting) return;
+    authRedirecting = true;
+    AgriCore.clearCurrentUser();
+    AgriCore.showToast('Session expired. Please log in again.', 'error');
+    setTimeout(function() { window.location.href = '/auth/login'; }, 300);
+  }
+
+  function verifyAdminSession() {
+    return fetch(API_BASE + '/auth/me', {
+      method: 'GET',
+      headers: apiHeaders()
+    }).then(function(res) {
+      if (!res.ok) {
+        handleUnauthorized();
+        return false;
+      }
+      return res.json().then(function(body) {
+        return !!(body && body.success && body.data && body.data.role === 'admin');
+      }).catch(function() { return false; });
+    }).catch(function() {
+      return false;
+    });
   }
 
   // =============================================
@@ -156,12 +184,12 @@ document.addEventListener('DOMContentLoaded', function () {
   // =============================================
 
   function apiFetch(path) {
+    if (authRedirecting) return Promise.resolve({ success: false, error: 'Session expired' });
     return fetch(API_BASE + path, {
         headers: apiHeaders()
     }).then(function(res) {
         if (res.status === 401) {
-            AgriCore.showToast('Session expired. Please log in again.', 'error');
-            setTimeout(function() { window.location.href = '/auth/login'; }, 1000);
+        handleUnauthorized();
             return { success: false, error: 'Session expired' };
         }
         return res.json().then(function(body) {
@@ -179,6 +207,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function apiPost(path, body) {
+    if (authRedirecting) return Promise.resolve({ success: false, error: 'Session expired' });
     return fetch(API_BASE + path, {
       method: 'POST',
       headers: apiHeaders(),
@@ -186,8 +215,7 @@ document.addEventListener('DOMContentLoaded', function () {
     })
       .then(function (res) {
         if (res.status === 401) {
-          AgriCore.showToast('Session expired. Please log in again.', 'error');
-          setTimeout(function() { window.location.href = '/auth/login'; }, 1000);
+          handleUnauthorized();
           return { success: false, error: 'Session expired' };
         }
         return res.json().then(function(data) {
@@ -199,6 +227,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function apiPut(path, body) {
+    if (authRedirecting) return Promise.resolve({ success: false, error: 'Session expired' });
     return fetch(API_BASE + path, {
       method: 'PUT',
       headers: apiHeaders(),
@@ -206,8 +235,7 @@ document.addEventListener('DOMContentLoaded', function () {
     })
       .then(function (res) {
         if (res.status === 401) {
-          AgriCore.showToast('Session expired. Please log in again.', 'error');
-          setTimeout(function() { window.location.href = '/auth/login'; }, 1000);
+          handleUnauthorized();
           return { success: false, error: 'Session expired' };
         }
         return res.json().then(function(data) {
@@ -1510,6 +1538,14 @@ document.addEventListener('DOMContentLoaded', function () {
   function loadAdminNotifications() {
     return apiFetch('/notifications?unread=true').then(function(res) {
       var notifs = (res.success && res.data) ? res.data : [];
+      var hitRateLimit = !res.success && typeof res.error === 'string' && res.error.indexOf('429') !== -1;
+
+      if (hitRateLimit) {
+        notifPollDelayMs = Math.min(notifPollDelayMs * 2, 300000);
+      } else {
+        notifPollDelayMs = 60000;
+      }
+
       if (adminNotifCount) adminNotifCount.textContent = notifs.length;
       if (adminNotifDot) adminNotifDot.style.display = notifs.length > 0 ? '' : 'none';
 
@@ -1553,6 +1589,20 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  function scheduleAdminNotificationPoll() {
+    if (notifPollTimer) clearTimeout(notifPollTimer);
+    notifPollTimer = setTimeout(function() {
+      if (authRedirecting) return;
+      if (document.hidden) {
+        scheduleAdminNotificationPoll();
+        return;
+      }
+      loadAdminNotifications().finally(function() {
+        scheduleAdminNotificationPoll();
+      });
+    }, notifPollDelayMs);
+  }
+
   if (adminNotifBtn) {
     adminNotifBtn.addEventListener('click', function(e) {
       e.stopPropagation();
@@ -1579,11 +1629,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
-  // Near-real-time notifications (polling fallback)
-  setInterval(function() {
-    loadAdminNotifications();
-  }, 15000);
-
   document.addEventListener('visibilitychange', function() {
     if (!document.hidden) {
       loadAdminNotifications();
@@ -1592,7 +1637,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // =============================================
   showAdminLoader();
-  loadAllData().finally(function() {
+  verifyAdminSession().then(function(valid) {
+    if (!valid) return;
+    return loadAllData().then(function() {
+      scheduleAdminNotificationPoll();
+    });
+  }).finally(function() {
     hideAdminLoader();
   });
 });

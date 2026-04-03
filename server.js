@@ -77,6 +77,7 @@ app.use(helmet({
         "https://api.open-meteo.com",
         "https://archive-api.open-meteo.com",
         "https://nominatim.openstreetmap.org",
+        "https://unpkg.com",
         "https://cdn.jsdelivr.net"
       ],
       frameSrc: ["'none'"],
