@@ -72,7 +72,7 @@ export class TicketService {
         attachment_path: attachmentPath,
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       logger.error('Ticket creation failed', { error: error.message });
@@ -174,7 +174,7 @@ export class TicketService {
       .update(updatePayload)
       .eq('id', ticketId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error || !ticket) throw new AppError('Failed to update ticket', 500);
 

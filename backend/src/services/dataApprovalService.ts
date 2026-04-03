@@ -33,7 +33,7 @@ export class DataApprovalService {
         payload,
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       logger.error('Change request insert failed', { error: error.message });
@@ -80,7 +80,7 @@ export class DataApprovalService {
       .from(resourceType)
       .insert(insertPayload)
       .select()
-      .single();
+      .maybeSingle();
 
     if (insertError) {
       logger.error('Data insert failed', { resourceType, error: insertError.message });
@@ -98,7 +98,7 @@ export class DataApprovalService {
         payload: insertPayload,
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (requestError) {
       logger.error('Change request insert failed', { error: requestError.message });
@@ -185,7 +185,7 @@ export class DataApprovalService {
       .from('data_change_requests')
       .select('*')
       .eq('id', requestId)
-      .single();
+      .maybeSingle();
 
     if (fetchErr || !request) throw new AppError('Change request not found', 404);
     if (request.status !== 'pending') throw new AppError('Request already reviewed', 400);
@@ -243,7 +243,7 @@ export class DataApprovalService {
       .from('data_change_requests')
       .select('*')
       .eq('id', requestId)
-      .single();
+      .maybeSingle();
 
     if (fetchErr || !request) throw new AppError('Change request not found', 404);
     if (request.status !== 'pending') throw new AppError('Request already reviewed', 400);

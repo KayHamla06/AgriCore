@@ -23,7 +23,7 @@ export class NoteService {
       .from('notes')
       .select('*')
       .eq('id', noteId)
-      .single();
+      .maybeSingle();
 
     if (error || !data) throw new AppError('Note not found', 404);
 
@@ -47,7 +47,7 @@ export class NoteService {
         content: data.content || '',
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to create note', 500);
     return note;
@@ -63,7 +63,7 @@ export class NoteService {
       .eq('id', noteId)
       .eq('user_id', userId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to update note', 500);
     return data;
@@ -75,7 +75,7 @@ export class NoteService {
       .from('notes')
       .select('user_id')
       .eq('id', noteId)
-      .single();
+      .maybeSingle();
 
     if (fetchError || !note) throw new AppError('Note not found', 404);
     if (note.user_id !== userId) throw new AppError('Only the owner can share notes', 403);
@@ -89,7 +89,7 @@ export class NoteService {
       })
       .eq('id', noteId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to share note', 500);
     return data;

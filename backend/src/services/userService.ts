@@ -19,7 +19,7 @@ export class UserService {
       .from('users')
       .select('*')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (userError || !user) throw new AppError('User not found', 404);
 
@@ -58,7 +58,7 @@ export class UserService {
       .update(safeUpdates)
       .eq('id', userId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       logger.error('Failed to update settings', { userId, error: error.message });
@@ -211,7 +211,7 @@ export class UserService {
       })
       .eq('id', userId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       // If address columns don't exist yet (migration-profile-address.sql not run)

@@ -52,7 +52,7 @@ export class PlanService {
       .from('support_plans')
       .select('*')
       .eq('id', planId)
-      .single();
+      .maybeSingle();
 
     if (error || !data) throw new AppError('Plan not found', 404);
     return data as SupportPlan;
@@ -77,7 +77,7 @@ export class PlanService {
       .from('support_plans')
       .insert(plan)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to create plan', 500);
     return data as SupportPlan;
@@ -97,7 +97,7 @@ export class PlanService {
       .update({ ...safeUpdates, updated_at: new Date().toISOString() })
       .eq('id', planId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to update plan', 500);
     return data as SupportPlan;

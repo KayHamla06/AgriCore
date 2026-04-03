@@ -45,7 +45,7 @@ export class AdminService {
       .from('deletion_requests')
       .select('*, users:user_id(id, email, name, role)')
       .eq('id', requestId)
-      .single();
+      .maybeSingle();
 
     if (error || !data) throw new AppError('Deletion request not found', 404);
     return data as DeletionRequest;
@@ -71,7 +71,7 @@ export class AdminService {
       .from('users')
       .select('auth_id')
       .eq('id', request.user_id)
-      .single();
+      .maybeSingle();
 
     if (userError || !user) {
       throw new AppError('User associated with this request not found', 404);
@@ -88,7 +88,7 @@ export class AdminService {
       })
       .eq('id', requestId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (updateError) throw new AppError('Failed to update deletion request', 500);
 
@@ -155,7 +155,7 @@ export class AdminService {
       })
       .eq('id', requestId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to reject deletion request', 500);
 
@@ -216,7 +216,7 @@ export class AdminService {
       .from('users')
       .select('*')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (error || !user) throw new AppError('User not found', 404);
 
@@ -287,7 +287,7 @@ export class AdminService {
       .from('users')
       .select('*')
       .eq('id', targetUserId)
-      .single();
+      .maybeSingle();
 
     if (fetchError || !currentUser) throw new AppError('User not found', 404);
 
@@ -316,7 +316,7 @@ export class AdminService {
       .update(sanitized)
       .eq('id', targetUserId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (updateError) throw new AppError('Failed to update user profile', 500);
 
@@ -371,7 +371,7 @@ export class AdminService {
       .from('users')
       .select('id, profile_image_url')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (error || !user) throw new AppError('User not found', 404);
 
@@ -458,7 +458,7 @@ export class AdminService {
         { onConflict: 'user_id' }
       )
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to update profile permission', 500);
 

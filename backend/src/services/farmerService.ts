@@ -47,7 +47,7 @@ export class FarmerService {
       .from('farmers')
       .select('*')
       .eq('id', farmerId)
-      .single();
+      .maybeSingle();
 
     if (error || !data) throw new AppError('Farmer not found', 404);
     return data as FarmerProfile;
@@ -68,7 +68,7 @@ export class FarmerService {
       .from('users')
       .select('id, name, email, role')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (userError || !user || user.role !== 'farmer') {
       throw new AppError('Farmer profile not found', 404);
@@ -85,7 +85,7 @@ export class FarmerService {
         farm_size_hectares: 0,
       })
       .select('*')
-      .single();
+      .maybeSingle();
 
     if (createError || !created) throw new AppError('Failed to create farmer profile', 500);
 
@@ -104,7 +104,7 @@ export class FarmerService {
       .update({ ...safeUpdates, updated_at: new Date().toISOString() })
       .eq('id', farmerId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to update farmer profile', 500);
     return data as FarmerProfile;
@@ -150,7 +150,7 @@ export class FarmerService {
       .from('livestock')
       .insert({ ...record, farmer_id: farmerId, data_status: 'pending' })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to add livestock record', 500);
 
@@ -182,7 +182,7 @@ export class FarmerService {
       .from('crops')
       .insert({ ...record, farmer_id: farmerId, data_status: 'pending' })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to add crop record', 500);
 
@@ -213,7 +213,7 @@ export class FarmerService {
       .from('soil_data')
       .insert({ ...record, farmer_id: farmerId, data_status: 'pending' })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to add soil data', 500);
 

@@ -22,7 +22,7 @@ export class DepartmentService {
       .from('departments')
       .select('*')
       .eq('id', departmentId)
-      .single();
+      .maybeSingle();
 
     if (error || !data) throw new AppError('Department not found', 404);
     return data;
@@ -44,7 +44,7 @@ export class DepartmentService {
       .from('departments')
       .insert({ name, description })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to create department', 500);
     return data;
@@ -56,7 +56,7 @@ export class DepartmentService {
       .update(updates)
       .eq('id', departmentId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to update department', 500);
     return data;
@@ -68,7 +68,7 @@ export class DepartmentService {
       .update({ department_id: departmentId })
       .eq('id', userId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to assign user to department', 500);
     return data;

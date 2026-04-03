@@ -33,7 +33,7 @@ export class PdfService {
       .from('farmers')
       .select('*')
       .eq('id', farmerId)
-      .single();
+      .maybeSingle();
 
     if (farmerError || !farmer) {
       throw new AppError('Farmer not found', 404);
@@ -265,7 +265,7 @@ export class PdfService {
       .from('farmers')
       .select('*')
       .eq('id', farmerId)
-      .single();
+      .maybeSingle();
 
     if (farmerErr || !farmer) throw new AppError('Farmer not found', 404);
 
@@ -472,7 +472,7 @@ export class PdfService {
       .from('farmers')
       .select('*')
       .eq('id', farmerId)
-      .single();
+      .maybeSingle();
 
     if (farmerErr || !farmer) throw new AppError('Farmer not found', 404);
 

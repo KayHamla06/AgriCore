@@ -48,7 +48,7 @@ export class TodoService {
         due_date: data.due_date || null,
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to create todo', 500);
     return todo;
@@ -65,7 +65,7 @@ export class TodoService {
       .eq('id', todoId)
       .eq('user_id', userId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to update todo', 500);
     return data;
@@ -78,7 +78,7 @@ export class TodoService {
       .select('completed')
       .eq('id', todoId)
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (fetchError || !existing) throw new AppError('Todo not found', 404);
 
@@ -93,7 +93,7 @@ export class TodoService {
       .eq('id', todoId)
       .eq('user_id', userId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to toggle todo', 500);
     return data;

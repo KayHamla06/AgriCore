@@ -30,7 +30,7 @@ export class TaskService {
         deadline: data.deadline || null,
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       logger.error('Task creation failed', { error: error.message });
@@ -73,7 +73,7 @@ export class TaskService {
       .from('tasks')
       .select('*, assigned_to_user:users!tasks_assigned_to_fkey(name, email, role), assigned_by_user:users!tasks_assigned_by_fkey(name, email, role)')
       .eq('id', taskId)
-      .single();
+      .maybeSingle();
 
     if (error || !data) throw new AppError('Task not found', 404);
     return data;
@@ -104,7 +104,7 @@ export class TaskService {
       .update(updates)
       .eq('id', taskId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to update task', 500);
     return data;
@@ -126,7 +126,7 @@ export class TaskService {
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', taskId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to update task', 500);
     return data;

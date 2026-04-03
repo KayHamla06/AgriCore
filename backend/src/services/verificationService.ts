@@ -70,7 +70,7 @@ export class VerificationService {
         file_path: filePath,
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (insertError) throw new AppError('Failed to save document record', 500);
 
@@ -283,7 +283,7 @@ export class VerificationService {
       .from('users')
       .select('verification_status')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (error || !user) throw new AppError('User not found', 404);
 

@@ -52,7 +52,7 @@ export class NotificationService {
         link: data.link || null,
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) return null; // Non-critical — don't block caller
     return notification;

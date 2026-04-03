@@ -56,7 +56,7 @@ export async function authMiddleware(
       .from('users')
       .select('id, email, role, name, verification_status')
       .eq('auth_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (result.error && (result.error.code === '42703' || result.error.message?.includes('verification_status'))) {
       // verification_status column doesn't exist yet — query without it
@@ -64,7 +64,7 @@ export async function authMiddleware(
         .from('users')
         .select('id, email, role, name')
         .eq('auth_id', user.id)
-        .single();
+        .maybeSingle();
       profile = fallback.data;
       profileError = fallback.error;
     } else {

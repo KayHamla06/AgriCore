@@ -101,7 +101,7 @@ export class AuthService {
         verification_status: verificationStatus,
       })
       .select('id, email, role, name, verification_status')
-      .single();
+      .maybeSingle();
 
     if (createError || !created) {
       logger.error('Auth sync: failed to auto-create missing users profile', {
@@ -169,14 +169,14 @@ export class AuthService {
         verification_status: verificationStatus,
       })
       .select('id, email, role, name, verification_status')
-      .single();
+      .maybeSingle();
 
-    if (profileError) {
+    if (profileError || !profile) {
       // Rollback: delete the auth user if profile creation fails
       await supabaseAdmin.auth.admin.deleteUser(authUser.id);
       logger.error('SignUp: profile creation failed, rolled back auth user', {
         authId: authUser.id,
-        error: profileError.message,
+        error: profileError?.message,
       });
       throw new AppError('Failed to create user profile', 500);
     }

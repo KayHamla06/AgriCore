@@ -66,7 +66,7 @@ export class ChatService {
       .from('chat_rooms')
       .insert({ is_group: false, created_by: userId })
       .select()
-      .single();
+      .maybeSingle();
 
     if (roomError || !room) throw new AppError('Failed to create chat room', 500);
 
@@ -93,7 +93,7 @@ export class ChatService {
         created_by: userId,
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (roomError || !room) throw new AppError('Failed to create group', 500);
 
@@ -154,7 +154,7 @@ export class ChatService {
         content,
       })
       .select('*, sender:users!chat_messages_sender_id_fkey(name, email, role)')
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to send message', 500);
     return message;

@@ -28,7 +28,7 @@ export class FieldVisitService {
       .from('field_visits')
       .select('*, agent:users!field_visits_agent_id_fkey(name, email, role)')
       .eq('id', visitId)
-      .single();
+      .maybeSingle();
 
     if (error || !data) throw new AppError('Visit not found', 404);
 
@@ -66,7 +66,7 @@ export class FieldVisitService {
         images: data.images || [],
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to log visit', 500);
     return visit;
@@ -83,7 +83,7 @@ export class FieldVisitService {
       .eq('id', visitId)
       .eq('agent_id', agentId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to update visit', 500);
     return data;
@@ -94,7 +94,7 @@ export class FieldVisitService {
       .from('field_visits')
       .select('agent_id')
       .eq('id', visitId)
-      .single();
+      .maybeSingle();
 
     if (fetchError || !visit) throw new AppError('Visit not found', 404);
     if (visit.agent_id !== agentId) throw new AppError('Only the agent can share visits', 403);
@@ -107,7 +107,7 @@ export class FieldVisitService {
       })
       .eq('id', visitId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to share visit', 500);
     return data;

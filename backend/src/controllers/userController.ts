@@ -32,7 +32,7 @@ export class UserController {
         .from('users')
         .select('auth_id')
         .eq('id', req.user!.id)
-        .single();
+        .maybeSingle();
 
       if (!data) {
         res.status(404).json({ success: false, error: 'User not found' });
@@ -69,7 +69,7 @@ export class UserController {
         .from('users')
         .select('email')
         .eq('id', req.user!.id)
-        .single();
+        .maybeSingle();
 
       if (!userData) {
         res.status(404).json({ success: false, error: 'User not found' });
@@ -118,7 +118,7 @@ export class UserController {
           deletion_reason: deletion_reason || reason || '',
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         res.status(500).json({ success: false, error: 'Failed to create deletion request' });
