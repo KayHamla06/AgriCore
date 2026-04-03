@@ -52,25 +52,26 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       scriptSrc: [
         "'self'",
+        "'unsafe-inline'",
         "https://unpkg.com",
         "https://cdn.jsdelivr.net"
       ],
       styleSrc: [
         "'self'",
         "'unsafe-inline'",
-        "https://fonts.googleapis.com"
+        "https://fonts.googleapis.com",
+        "https://unpkg.com"
       ],
       fontSrc: [
         "'self'",
         "https://fonts.gstatic.com"
       ],
-      imgSrc: ["'self'", "data:", "blob:"],
+      imgSrc: ["'self'", "data:", "blob:", "https:"],
       connectSrc: [
         "'self'",
         "https://*.supabase.co",
         "https://api.open-meteo.com",
-        "https://archive-api.open-meteo.com",
-        "https://unpkg.com"
+        "https://archive-api.open-meteo.com"
       ],
       frameSrc: ["'none'"],
       objectSrc: ["'none'"],
@@ -80,7 +81,7 @@ app.use(helmet({
     },
   },
   crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: { policy: 'same-origin' },
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
   noSniff: true,
