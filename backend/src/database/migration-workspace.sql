@@ -225,7 +225,11 @@ CREATE TABLE IF NOT EXISTS notifications (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   type TEXT NOT NULL CHECK (type IN (
     'task_assigned', 'task_completed', 'visit_shared',
-    'message_received', 'note_shared', 'system'
+    'message_received', 'note_shared', 'system',
+    'verification_request', 'verification_approved', 'verification_rejected',
+    'data_pending', 'data_approved', 'data_rejected',
+    'ticket_created', 'ticket_updated', 'ticket_resolved',
+    'deletion_approved', 'deletion_rejected'
   )),
   title TEXT NOT NULL,
   body TEXT DEFAULT '',

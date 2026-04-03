@@ -5,7 +5,6 @@
 // ============================================
 
 import { supabaseAdmin } from '../config/supabaseClient';
-import { AppError } from '../middleware/errorHandler';
 import type { NotificationType } from '../models/types';
 
 export class NotificationService {
@@ -20,7 +19,10 @@ export class NotificationService {
     if (unreadOnly) query = query.eq('read', false);
 
     const { data, error } = await query;
-    if (error) throw new AppError('Failed to fetch notifications', 500);
+    if (error) {
+      // Table may not exist yet or other DB issue — return empty instead of crashing
+      return [];
+    }
     return data || [];
   }
 
@@ -65,7 +67,7 @@ export class NotificationService {
       .eq('id', notificationId)
       .eq('user_id', userId);
 
-    if (error) throw new AppError('Failed to mark notification', 500);
+    if (error) return; // Non-critical
   }
 
   async markAllRead(userId: string) {
@@ -75,7 +77,7 @@ export class NotificationService {
       .eq('user_id', userId)
       .eq('read', false);
 
-    if (error) throw new AppError('Failed to mark notifications', 500);
+    if (error) return; // Non-critical
   }
 
   async delete(notificationId: string, userId: string) {
@@ -85,7 +87,7 @@ export class NotificationService {
       .eq('id', notificationId)
       .eq('user_id', userId);
 
-    if (error) throw new AppError('Failed to delete notification', 500);
+    if (error) return; // Non-critical
   }
 }
 

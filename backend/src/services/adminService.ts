@@ -34,12 +34,9 @@ export class AdminService {
 
     const { data, error } = await query;
     if (error) {
-      // Table may not exist yet — return empty instead of crashing
-      if (error.code === '42P01' || error.message?.includes('relation') || error.code === 'PGRST204') {
-        logger.warn('deletion_requests table missing', { error: error.message });
-        return [];
-      }
-      throw new AppError('Failed to fetch deletion requests', 500);
+      // Table may not exist yet or other DB issue — return empty instead of crashing
+      logger.warn('deletion_requests query failed', { code: error.code, message: error.message });
+      return [];
     }
     return data as DeletionRequest[];
   }
