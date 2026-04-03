@@ -254,42 +254,57 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // =============================================
-  //  NOTIFICATIONS SYSTEM
+  //  NOTIFICATIONS SYSTEM (Real API)
   // =============================================
-  var notifications = isGov ? AgriCore.generateNotifications() : [];
   var notifCountEl = document.getElementById('notifCount');
   var notifDot = document.getElementById('notifDot');
   var notifList = document.getElementById('notifList');
   var notifDropdown = document.getElementById('notifDropdown');
   var notifBtn = document.getElementById('notifBtn');
 
-  if (notifCountEl) notifCountEl.textContent = notifications.length;
-  if (notifDot && notifications.length === 0) notifDot.style.display = 'none';
+  function loadNotifications() {
+    AgriCore.apiGet('/notifications?unread=true').then(function(res) {
+      var notifications = (res.success && res.data) ? res.data : [];
+      if (notifCountEl) notifCountEl.textContent = notifications.length;
+      if (notifDot) notifDot.style.display = notifications.length > 0 ? '' : 'none';
 
-  if (notifList) {
-    if (notifications.length === 0) {
-      notifList.innerHTML = '<div class="notif-empty">No notifications</div>';
-    } else {
-      var escape = AgriCore.escapeHtml;
-      notifList.innerHTML = notifications.slice(0, 15).map(function(n) {
-        return '<div class="notif-item" data-farmer-id="' + escape(n.farmerId) + '">' +
-          '<div class="notif-icon ' + escape(n.type) + '"><i data-lucide="' + escape(n.icon) + '"></i></div>' +
-          '<div class="notif-body">' +
-          '<div class="notif-farmer">' + escape(n.farmerName) + '</div>' +
-          '<div class="notif-message">' + escape(n.message) + '</div>' +
-          '<div class="notif-time">' + escape(n.time) + '</div>' +
-          '</div></div>';
-      }).join('');
+      if (notifList) {
+        if (notifications.length === 0) {
+          notifList.innerHTML = '<div class="notif-empty">No notifications</div>';
+        } else {
+          var escape = AgriCore.escapeHtml;
+          notifList.innerHTML = notifications.slice(0, 15).map(function(n) {
+            var iconName = 'bell';
+            if (n.type && n.type.indexOf('verif') > -1) iconName = 'badge-check';
+            else if (n.type && n.type.indexOf('delet') > -1) iconName = 'trash-2';
+            else if (n.type && n.type.indexOf('data') > -1) iconName = 'database';
+            var timeAgo = n.created_at ? new Date(n.created_at).toLocaleDateString('en-ZA', { month: 'short', day: 'numeric' }) : '';
+            return '<div class="notif-item" data-notif-id="' + escape(n.id) + '">' +
+              '<div class="notif-icon info"><i data-lucide="' + iconName + '"></i></div>' +
+              '<div class="notif-body">' +
+              '<div class="notif-farmer">' + escape(n.title || '') + '</div>' +
+              '<div class="notif-message">' + escape(n.body || '') + '</div>' +
+              '<div class="notif-time">' + timeAgo + '</div>' +
+              '</div></div>';
+          }).join('');
 
-      notifList.querySelectorAll('.notif-item').forEach(function(item) {
-        item.addEventListener('click', function() {
-          var fid = item.dataset.farmerId;
-          if (fid && window.viewFarmerProfile) window.viewFarmerProfile(fid);
-          if (notifDropdown) notifDropdown.classList.remove('open');
-        });
-      });
-    }
+          // Mark as read on click
+          notifList.querySelectorAll('.notif-item').forEach(function(item) {
+            item.addEventListener('click', function() {
+              var nid = item.dataset.notifId;
+              if (nid) {
+                AgriCore.apiPatch('/notifications/' + nid + '/read').catch(function() {});
+                item.style.opacity = '0.5';
+              }
+            });
+          });
+        }
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
+    });
   }
+
+  loadNotifications();
 
   if (notifBtn) {
     notifBtn.addEventListener('click', function(e) {

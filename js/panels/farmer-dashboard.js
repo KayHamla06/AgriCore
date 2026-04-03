@@ -50,7 +50,31 @@
 
         <div class="unverified-warning" id="farmerUnverifiedWarning" style="display:none;">
           <i data-lucide="alert-triangle"></i>
-          <span>Your account is not verified. <a href="#" id="startVerificationBtn">Upload verification documents</a> to get your verified badge ✓</span>
+          <span>You are not verified. <a href="#" id="startVerificationBtn">Upload your ID</a> to get verified ✓</span>
+        </div>
+
+        <!-- ID Upload Modal -->
+        <div class="admin-modal-overlay" id="idUploadModal" style="display:none;">
+          <div class="admin-modal" style="max-width:480px;">
+            <div class="admin-modal-header">
+              <h3>Upload Verification Document</h3>
+              <button class="modal-close-btn" id="idUploadCloseBtn">&times;</button>
+            </div>
+            <div class="admin-modal-body" style="padding:20px;">
+              <p style="margin-bottom:16px;font-size:.875rem;color:var(--gray-600);">Upload a clear photo of your ID document (South African ID, passport, or drivers license).</p>
+              <div id="idUploadDropzone" style="border:2px dashed var(--gray-300);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:border-color .2s;">
+                <i data-lucide="upload-cloud" style="width:40px;height:40px;color:var(--gray-400);margin-bottom:8px;"></i>
+                <p style="font-weight:600;color:var(--gray-700);margin-bottom:4px;">Click to select or take a photo</p>
+                <p style="font-size:.75rem;color:var(--gray-400);">JPG, PNG or PDF — max 10MB</p>
+                <input type="file" id="idUploadInput" accept="image/*,application/pdf" capture="environment" style="display:none;">
+              </div>
+              <div id="idUploadPreview" style="display:none;margin-top:16px;text-align:center;">
+                <img id="idPreviewImg" style="max-width:100%;max-height:240px;border-radius:8px;border:1px solid var(--gray-200);" alt="Preview">
+                <p id="idPreviewName" style="font-size:.8125rem;color:var(--gray-500);margin-top:8px;"></p>
+              </div>
+              <button class="btn btn-primary" id="idUploadSendBtn" disabled style="width:100%;margin-top:16px;">Send for Verification</button>
+            </div>
+          </div>
         </div>
 
         <div class="attention-banner farmer-banner" id="farmerAttentionBanner" style="display:none;">
@@ -280,6 +304,102 @@
         }
       })
       .catch(function() {});
+
+      // === ID Upload Modal ===
+      var idModal = document.getElementById('idUploadModal');
+      var idInput = document.getElementById('idUploadInput');
+      var idDropzone = document.getElementById('idUploadDropzone');
+      var idPreview = document.getElementById('idUploadPreview');
+      var idPreviewImg = document.getElementById('idPreviewImg');
+      var idPreviewName = document.getElementById('idPreviewName');
+      var idSendBtn = document.getElementById('idUploadSendBtn');
+      var idCloseBtn = document.getElementById('idUploadCloseBtn');
+      var startVerBtn = document.getElementById('startVerificationBtn');
+      var selectedFile = null;
+
+      if (startVerBtn) {
+        startVerBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          if (idModal) { idModal.style.display = 'flex'; }
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        });
+      }
+
+      if (idDropzone && idInput) {
+        idDropzone.addEventListener('click', function() { idInput.click(); });
+        idInput.addEventListener('change', function() {
+          if (idInput.files && idInput.files[0]) {
+            selectedFile = idInput.files[0];
+            if (selectedFile.size > 10 * 1024 * 1024) {
+              AgriCore.showToast('File too large. Maximum 10MB.', 'error');
+              selectedFile = null;
+              return;
+            }
+            if (idPreviewName) idPreviewName.textContent = selectedFile.name;
+            if (selectedFile.type.startsWith('image/') && idPreviewImg) {
+              var reader = new FileReader();
+              reader.onload = function(e) { idPreviewImg.src = e.target.result; };
+              reader.readAsDataURL(selectedFile);
+              if (idPreviewImg) idPreviewImg.style.display = 'block';
+            } else {
+              if (idPreviewImg) idPreviewImg.style.display = 'none';
+              if (idPreviewName) idPreviewName.textContent = '📄 ' + selectedFile.name;
+            }
+            if (idPreview) idPreview.style.display = 'block';
+            if (idSendBtn) idSendBtn.disabled = false;
+          }
+        });
+      }
+
+      if (idSendBtn) {
+        idSendBtn.addEventListener('click', function() {
+          if (!selectedFile) return;
+          idSendBtn.disabled = true;
+          idSendBtn.textContent = 'Sending...';
+
+          var formData = new FormData();
+          formData.append('file', selectedFile);
+          formData.append('documentType', 'id_document');
+
+          fetch((window.AGRICORE_API_BASE || '/api') + '/verification/upload', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + (user.token || '') },
+            body: formData
+          })
+          .then(function(res) { return res.json(); })
+          .then(function(res) {
+            if (res.success) {
+              if (idModal) idModal.style.display = 'none';
+              selectedFile = null;
+              if (idPreview) idPreview.style.display = 'none';
+              if (idSendBtn) { idSendBtn.disabled = true; idSendBtn.textContent = 'Send for Verification'; }
+              AgriCore.showToast('Your document has been sent for verification. You will receive a notification when the admin has verified your account.', 'success');
+              // Update the warning text
+              var warning = document.getElementById('farmerUnverifiedWarning');
+              if (warning) {
+                warning.querySelector('span').innerHTML = 'Verification pending — your ID is being reviewed.';
+                warning.style.background = 'var(--amber-50, #fffde7)';
+              }
+            } else {
+              AgriCore.showToast(res.error || 'Upload failed. Please try again.', 'error');
+              idSendBtn.disabled = false;
+              idSendBtn.textContent = 'Send for Verification';
+            }
+          })
+          .catch(function() {
+            AgriCore.showToast('Network error. Please try again.', 'error');
+            idSendBtn.disabled = false;
+            idSendBtn.textContent = 'Send for Verification';
+          });
+        });
+      }
+
+      if (idCloseBtn) {
+        idCloseBtn.addEventListener('click', function() { if (idModal) idModal.style.display = 'none'; });
+      }
+      if (idModal) {
+        idModal.addEventListener('click', function(e) { if (e.target === idModal) idModal.style.display = 'none'; });
+      }
 
       // === Performance Scores ===
       var score = AgriCore.calculatePerformanceScore(farmerData);

@@ -33,7 +33,14 @@ export class AdminService {
     }
 
     const { data, error } = await query;
-    if (error) throw new AppError('Failed to fetch deletion requests', 500);
+    if (error) {
+      // Table may not exist yet — return empty instead of crashing
+      if (error.code === '42P01' || error.message?.includes('relation') || error.code === 'PGRST204') {
+        logger.warn('deletion_requests table missing', { error: error.message });
+        return [];
+      }
+      throw new AppError('Failed to fetch deletion requests', 500);
+    }
     return data as DeletionRequest[];
   }
 
@@ -196,7 +203,7 @@ export class AdminService {
   async getUsers(role?: string) {
     let query = supabaseAdmin
       .from('users')
-      .select('id, email, name, role, phone, created_at')
+      .select('id, email, name, role, phone, verification_status, created_at')
       .order('created_at', { ascending: false });
 
     if (role) {

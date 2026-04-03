@@ -19,7 +19,21 @@ const DIST_CSS = path.join(DIST_DIR, 'css');
 // =============================================
 
 function minifyJS(code) {
-  return code
+  // 1. Extract string literals and template literals so minification
+  //    regexes don't corrupt their contents.
+  const strings = [];
+  const placeholder = (i) => `__STR${i}__`;
+
+  // Match template literals (backticks, handling escaped backticks and ${} expressions),
+  // double-quoted strings, single-quoted strings, and regex literals after operators.
+  const protected = code.replace(/`(?:[^`\\]|\\.|\$\{[^}]*\})*`|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, (match) => {
+    const i = strings.length;
+    strings.push(match);
+    return placeholder(i);
+  });
+
+  // 2. Minify the code (string contents are safe behind placeholders)
+  let result = protected
     // Remove single-line comments (but not URLs like https://)
     .replace(/(?<![:\/'"])\/\/(?![\/:]).*$/gm, '')
     // Remove multi-line comments
@@ -37,6 +51,13 @@ function minifyJS(code) {
     .replace(/,\s+/g, ',')
     // Trim
     .trim();
+
+  // 3. Restore string literals
+  for (let i = 0; i < strings.length; i++) {
+    result = result.replace(placeholder(i), strings[i]);
+  }
+
+  return result;
 }
 
 function minifyCSS(code) {

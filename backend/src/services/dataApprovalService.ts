@@ -168,7 +168,13 @@ export class DataApprovalService {
     }
 
     const { data, error } = await query;
-    if (error) throw new AppError('Failed to fetch data change requests', 500);
+    if (error) {
+      // Table may not exist yet — return empty instead of crashing
+      if (error.code === '42P01' || error.message?.includes('relation') || error.code === 'PGRST204') {
+        return [];
+      }
+      throw new AppError('Failed to fetch data change requests', 500);
+    }
     return data || [];
   }
 

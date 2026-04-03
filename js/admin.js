@@ -153,15 +153,19 @@ document.addEventListener('DOMContentLoaded', function () {
     return fetch(API_BASE + path, {
         headers: apiHeaders()
     }).then(function(res) {
-        // Check if the response status is in the range 200-299
-        if (!res.ok) {
+        return res.json().then(function(body) {
+            if (!res.ok) {
+                return { success: false, error: (body && body.error) || 'Server error: ' + res.status };
+            }
+            return body;
+        }).catch(function() {
             return { success: false, error: 'Server error: ' + res.status };
-        }
-        return res.json();
+        });
     }).catch(function(err) {
+        console.error('[Admin] Network error on ' + path, err);
         return { success: false, error: 'Network error' };
     });
-}
+  }
 
   function apiPost(path, body) {
     return fetch(API_BASE + path, {
@@ -169,7 +173,12 @@ document.addEventListener('DOMContentLoaded', function () {
       headers: apiHeaders(),
       body: JSON.stringify(body || {}),
     })
-      .then(function (res) { return res.json(); })
+      .then(function (res) {
+        return res.json().then(function(data) {
+          if (!res.ok) return { success: false, error: (data && data.error) || 'Server error: ' + res.status };
+          return data;
+        }).catch(function() { return { success: false, error: 'Server error: ' + res.status }; });
+      })
       .catch(function () { return { success: false, error: 'Network error' }; });
   }
 
@@ -179,7 +188,12 @@ document.addEventListener('DOMContentLoaded', function () {
       headers: apiHeaders(),
       body: JSON.stringify(body || {}),
     })
-      .then(function (res) { return res.json(); })
+      .then(function (res) {
+        return res.json().then(function(data) {
+          if (!res.ok) return { success: false, error: (data && data.error) || 'Server error: ' + res.status };
+          return data;
+        }).catch(function() { return { success: false, error: 'Server error: ' + res.status }; });
+      })
       .catch(function () { return { success: false, error: 'Network error' }; });
   }
 
@@ -194,6 +208,7 @@ document.addEventListener('DOMContentLoaded', function () {
     loadVerificationRequests();
     loadDataApprovalRequests();
     loadTickets();
+    loadAdminNotifications();
   }
 
   // ------ Stats ------
@@ -1059,6 +1074,39 @@ document.addEventListener('DOMContentLoaded', function () {
         udAvatar.style.backgroundImage = '';
       }
     }
+
+    // Show Verify / Approve button for unverified or pending users
+    var verifyBtn = document.getElementById('verifyUserBtn');
+    if (verifyBtn) {
+      if (verStatus !== 'verified') {
+        verifyBtn.style.display = '';
+        verifyBtn.textContent = '';
+        if (u.role === 'government' && verStatus === 'pending') {
+          verifyBtn.innerHTML = '<i data-lucide="check-circle" style="width:14px;height:14px;margin-right:4px;"></i> Approve Official';
+        } else {
+          verifyBtn.innerHTML = '<i data-lucide="badge-check" style="width:14px;height:14px;margin-right:4px;"></i> Verify User';
+        }
+        verifyBtn.onclick = function() {
+          verifyBtn.disabled = true;
+          verifyBtn.textContent = 'Processing...';
+          apiPost('/verification/' + u.id + '/approve', { notes: 'Approved by admin' }).then(function(res) {
+            if (res.success) {
+              AgriCore.showToast(u.role === 'government' ? 'Government official approved!' : 'User verified!', 'success');
+              verifyBtn.style.display = 'none';
+              if (udStatus) { udStatus.textContent = 'verified'; udStatus.className = 'ver-status-badge verified'; }
+              loadAllData();
+            } else {
+              AgriCore.showToast(res.error || 'Verification failed.', 'error');
+              verifyBtn.disabled = false;
+              verifyBtn.innerHTML = '<i data-lucide="badge-check" style="width:14px;height:14px;margin-right:4px;"></i> Verify User';
+            }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        };
+      } else {
+        verifyBtn.style.display = 'none';
+      }
+    }
   }
 
   function renderUserProfile(u) {
@@ -1394,6 +1442,76 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // =============================================
   //  INITIAL LOAD
+  // =============================================
+  //  ADMIN NOTIFICATIONS (Real API)
+  // =============================================
+
+  var adminNotifBtn = document.getElementById('adminNotifBtn');
+  var adminNotifDropdown = document.getElementById('adminNotifDropdown');
+  var adminNotifDot = document.getElementById('adminNotifDot');
+  var adminNotifCount = document.getElementById('adminNotifCount');
+  var adminNotifList = document.getElementById('adminNotifList');
+  var adminMarkAllRead = document.getElementById('adminMarkAllRead');
+
+  function loadAdminNotifications() {
+    apiFetch('/notifications?unread=true').then(function(res) {
+      var notifs = (res.success && res.data) ? res.data : [];
+      if (adminNotifCount) adminNotifCount.textContent = notifs.length;
+      if (adminNotifDot) adminNotifDot.style.display = notifs.length > 0 ? '' : 'none';
+
+      if (adminNotifList) {
+        if (notifs.length === 0) {
+          adminNotifList.innerHTML = '<div style="padding:20px;text-align:center;color:var(--gray-400);font-size:.875rem;">No new notifications</div>';
+        } else {
+          adminNotifList.innerHTML = notifs.slice(0, 20).map(function(n) {
+            var iconName = 'bell';
+            if (n.type && n.type.indexOf('verif') > -1) iconName = 'badge-check';
+            else if (n.type && n.type.indexOf('delet') > -1) iconName = 'trash-2';
+            else if (n.type && n.type.indexOf('data') > -1) iconName = 'database';
+            else if (n.type && n.type.indexOf('ticket') > -1) iconName = 'message-circle';
+            var timeStr = n.created_at ? new Date(n.created_at).toLocaleDateString('en-ZA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+            return '<div class="notif-item" data-notif-id="' + AgriCore.escapeHtml(n.id) + '" style="display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--gray-100);cursor:pointer;">' +
+              '<div style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:var(--primary-50);display:flex;align-items:center;justify-content:center;"><i data-lucide="' + iconName + '" style="width:16px;height:16px;color:var(--primary-600);"></i></div>' +
+              '<div style="flex:1;min-width:0;">' +
+              '<div style="font-weight:600;font-size:.8125rem;color:var(--gray-800);">' + AgriCore.escapeHtml(n.title || '') + '</div>' +
+              '<div style="font-size:.75rem;color:var(--gray-500);margin-top:2px;">' + AgriCore.escapeHtml(n.body || '') + '</div>' +
+              '<div style="font-size:.6875rem;color:var(--gray-400);margin-top:4px;">' + timeStr + '</div>' +
+              '</div>' +
+              '<div style="flex-shrink:0;width:8px;height:8px;border-radius:50%;background:var(--primary);margin-top:6px;" title="Unread"></div>' +
+              '</div>';
+          }).join('');
+        }
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
+    });
+  }
+
+  if (adminNotifBtn) {
+    adminNotifBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (adminNotifDropdown) adminNotifDropdown.classList.toggle('open');
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    });
+  }
+
+  if (adminMarkAllRead) {
+    adminMarkAllRead.addEventListener('click', function() {
+      fetch(API_BASE + '/notifications/read-all', {
+        method: 'PATCH',
+        headers: apiHeaders()
+      }).then(function() {
+        loadAdminNotifications();
+        AgriCore.showToast('All notifications marked as read.', 'success');
+      });
+    });
+  }
+
+  document.addEventListener('click', function(e) {
+    if (adminNotifDropdown && !adminNotifDropdown.contains(e.target) && e.target !== adminNotifBtn && !adminNotifBtn.contains(e.target)) {
+      adminNotifDropdown.classList.remove('open');
+    }
+  });
+
   // =============================================
   loadAllData();
 });

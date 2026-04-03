@@ -98,6 +98,20 @@
           <div class="topbar-btn" id="refreshBtn" title="Refresh data">
             <i data-lucide="refresh-cw"></i>
           </div>
+          <div class="topbar-btn" id="adminNotifBtn" title="Notifications">
+            <i data-lucide="bell"></i>
+            <span class="notif-dot" id="adminNotifDot" style="display:none;"></span>
+          </div>
+          <div class="notif-dropdown" id="adminNotifDropdown">
+            <div class="notif-dropdown-header">
+              <h4>Notifications</h4>
+              <span class="notif-count" id="adminNotifCount">0</span>
+            </div>
+            <div class="notif-dropdown-body" id="adminNotifList"></div>
+            <div style="padding:8px;text-align:center;border-top:1px solid var(--gray-100);">
+              <button class="btn btn-ghost btn-sm" id="adminMarkAllRead">Mark all read</button>
+            </div>
+          </div>
           <div class="topbar-btn">
             <div class="sidebar-avatar" id="topbarAvatar" style="width:28px;height:28px;font-size:.625rem;">AD</div>
           </div>
@@ -263,6 +277,7 @@
             </div>
             <div class="user-detail-actions">
               <button class="btn btn-primary btn-sm" id="editUserBtn"><i data-lucide="edit-2" style="width:14px;height:14px;margin-right:4px;"></i> Edit Profile</button>
+              <button class="btn btn-sm" id="verifyUserBtn" style="display:none;background:var(--primary);color:#fff;"><i data-lucide="badge-check" style="width:14px;height:14px;margin-right:4px;"></i> Verify User</button>
               <button class="btn btn-ghost btn-sm" id="togglePermBtn"><i data-lucide="shield" style="width:14px;height:14px;margin-right:4px;"></i> <span id="permBtnText">Revoke Edit</span></button>
             </div>
           </div>

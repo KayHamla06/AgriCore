@@ -74,9 +74,22 @@ export class VerificationService {
 
     if (insertError) throw new AppError('Failed to save document record', 500);
 
+    // Set user verification status to pending
+    await supabaseAdmin
+      .from('users')
+      .update({ verification_status: 'pending' })
+      .eq('id', userId);
+
     // Notify all admins
+    const { data: uploadUser } = await supabaseAdmin
+      .from('users')
+      .select('name')
+      .eq('id', userId)
+      .maybeSingle();
+    const uploaderName = uploadUser?.name || 'A user';
+
     await this.notifyAdmins('verification_request', 'New Verification Request',
-      `A user has uploaded verification documents for review.`);
+      `${uploaderName} has uploaded an ID document for verification.`);
 
     await activityLogService.log({
       user_id: userId,
@@ -187,6 +200,12 @@ export class VerificationService {
     adminId: string,
     notes?: string
   ): Promise<void> {
+    const { data: targetUser } = await supabaseAdmin
+      .from('users')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+
     const { error } = await supabaseAdmin
       .from('users')
       .update({
@@ -208,12 +227,24 @@ export class VerificationService {
       .eq('user_id', userId)
       .eq('status', 'pending');
 
+    // Get admin name for personalized notification
+    const { data: admin } = await supabaseAdmin
+      .from('users')
+      .select('name')
+      .eq('id', adminId)
+      .maybeSingle();
+    const adminName = admin?.name || 'Admin';
+
+    const isGov = targetUser?.role === 'government';
+
     // Notify the user — they'll see this on next login (no SMTP)
     await notificationService.create({
       user_id: userId,
       type: 'verification_approved',
-      title: 'Account Verified ✅',
-      body: 'Your account has been verified. You now have full access to the dashboard.',
+      title: isGov ? 'Application Approved ✅' : 'Account Verified ✅',
+      body: isGov
+        ? `${adminName} has approved your government official application. You now have full access to the dashboard.`
+        : `${adminName} has verified your account. You now have full access to the dashboard.`,
     });
 
     await activityLogService.log({
@@ -255,13 +286,20 @@ export class VerificationService {
       .eq('status', 'pending');
 
     // Notify the user
+    const { data: rejectAdmin } = await supabaseAdmin
+      .from('users')
+      .select('name')
+      .eq('id', adminId)
+      .maybeSingle();
+    const rejectAdminName = rejectAdmin?.name || 'Admin';
+
     await notificationService.create({
       user_id: userId,
       type: 'verification_rejected',
       title: 'Verification Rejected',
       body: notes
-        ? `Your verification was rejected: ${notes}`
-        : 'Your verification was rejected. Please re-upload valid documents.',
+        ? `${rejectAdminName} rejected your verification: ${notes}`
+        : `${rejectAdminName} rejected your verification. Please re-upload valid documents.`,
     });
 
     await activityLogService.log({
