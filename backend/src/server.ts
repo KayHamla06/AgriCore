@@ -49,6 +49,7 @@ const app = express();
 const externalConnectSources = [
   'https://api.open-meteo.com',
   'https://archive-api.open-meteo.com',
+  'https://nominatim.openstreetmap.org',
 ];
 
 if (process.env.SUPABASE_URL) {

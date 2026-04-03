@@ -185,70 +185,77 @@
       updateDateTime();
       setInterval(updateDateTime, 1000);
 
-      // === Real-Time Weather from Open-Meteo ===
-      var coords = farmerData.coordinates;
-      if (coords && coords.lat && coords.lng) {
-        var weatherUrl = 'https://api.open-meteo.com/v1/forecast?latitude=' + coords.lat +
-          '&longitude=' + coords.lng +
-          '&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation' +
-          '&timezone=auto';
+      // === Weather helper — shared by real-time widget & history lookup ===
+      var weatherCodes = {
+        0:{icon:'☀️',desc:'Clear sky'}, 1:{icon:'🌤️',desc:'Mainly clear'}, 2:{icon:'⛅',desc:'Partly cloudy'},
+        3:{icon:'☁️',desc:'Overcast'}, 45:{icon:'🌫️',desc:'Foggy'}, 48:{icon:'🌫️',desc:'Rime fog'},
+        51:{icon:'🌦️',desc:'Light drizzle'}, 53:{icon:'🌦️',desc:'Moderate drizzle'}, 55:{icon:'🌧️',desc:'Dense drizzle'},
+        61:{icon:'🌧️',desc:'Slight rain'}, 63:{icon:'🌧️',desc:'Moderate rain'}, 65:{icon:'🌧️',desc:'Heavy rain'},
+        71:{icon:'🌨️',desc:'Slight snow'}, 73:{icon:'🌨️',desc:'Moderate snow'}, 75:{icon:'❄️',desc:'Heavy snow'},
+        80:{icon:'🌦️',desc:'Rain showers'}, 81:{icon:'🌧️',desc:'Moderate showers'}, 82:{icon:'⛈️',desc:'Violent showers'},
+        95:{icon:'⛈️',desc:'Thunderstorm'}, 96:{icon:'⛈️',desc:'Thunderstorm + hail'}, 99:{icon:'⛈️',desc:'Severe thunderstorm'}
+      };
 
-        fetch(weatherUrl)
+      function showWeatherData(c, locationLabel) {
+        var wmo = weatherCodes[c.weather_code] || { icon: '🌡️', desc: 'Unknown' };
+        var setEl = function(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
+        setEl('farmerWeatherIcon', wmo.icon);
+        setEl('farmerWeatherTemp', Math.round(c.temperature_2m) + '°C');
+        setEl('farmerWeatherDesc', wmo.desc);
+        setEl('farmerWeatherHumidity', c.relative_humidity_2m + '%');
+        setEl('farmerWeatherWind', Math.round(c.wind_speed_10m) + ' km/h');
+        setEl('farmerWeatherRain', c.precipitation + ' mm');
+        setEl('farmerWeatherLocation', locationLabel);
+        var loading = document.getElementById('farmerWeatherLoading');
+        var content = document.getElementById('farmerWeatherContent');
+        if (loading) loading.style.display = 'none';
+        if (content) content.style.display = 'flex';
+      }
+
+      function showWeatherError(msg) {
+        var loading = document.getElementById('farmerWeatherLoading');
+        var content = document.getElementById('farmerWeatherContent');
+        if (loading) loading.style.display = 'none';
+        if (content) content.style.display = 'flex';
+        var descEl = document.getElementById('farmerWeatherDesc');
+        if (descEl) descEl.textContent = msg || 'Weather unavailable';
+      }
+
+      function fetchWeatherForCoords(lat, lng, locationLabel) {
+        var weatherUrl = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat +
+          '&longitude=' + lng +
+          '&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation&timezone=auto';
+        return fetch(weatherUrl)
           .then(function(res) { return res.json(); })
           .then(function(data) {
             if (data && data.current) {
-              var c = data.current;
-              var loading = document.getElementById('farmerWeatherLoading');
-              var content = document.getElementById('farmerWeatherContent');
-              if (loading) loading.style.display = 'none';
-              if (content) content.style.display = 'flex';
-
-              var weatherCodes = {
-                0: { icon: '☀️', desc: 'Clear sky' },
-                1: { icon: '🌤️', desc: 'Mainly clear' },
-                2: { icon: '⛅', desc: 'Partly cloudy' },
-                3: { icon: '☁️', desc: 'Overcast' },
-                45: { icon: '🌫️', desc: 'Foggy' },
-                48: { icon: '🌫️', desc: 'Rime fog' },
-                51: { icon: '🌦️', desc: 'Light drizzle' },
-                53: { icon: '🌦️', desc: 'Moderate drizzle' },
-                55: { icon: '🌧️', desc: 'Dense drizzle' },
-                61: { icon: '🌧️', desc: 'Slight rain' },
-                63: { icon: '🌧️', desc: 'Moderate rain' },
-                65: { icon: '🌧️', desc: 'Heavy rain' },
-                71: { icon: '🌨️', desc: 'Slight snow' },
-                73: { icon: '🌨️', desc: 'Moderate snow' },
-                75: { icon: '❄️', desc: 'Heavy snow' },
-                80: { icon: '🌦️', desc: 'Rain showers' },
-                81: { icon: '🌧️', desc: 'Moderate showers' },
-                82: { icon: '⛈️', desc: 'Violent showers' },
-                95: { icon: '⛈️', desc: 'Thunderstorm' },
-                96: { icon: '⛈️', desc: 'Thunderstorm + hail' },
-                99: { icon: '⛈️', desc: 'Severe thunderstorm' }
-              };
-              var wmo = weatherCodes[c.weather_code] || { icon: '🌡️', desc: 'Unknown' };
-
-              var iconEl = document.getElementById('farmerWeatherIcon');
-              var tempEl = document.getElementById('farmerWeatherTemp');
-              var descEl = document.getElementById('farmerWeatherDesc');
-              var humidEl = document.getElementById('farmerWeatherHumidity');
-              var windEl = document.getElementById('farmerWeatherWind');
-              var rainEl = document.getElementById('farmerWeatherRain');
-              var locEl = document.getElementById('farmerWeatherLocation');
-
-              if (iconEl) iconEl.textContent = wmo.icon;
-              if (tempEl) tempEl.textContent = Math.round(c.temperature_2m) + '°C';
-              if (descEl) descEl.textContent = wmo.desc;
-              if (humidEl) humidEl.textContent = c.relative_humidity_2m + '%';
-              if (windEl) windEl.textContent = Math.round(c.wind_speed_10m) + ' km/h';
-              if (rainEl) rainEl.textContent = c.precipitation + ' mm';
-              if (locEl) locEl.textContent = (farmerData.district || '') + ', ' + (farmerData.province || '');
+              showWeatherData(data.current, locationLabel);
+            } else {
+              showWeatherError('Weather data unavailable');
             }
           })
           .catch(function() {
-            var loading = document.getElementById('farmerWeatherLoading');
-            if (loading) loading.innerHTML = '<i data-lucide="cloud-off"></i> Weather unavailable';
-            if (typeof lucide !== 'undefined') lucide.createIcons();
+            showWeatherError('Failed to load weather');
+          });
+      }
+
+      function geocodeAndFetchWeather(town, province, district) {
+        var locationQuery = (town || '') + ', ' + (province || '') + ', South Africa';
+        var locationLabel = (district || town || '') + ', ' + (province || '');
+        return fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(locationQuery))
+          .then(function(res) { return res.json(); })
+          .then(function(geoData) {
+            if (geoData && geoData.length > 0) {
+              var lat = parseFloat(geoData[0].lat);
+              var lng = parseFloat(geoData[0].lon);
+              farmerData.coordinates = { lat: lat, lng: lng };
+              return fetchWeatherForCoords(lat, lng, locationLabel);
+            } else {
+              showWeatherError('Could not find your location');
+            }
+          })
+          .catch(function() {
+            showWeatherError('Failed to geocode location');
           });
       }
 
@@ -375,34 +382,19 @@
             farmerData.province = profile.province || '';
             farmerData.district = profile.district || '';
             farmerData.farmName = profile.farm_size_hectares ? profile.farm_size_hectares + ' ha Farm' : 'My Farm';
+
+            // === Weather: resolve coordinates → fetch weather ===
+            var locationLabel = (profile.district || profile.town || '') + ', ' + (profile.province || '');
             if (profile.latitude && profile.longitude) {
+              // Best case: DB has lat/lng
               farmerData.coordinates = { lat: profile.latitude, lng: profile.longitude };
-              // Trigger weather for real location
-              var wUrl = 'https://api.open-meteo.com/v1/forecast?latitude=' + profile.latitude +
-                '&longitude=' + profile.longitude +
-                '&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation&timezone=auto';
-              fetch(wUrl).then(function(wr) { return wr.json(); }).then(function(wd) {
-                if (wd && wd.current) {
-                  var c = wd.current;
-                  var wCodes = { 0:{icon:'☀️',desc:'Clear sky'}, 1:{icon:'🌤️',desc:'Mainly clear'}, 2:{icon:'⛅',desc:'Partly cloudy'},
-                    3:{icon:'☁️',desc:'Overcast'}, 45:{icon:'🌫️',desc:'Foggy'}, 51:{icon:'🌦️',desc:'Light drizzle'},
-                    61:{icon:'🌧️',desc:'Slight rain'}, 63:{icon:'🌧️',desc:'Moderate rain'}, 65:{icon:'🌧️',desc:'Heavy rain'},
-                    80:{icon:'🌦️',desc:'Rain showers'}, 95:{icon:'⛈️',desc:'Thunderstorm'} };
-                  var wmo = wCodes[c.weather_code] || { icon: '🌡️', desc: 'Unknown' };
-                  var setEl = function(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
-                  setEl('farmerWeatherIcon', wmo.icon);
-                  setEl('farmerWeatherTemp', Math.round(c.temperature_2m) + '°C');
-                  setEl('farmerWeatherDesc', wmo.desc);
-                  setEl('farmerWeatherHumidity', c.relative_humidity_2m + '%');
-                  setEl('farmerWeatherWind', Math.round(c.wind_speed_10m) + ' km/h');
-                  setEl('farmerWeatherRain', c.precipitation + ' mm');
-                  setEl('farmerWeatherLocation', (profile.district || '') + ', ' + (profile.province || ''));
-                  var loading = document.getElementById('farmerWeatherLoading');
-                  var content = document.getElementById('farmerWeatherContent');
-                  if (loading) loading.style.display = 'none';
-                  if (content) content.style.display = 'flex';
-                }
-              }).catch(function() {});
+              fetchWeatherForCoords(profile.latitude, profile.longitude, locationLabel);
+            } else if (profile.town || profile.province || profile.district) {
+              // Fallback: geocode from town/province via Nominatim
+              geocodeAndFetchWeather(profile.town || profile.district, profile.province, profile.district);
+            } else {
+              // No location at all — prompt user
+              showWeatherError('Add your location in Settings to see weather');
             }
 
             return Promise.all([
