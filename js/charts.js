@@ -406,8 +406,8 @@ document.addEventListener('DOMContentLoaded', function() {
         province: rd && rd.profile ? (rd.profile.province || '') : '',
         district: rd && rd.profile ? (rd.profile.district || '') : '',
         coordinates: {
-          lat: rd && rd.profile && rd.profile.latitude ? parseFloat(rd.profile.latitude) : -25.75,
-          lng: rd && rd.profile && rd.profile.longitude ? parseFloat(rd.profile.longitude) : 28.19
+          lat: rd && rd.profile && rd.profile.latitude ? Math.max(-90, Math.min(90, parseFloat(rd.profile.latitude))) : -25.75,
+          lng: rd && rd.profile && rd.profile.longitude ? ((parseFloat(rd.profile.longitude) + 180) % 360 + 360) % 360 - 180 : 28.19
         },
         yieldHistory: paddedYield,
         productionHistory: paddedYield,

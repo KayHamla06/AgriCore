@@ -506,9 +506,11 @@
             // === Weather: resolve coordinates → fetch weather ===
             var locationLabel = (profile.district || profile.town || '') + ', ' + (profile.province || '');
             if (profile.latitude && profile.longitude) {
-              // Best case: DB has lat/lng
-              farmerData.coordinates = { lat: profile.latitude, lng: profile.longitude };
-              fetchWeatherForCoords(profile.latitude, profile.longitude, locationLabel);
+              // Best case: DB has lat/lng — normalize to valid ranges
+              var normLat = Math.max(-90, Math.min(90, parseFloat(profile.latitude)));
+              var normLng = ((parseFloat(profile.longitude) + 180) % 360 + 360) % 360 - 180;
+              farmerData.coordinates = { lat: normLat, lng: normLng };
+              fetchWeatherForCoords(normLat, normLng, locationLabel);
             } else if (profile.town || profile.province || profile.district) {
               // Fallback: geocode from town/province via Nominatim
               geocodeAndFetchWeather(profile.town || profile.district, profile.province, profile.district);

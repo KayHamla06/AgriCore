@@ -50,6 +50,7 @@ const externalConnectSources = [
   'https://api.open-meteo.com',
   'https://archive-api.open-meteo.com',
   'https://nominatim.openstreetmap.org',
+  'https://cdn.jsdelivr.net',
 ];
 
 if (process.env.SUPABASE_URL) {

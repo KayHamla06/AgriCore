@@ -76,7 +76,8 @@ app.use(helmet({
         "https://*.supabase.co",
         "https://api.open-meteo.com",
         "https://archive-api.open-meteo.com",
-        "https://nominatim.openstreetmap.org"
+        "https://nominatim.openstreetmap.org",
+        "https://cdn.jsdelivr.net"
       ],
       frameSrc: ["'none'"],
       objectSrc: ["'none'"],
