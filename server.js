@@ -27,12 +27,16 @@ try {
 }
 
 // Restore PORT for frontend
-process.env.PORT = originalPort;
+if (originalPort !== undefined) {
+  process.env.PORT = originalPort;
+} else {
+  delete process.env.PORT;
+}
 
 const BACKEND_URL = `http://localhost:${BACKEND_INTERNAL_PORT}`;
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT, 10) || 3000;
 const IS_PROD = process.env.NODE_ENV === 'production';
 
 // In production, serve from dist/ (minified files)

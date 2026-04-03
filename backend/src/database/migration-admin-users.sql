@@ -19,8 +19,8 @@ CREATE TABLE IF NOT EXISTS login_activity (
   login_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_login_activity_user ON login_activity(user_id);
-CREATE INDEX idx_login_activity_time ON login_activity(login_at DESC);
+CREATE INDEX IF NOT EXISTS idx_login_activity_user ON login_activity(user_id);
+CREATE INDEX IF NOT EXISTS idx_login_activity_time ON login_activity(login_at DESC);
 
 -- 2. PROFILE EDIT PERMISSIONS
 -- Admin can grant/revoke users' ability to edit specific profile fields
@@ -47,8 +47,8 @@ CREATE TABLE IF NOT EXISTS admin_profile_edits (
   edited_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_admin_edits_target ON admin_profile_edits(target_user_id);
-CREATE INDEX idx_admin_edits_admin ON admin_profile_edits(admin_id);
+CREATE INDEX IF NOT EXISTS idx_admin_edits_target ON admin_profile_edits(target_user_id);
+CREATE INDEX IF NOT EXISTS idx_admin_edits_admin ON admin_profile_edits(admin_id);
 
 -- Enable RLS
 ALTER TABLE login_activity ENABLE ROW LEVEL SECURITY;
