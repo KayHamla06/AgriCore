@@ -24,6 +24,15 @@ router.get('/', requireRole('government'), farmerController.getAll);
 // GET /api/farmers/me — farmer's own profile
 router.get('/me', requireRole('farmer'), farmerController.getMyProfile);
 
+// GET /api/farmers/me/crops — farmer's own crops (token-based, no fid)
+router.get('/me/crops', requireRole('farmer'), farmerController.getMyCrops);
+
+// GET /api/farmers/me/livestock — farmer's own livestock (token-based, no fid)
+router.get('/me/livestock', requireRole('farmer'), farmerController.getMyLivestock);
+
+// GET /api/farmers/me/soil — farmer's own soil data (token-based, no fid)
+router.get('/me/soil', requireRole('farmer'), farmerController.getMySoilData);
+
 // GET /api/farmers/district/:district — farmers by district (gov only)
 router.get('/district/:district', requireRole('government'), farmerController.getByDistrict);
 

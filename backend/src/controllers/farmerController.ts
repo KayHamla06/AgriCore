@@ -36,6 +36,36 @@ export class FarmerController {
     }
   }
 
+  async getMyCrops(req: Request, res: Response, next: NextFunction) {
+    try {
+      const farmer = await farmerService.getByUserId(req.user!.id);
+      const records = await farmerService.getCrops(farmer.id);
+      res.json({ success: true, data: records });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getMyLivestock(req: Request, res: Response, next: NextFunction) {
+    try {
+      const farmer = await farmerService.getByUserId(req.user!.id);
+      const records = await farmerService.getLivestock(farmer.id);
+      res.json({ success: true, data: records });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getMySoilData(req: Request, res: Response, next: NextFunction) {
+    try {
+      const farmer = await farmerService.getByUserId(req.user!.id);
+      const records = await farmerService.getSoilData(farmer.id);
+      res.json({ success: true, data: records });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async updateProfile(req: Request, res: Response, next: NextFunction) {
     try {
       const farmer = await farmerService.updateProfile(req.params.farmerId, req.body);

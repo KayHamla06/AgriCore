@@ -62,8 +62,7 @@ document.addEventListener('DOMContentLoaded', function() {
           showEmptyFarmerChart('farmerProductionChart', 'Could not load farm data.');
           return;
         }
-        var fid = profileRes.data.id;
-        return fetch(API_BASE_F + '/farmers/' + fid + '/crops', { headers: { 'Authorization': 'Bearer ' + tokenF } })
+        return fetch(API_BASE_F + '/farmers/me/crops', { headers: { 'Authorization': 'Bearer ' + tokenF } })
           .then(function(r) { return r.json(); })
           .then(function(cropsRes) {
             var crops = (cropsRes && cropsRes.success && cropsRes.data) ? cropsRes.data : [];

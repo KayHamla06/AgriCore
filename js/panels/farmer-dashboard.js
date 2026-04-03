@@ -370,7 +370,6 @@
           .then(function(profileRes) {
             if (!profileRes || !profileRes.success || !profileRes.data) return;
             var profile = profileRes.data;
-            var fid = profile.id;
 
             // Sync profile fields into farmerData
             farmerData.province = profile.province || '';
@@ -407,9 +406,9 @@
             }
 
             return Promise.all([
-              fetch(API_BASE_R + '/farmers/' + fid + '/crops', { headers: { 'Authorization': 'Bearer ' + tokenR } })
+              fetch(API_BASE_R + '/farmers/me/crops', { headers: { 'Authorization': 'Bearer ' + tokenR } })
                 .then(function(r) { return r.json(); }).catch(function() { return { success: false }; }),
-              fetch(API_BASE_R + '/farmers/' + fid + '/livestock', { headers: { 'Authorization': 'Bearer ' + tokenR } })
+              fetch(API_BASE_R + '/farmers/me/livestock', { headers: { 'Authorization': 'Bearer ' + tokenR } })
                 .then(function(r) { return r.json(); }).catch(function() { return { success: false }; })
             ]);
           })

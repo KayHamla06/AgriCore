@@ -149,11 +149,10 @@
             .then(function(profileRes) {
               if (!profileRes || !profileRes.success || !profileRes.data) throw new Error('no profile');
               var profile = profileRes.data;
-              var fid = profile.id;
               return Promise.all([
-                fetch(API_BASE + '/farmers/' + fid + '/crops', { headers: { 'Authorization': 'Bearer ' + token } })
+                fetch(API_BASE + '/farmers/me/crops', { headers: { 'Authorization': 'Bearer ' + token } })
                   .then(function(r) { return r.json(); }).catch(function() { return { success: false }; }),
-                fetch(API_BASE + '/farmers/' + fid + '/livestock', { headers: { 'Authorization': 'Bearer ' + token } })
+                fetch(API_BASE + '/farmers/me/livestock', { headers: { 'Authorization': 'Bearer ' + token } })
                   .then(function(r) { return r.json(); }).catch(function() { return { success: false }; })
               ]).then(function(results) {
                 return { profile: profile, crops: results[0].success ? (results[0].data || []) : [], livestock: results[1].success ? (results[1].data || []) : [] };

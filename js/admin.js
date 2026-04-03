@@ -150,10 +150,18 @@ document.addEventListener('DOMContentLoaded', function () {
   // =============================================
 
   function apiFetch(path) {
-    return fetch(API_BASE + path, { headers: apiHeaders() })
-      .then(function (res) { return res.json(); })
-      .catch(function () { return { success: false, error: 'Network error' }; });
-  }
+    return fetch(API_BASE + path, {
+        headers: apiHeaders()
+    }).then(function(res) {
+        // Check if the response status is in the range 200-299
+        if (!res.ok) {
+            return { success: false, error: 'Server error: ' + res.status };
+        }
+        return res.json();
+    }).catch(function(err) {
+        return { success: false, error: 'Network error' };
+    });
+}
 
   function apiPost(path, body) {
     return fetch(API_BASE + path, {
