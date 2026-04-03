@@ -187,6 +187,11 @@ document.addEventListener('DOMContentLoaded', function() {
       if (typeof window.renderAnalyticsCharts === 'function') window.renderAnalyticsCharts();
     }
 
+    // Ensure map never leaks into non-map panels
+    if (panelName !== 'map' && typeof window.destroyFarmerMap === 'function') {
+      window.destroyFarmerMap();
+    }
+
     // Lazy-init map
     if (panelName === 'map') {
       setTimeout(function() {

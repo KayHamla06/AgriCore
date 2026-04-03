@@ -422,32 +422,40 @@ document.addEventListener('DOMContentLoaded', function () {
     if (role !== undefined) currentUserFilter = role;
     var url = '/admin/users' + (currentUserFilter ? '?role=' + currentUserFilter : '');
 
+    if (!usersTableBody) return;
+
     apiFetch(url).then(function (res) {
-      if (!res.success || !res.data || res.data.length === 0) {
+      var users = (res && res.success && Array.isArray(res.data)) ? res.data : [];
+
+      if (users.length === 0) {
         usersTableBody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>No users found</p></td></tr>';
         return;
       }
 
-      usersTableBody.innerHTML = res.data.map(function (u) {
-        var date = new Date(u.created_at).toLocaleDateString('en-ZA', {
+      usersTableBody.innerHTML = users.map(function (u) {
+        var createdAt = u && u.created_at ? new Date(u.created_at) : null;
+        var date = createdAt && !isNaN(createdAt.getTime()) ? createdAt.toLocaleDateString('en-ZA', {
           year: 'numeric', month: 'short', day: 'numeric',
-        });
-        var verStatus = u.verification_status || 'unverified';
+        }) : '—';
+        var verStatus = (u && u.verification_status) || 'unverified';
+        var roleName = (u && u.role) || 'farmer';
+        var userName = (u && u.name) || 'Unknown User';
+        var userEmail = (u && u.email) || '—';
         var verBadge = '';
         if (verStatus === 'verified') {
-          var badgeClass = u.role === 'farmer' ? 'badge-verified-farmer' : 'badge-verified-gov';
+          var badgeClass = roleName === 'farmer' ? 'badge-verified-farmer' : 'badge-verified-gov';
           verBadge = '<span class="ver-badge ' + badgeClass + '">✓</span>';
         } else if (verStatus === 'pending') {
           verBadge = '<span class="ver-badge badge-pending">⏳</span>';
         } else {
           verBadge = '<span class="ver-badge badge-unverified">✗</span>';
         }
-        return '<tr data-user-id="' + u.id + '">' +
-          '<td>' + AgriCore.escapeHtml(u.name) + ' ' + verBadge + '</td>' +
-          '<td>' + AgriCore.escapeHtml(u.email) + '</td>' +
-          '<td><span class="role-badge ' + u.role + '">' + u.role + '</span></td>' +
+        return '<tr data-user-id="' + (u && u.id ? u.id : '') + '">' +
+          '<td>' + AgriCore.escapeHtml(userName) + ' ' + verBadge + '</td>' +
+          '<td>' + AgriCore.escapeHtml(userEmail) + '</td>' +
+          '<td><span class="role-badge ' + roleName + '">' + roleName + '</span></td>' +
           '<td><span class="ver-status-badge ' + verStatus + '">' + verStatus + '</span></td>' +
-          '<td>' + AgriCore.escapeHtml(u.phone || '—') + '</td>' +
+          '<td>' + AgriCore.escapeHtml((u && u.phone) || '—') + '</td>' +
           '<td>' + date + '</td>' +
           '</tr>';
       }).join('');
@@ -458,6 +466,8 @@ document.addEventListener('DOMContentLoaded', function () {
           openUserDetail(row.getAttribute('data-user-id'));
         });
       });
+    }).catch(function() {
+      usersTableBody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>Failed to load users. Please refresh.</p></td></tr>';
     });
   }
 
@@ -1053,12 +1063,15 @@ document.addEventListener('DOMContentLoaded', function () {
       currentDetailUser = userRes.data;
       renderUserHeader(userRes.data);
       renderUserProfile(userRes.data);
-      renderUserPhotos(filesRes.success ? filesRes.data : []);
-      renderLoginActivity(loginsRes.success ? loginsRes.data : []);
-      renderPermission(permRes.success ? permRes.data : { can_edit_profile: true });
-      renderEditHistory(historyRes.success ? historyRes.data : []);
+      renderUserPhotos((filesRes.success && Array.isArray(filesRes.data)) ? filesRes.data : []);
+      renderLoginActivity((loginsRes.success && Array.isArray(loginsRes.data)) ? loginsRes.data : []);
+      renderPermission((permRes.success && permRes.data) ? permRes.data : { can_edit_profile: true });
+      renderEditHistory((historyRes.success && Array.isArray(historyRes.data)) ? historyRes.data : []);
 
       if (typeof lucide !== 'undefined') lucide.createIcons();
+    }).catch(function() {
+      AgriCore.showToast('Failed to load user details.', 'error');
+      switchPanel('users');
     });
   }
 

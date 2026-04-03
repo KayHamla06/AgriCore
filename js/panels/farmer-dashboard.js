@@ -11,6 +11,11 @@
 
     getHTML: function() {
       return `
+        <div class="farm-data-loader" id="farmerDataLoader">
+          <div class="farm-loader-icon"><i data-lucide="tractor"></i></div>
+          <div class="farm-loader-text">Loading your farm data...</div>
+          <div class="farm-loader-subtext">Syncing profile, crops, livestock and weather</div>
+        </div>
         <div class="section-header">
           <div>
             <h2 class="section-title">Welcome back, <span id="farmerWelcomeName">Farmer</span></h2>
@@ -169,6 +174,15 @@
 
     init: function(ctx) {
       if (!ctx.isFarmer) return;
+
+      var panelRoot = document.getElementById('panel-dashboard-farmer');
+      var panelLoader = document.getElementById('farmerDataLoader');
+      if (panelRoot) panelRoot.classList.add('farmer-panel-loading');
+      if (panelLoader) panelLoader.classList.remove('hidden');
+
+      function hideFarmerLoader() {
+        if (panelLoader) panelLoader.classList.add('hidden');
+      }
 
       var user = ctx.user;
       // Start with a placeholder — real data loaded asynchronously below
@@ -630,7 +644,10 @@
               if (typeof lucide !== 'undefined') lucide.createIcons();
             }
           })
-          .catch(function() { /* Keep placeholder data visible */ });
+          .catch(function() { /* Keep placeholder data visible */ })
+          .finally(function() {
+            hideFarmerLoader();
+          });
       })();
 
       // === Weather History Lookup (Farmer) ===

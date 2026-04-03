@@ -435,7 +435,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const primaryFarmer = (isFarmer && realData && realData.profile)
       ? buildFarmerFromRealData(realData)
       : (isFarmer
-        ? (AgriCore.mockFarmers.find(f => f.id === user.id) || AgriCore.mockFarmers[0])
+        ? {
+            id: user.id || 'me',
+            name: user.name || 'Farmer',
+            province: '',
+            district: '',
+            coordinates: { lat: -25.75, lng: 28.19 },
+            yieldHistory: Array(12).fill(0),
+            productionHistory: Array(12).fill(0),
+            cropRecords: [],
+            livestockRecords: []
+          }
         : {
             ...AgriCore.mockFarmers[0],
             coordinates: (realData && Array.isArray(realData.farmers) && realData.farmers.length && realData.farmers[0].latitude && realData.farmers[0].longitude)

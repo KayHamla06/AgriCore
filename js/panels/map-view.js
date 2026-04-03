@@ -30,6 +30,7 @@
       var farmerMap = null;
       var token = (ctx.user && ctx.user.token) || '';
       var API_BASE = window.AGRICORE_API_BASE || '/api';
+      var mapPanelId = 'panel-map';
 
       function getMarkerColor(f) {
         var thirtyDays = 30 * 24 * 60 * 60 * 1000;
@@ -64,6 +65,9 @@
       }
 
       window.initFarmerMap = function() {
+        var mapPanel = document.getElementById(mapPanelId);
+        if (!mapPanel || !mapPanel.classList.contains('active')) return;
+
         if (farmerMap) {
           farmerMap.invalidateSize();
           return;
@@ -105,6 +109,15 @@
           .catch(function() {
             // Keep map visible even when API fails.
           });
+      };
+
+      window.destroyFarmerMap = function() {
+        if (farmerMap) {
+          farmerMap.remove();
+          farmerMap = null;
+        }
+        var container = document.getElementById('farmerMap');
+        if (container) container.innerHTML = '';
       };
     }
   });
