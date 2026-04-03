@@ -19,12 +19,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // API base: adjust this to match your backend URL
   var API_BASE = window.AGRICORE_API_BASE || '/api';
-  var token = user.token || '';
+
+  function getToken() {
+    var u = AgriCore.getCurrentUser();
+    return (u && u.token) ? u.token : '';
+  }
 
   function apiHeaders() {
     return {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + token,
+      'Authorization': 'Bearer ' + getToken(),
     };
   }
 
@@ -153,6 +157,11 @@ document.addEventListener('DOMContentLoaded', function () {
     return fetch(API_BASE + path, {
         headers: apiHeaders()
     }).then(function(res) {
+        if (res.status === 401) {
+            AgriCore.showToast('Session expired. Please log in again.', 'error');
+            setTimeout(function() { window.location.href = '/auth/login'; }, 1000);
+            return { success: false, error: 'Session expired' };
+        }
         return res.json().then(function(body) {
             if (!res.ok) {
                 return { success: false, error: (body && body.error) || 'Server error: ' + res.status };
@@ -174,6 +183,11 @@ document.addEventListener('DOMContentLoaded', function () {
       body: JSON.stringify(body || {}),
     })
       .then(function (res) {
+        if (res.status === 401) {
+          AgriCore.showToast('Session expired. Please log in again.', 'error');
+          setTimeout(function() { window.location.href = '/auth/login'; }, 1000);
+          return { success: false, error: 'Session expired' };
+        }
         return res.json().then(function(data) {
           if (!res.ok) return { success: false, error: (data && data.error) || 'Server error: ' + res.status };
           return data;
@@ -189,6 +203,11 @@ document.addEventListener('DOMContentLoaded', function () {
       body: JSON.stringify(body || {}),
     })
       .then(function (res) {
+        if (res.status === 401) {
+          AgriCore.showToast('Session expired. Please log in again.', 'error');
+          setTimeout(function() { window.location.href = '/auth/login'; }, 1000);
+          return { success: false, error: 'Session expired' };
+        }
         return res.json().then(function(data) {
           if (!res.ok) return { success: false, error: (data && data.error) || 'Server error: ' + res.status };
           return data;
