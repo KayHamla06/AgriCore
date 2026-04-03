@@ -11,6 +11,11 @@
 
     getHTML: function() {
       return `
+        <div class="farm-data-loader" id="govDataLoader">
+          <div class="farm-loader-icon"><i data-lucide="tractor"></i></div>
+          <div class="farm-loader-text">Loading regional farm data...</div>
+          <div class="farm-loader-subtext">Fetching farmers, activity and weather insights</div>
+        </div>
         <div class="section-header">
           <div>
             <h2 class="section-title">Government Dashboard</h2>
@@ -167,6 +172,15 @@
 
     init: function(ctx) {
       if (!ctx.isGov) return;
+
+      var panelRoot = document.getElementById('panel-dashboard-gov');
+      var panelLoader = document.getElementById('govDataLoader');
+      if (panelRoot) panelRoot.classList.add('farmer-panel-loading');
+      if (panelLoader) panelLoader.classList.remove('hidden');
+
+      function hideGovLoader() {
+        if (panelLoader) panelLoader.classList.add('hidden');
+      }
 
       var escape = AgriCore.escapeHtml;
       var API_BASE = window.AGRICORE_API_BASE || '/api';
@@ -332,7 +346,10 @@
           }
         }
       })
-      .catch(function() {});
+      .catch(function() {})
+      .finally(function() {
+        hideGovLoader();
+      });
 
       // === Attention Count ===
       var viewAttentionBtn = document.getElementById('viewAttentionBtn');

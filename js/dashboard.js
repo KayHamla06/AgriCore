@@ -268,7 +268,7 @@ document.addEventListener('DOMContentLoaded', function() {
   var notifBtn = document.getElementById('notifBtn');
 
   function loadNotifications() {
-    AgriCore.apiGet('/notifications?unread=true').then(function(res) {
+    return AgriCore.apiGet('/notifications?unread=true').then(function(res) {
       var notifications = (res.success && res.data) ? res.data : [];
       if (notifCountEl) notifCountEl.textContent = notifications.length;
       if (notifDot) notifDot.style.display = notifications.length > 0 ? '' : 'none';
@@ -298,7 +298,9 @@ document.addEventListener('DOMContentLoaded', function() {
             item.addEventListener('click', function() {
               var nid = item.dataset.notifId;
               if (nid) {
-                AgriCore.apiPatch('/notifications/' + nid + '/read').catch(function() {});
+                AgriCore.apiPatch('/notifications/' + nid + '/read')
+                  .then(function() { loadNotifications(); })
+                  .catch(function() {});
                 item.style.opacity = '0.5';
               }
             });
@@ -310,6 +312,17 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   loadNotifications();
+
+  // Near-real-time notifications (polling fallback)
+  setInterval(function() {
+    loadNotifications();
+  }, 15000);
+
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+      loadNotifications();
+    }
+  });
 
   if (notifBtn) {
     notifBtn.addEventListener('click', function(e) {

@@ -42,6 +42,8 @@ document.addEventListener('DOMContentLoaded', function () {
   var sidebarAvatar = document.getElementById('sidebarAvatar');
   var sidebarUserName = document.getElementById('sidebarUserName');
   var topbarAvatar = document.getElementById('topbarAvatar');
+  var adminDashboardContent = document.getElementById('adminDashboardContent');
+  var adminDataLoader = document.getElementById('adminDataLoader');
 
   // Stats
   var statTotalUsers = document.getElementById('statTotalUsers');
@@ -220,19 +222,30 @@ document.addEventListener('DOMContentLoaded', function () {
   //  LOAD DATA
   // =============================================
 
+  function showAdminLoader() {
+    if (adminDashboardContent) adminDashboardContent.classList.add('farmer-panel-loading');
+    if (adminDataLoader) adminDataLoader.classList.remove('hidden');
+  }
+
+  function hideAdminLoader() {
+    if (adminDataLoader) adminDataLoader.classList.add('hidden');
+  }
+
   function loadAllData() {
-    loadStats();
-    loadDeletionRequests();
-    loadUsers();
-    loadVerificationRequests();
-    loadDataApprovalRequests();
-    loadTickets();
-    loadAdminNotifications();
+    return Promise.allSettled([
+      loadStats(),
+      loadDeletionRequests(),
+      loadUsers(),
+      loadVerificationRequests(),
+      loadDataApprovalRequests(),
+      loadTickets(),
+      loadAdminNotifications(),
+    ]);
   }
 
   // ------ Stats ------
   function loadStats() {
-    apiFetch('/admin/stats').then(function (res) {
+    var pStats = apiFetch('/admin/stats').then(function (res) {
       if (res.success && res.data) {
         var d = res.data;
         if (statTotalUsers) statTotalUsers.textContent = d.totalUsers.toLocaleString();
@@ -250,7 +263,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Load verification stats
-    apiFetch('/verification/pending').then(function (res) {
+    var pVer = apiFetch('/verification/pending').then(function (res) {
       var count = (res.success && res.data) ? res.data.length : 0;
       var el = document.getElementById('statPendingVerifications');
       if (el) el.textContent = count.toLocaleString();
@@ -259,7 +272,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Load data approval stats
-    apiFetch('/data-approval/stats').then(function (res) {
+    var pData = apiFetch('/data-approval/stats').then(function (res) {
       if (res.success && res.data) {
         var el = document.getElementById('statPendingData');
         if (el) el.textContent = res.data.pendingData.toLocaleString();
@@ -267,6 +280,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (dot) dot.style.display = res.data.pendingData > 0 ? '' : 'none';
       }
     });
+
+    return Promise.allSettled([pStats, pVer, pData]);
   }
 
   // ------ Deletion Requests ------
@@ -276,7 +291,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (status !== undefined) currentFilter = status;
     var url = '/admin/deletions' + (currentFilter ? '?status=' + currentFilter : '');
 
-    apiFetch(url).then(function (res) {
+    return apiFetch(url).then(function (res) {
       if (!res.success || !res.data) {
         renderDeletionList(deletionRequestList, []);
         renderDeletionList(overviewDeletionsList, []);
@@ -422,9 +437,9 @@ document.addEventListener('DOMContentLoaded', function () {
     if (role !== undefined) currentUserFilter = role;
     var url = '/admin/users' + (currentUserFilter ? '?role=' + currentUserFilter : '');
 
-    if (!usersTableBody) return;
+    if (!usersTableBody) return Promise.resolve();
 
-    apiFetch(url).then(function (res) {
+    return apiFetch(url).then(function (res) {
       var users = (res && res.success && Array.isArray(res.data)) ? res.data : [];
 
       if (users.length === 0) {
@@ -492,7 +507,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (vstatus !== undefined) currentVerFilter = vstatus;
     var url = currentVerFilter ? '/verification/all?status=' + currentVerFilter : '/verification/all';
 
-    apiFetch(url).then(function (res) {
+    return apiFetch(url).then(function (res) {
       if (!res.success || !res.data || res.data.length === 0) {
         if (verificationRequestList) {
           verificationRequestList.innerHTML = '<div class="empty-state"><i data-lucide="inbox"></i><p>No verification requests</p></div>';
@@ -667,7 +682,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (dstatus !== undefined) currentDataFilter = dstatus;
     var url = currentDataFilter ? '/data-approval/all?status=' + currentDataFilter : '/data-approval/all';
 
-    apiFetch(url).then(function (res) {
+    return apiFetch(url).then(function (res) {
       if (!res.success || !res.data || res.data.length === 0) {
         if (dataApprovalList) {
           dataApprovalList.innerHTML = '<div class="empty-state"><i data-lucide="inbox"></i><p>No data submissions</p></div>';
@@ -829,7 +844,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (currentTicketUrgency) params.push('urgency=' + currentTicketUrgency);
     var qs = params.length ? '?' + params.join('&') : '';
 
-    apiFetch('/admin/tickets' + qs).then(function(res) {
+    return apiFetch('/admin/tickets' + qs).then(function(res) {
       if (!res.success || !res.data || res.data.length === 0) {
         if (ticketList) {
           ticketList.innerHTML = '<div class="empty-state"><i data-lucide="inbox"></i><p>No tickets found</p></div>';
@@ -1114,7 +1129,7 @@ document.addEventListener('DOMContentLoaded', function () {
         verifyBtn.style.display = '';
         verifyBtn.textContent = '';
         if (u.role === 'government' && verStatus === 'pending') {
-          verifyBtn.innerHTML = '<i data-lucide="check-circle" style="width:14px;height:14px;margin-right:4px;"></i> Approve Official';
+          verifyBtn.innerHTML = '<i data-lucide="check-circle" style="width:14px;height:14px;margin-right:4px;"></i> Approve & Send Email';
         } else {
           verifyBtn.innerHTML = '<i data-lucide="badge-check" style="width:14px;height:14px;margin-right:4px;"></i> Verify User';
         }
@@ -1123,14 +1138,21 @@ document.addEventListener('DOMContentLoaded', function () {
           verifyBtn.textContent = 'Processing...';
           apiPost('/verification/' + u.id + '/approve', { notes: 'Approved by admin' }).then(function(res) {
             if (res.success) {
-              AgriCore.showToast(u.role === 'government' ? 'Government official approved!' : 'User verified!', 'success');
+              AgriCore.showToast(
+                u.role === 'government'
+                  ? 'Government official approved and verification email sent.'
+                  : 'User verified!',
+                'success'
+              );
               verifyBtn.style.display = 'none';
               if (udStatus) { udStatus.textContent = 'verified'; udStatus.className = 'ver-status-badge verified'; }
               loadAllData();
             } else {
               AgriCore.showToast(res.error || 'Verification failed.', 'error');
               verifyBtn.disabled = false;
-              verifyBtn.innerHTML = '<i data-lucide="badge-check" style="width:14px;height:14px;margin-right:4px;"></i> Verify User';
+              verifyBtn.innerHTML = u.role === 'government'
+                ? '<i data-lucide="check-circle" style="width:14px;height:14px;margin-right:4px;"></i> Approve & Send Email'
+                : '<i data-lucide="badge-check" style="width:14px;height:14px;margin-right:4px;"></i> Verify User';
             }
             if (typeof lucide !== 'undefined') lucide.createIcons();
           });
@@ -1486,7 +1508,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var adminMarkAllRead = document.getElementById('adminMarkAllRead');
 
   function loadAdminNotifications() {
-    apiFetch('/notifications?unread=true').then(function(res) {
+    return apiFetch('/notifications?unread=true').then(function(res) {
       var notifs = (res.success && res.data) ? res.data : [];
       if (adminNotifCount) adminNotifCount.textContent = notifs.length;
       if (adminNotifDot) adminNotifDot.style.display = notifs.length > 0 ? '' : 'none';
@@ -1512,6 +1534,19 @@ document.addEventListener('DOMContentLoaded', function () {
               '<div style="flex-shrink:0;width:8px;height:8px;border-radius:50%;background:var(--primary);margin-top:6px;" title="Unread"></div>' +
               '</div>';
           }).join('');
+
+          adminNotifList.querySelectorAll('.notif-item').forEach(function(item) {
+            item.addEventListener('click', function() {
+              var nid = item.getAttribute('data-notif-id');
+              if (!nid) return;
+              fetch(API_BASE + '/notifications/' + nid + '/read', {
+                method: 'PATCH',
+                headers: apiHeaders()
+              }).then(function() {
+                loadAdminNotifications();
+              });
+            });
+          });
         }
         if (typeof lucide !== 'undefined') lucide.createIcons();
       }
@@ -1544,6 +1579,20 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
+  // Near-real-time notifications (polling fallback)
+  setInterval(function() {
+    loadAdminNotifications();
+  }, 15000);
+
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+      loadAdminNotifications();
+    }
+  });
+
   // =============================================
-  loadAllData();
+  showAdminLoader();
+  loadAllData().finally(function() {
+    hideAdminLoader();
+  });
 });

@@ -8,6 +8,7 @@ import { supabaseAdmin } from '../config/supabaseClient';
 import { config } from '../config';
 import { AppError } from '../middleware/errorHandler';
 import { notificationService } from './notificationService';
+import { emailVerificationService } from './emailVerificationService';
 import { activityLogService } from './activityLogService';
 import logger from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
@@ -202,9 +203,20 @@ export class VerificationService {
   ): Promise<void> {
     const { data: targetUser } = await supabaseAdmin
       .from('users')
-      .select('role')
+      .select('role, email')
       .eq('id', userId)
       .maybeSingle();
+
+    if (!targetUser) {
+      throw new AppError('User not found', 404);
+    }
+
+    const isGov = targetUser.role === 'government';
+
+    // Government officials must confirm email after approval.
+    if (isGov && targetUser.email) {
+      await emailVerificationService.sendVerificationEmail(targetUser.email);
+    }
 
     const { error } = await supabaseAdmin
       .from('users')
@@ -235,15 +247,13 @@ export class VerificationService {
       .maybeSingle();
     const adminName = admin?.name || 'Admin';
 
-    const isGov = targetUser?.role === 'government';
-
     // Notify the user — they'll see this on next login (no SMTP)
     await notificationService.create({
       user_id: userId,
       type: 'verification_approved',
       title: isGov ? 'Application Approved ✅' : 'Account Verified ✅',
       body: isGov
-        ? `${adminName} has approved your government official application. You now have full access to the dashboard.`
+        ? `${adminName} approved your government official application and sent you a verification email. Please verify your email to complete access setup.`
         : `${adminName} has verified your account. You now have full access to the dashboard.`,
     });
 
