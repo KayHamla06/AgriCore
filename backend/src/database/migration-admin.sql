@@ -33,6 +33,7 @@ CREATE INDEX IF NOT EXISTS idx_deletion_requests_user ON deletion_requests(user_
 ALTER TABLE deletion_requests ENABLE ROW LEVEL SECURITY;
 
 -- Users can view their own deletion requests
+DROP POLICY IF EXISTS "Users can view own deletion requests" ON deletion_requests;
 CREATE POLICY "Users can view own deletion requests"
     ON deletion_requests FOR SELECT
     USING (auth.uid() IN (
@@ -40,6 +41,7 @@ CREATE POLICY "Users can view own deletion requests"
     ));
 
 -- Users can create their own deletion requests
+DROP POLICY IF EXISTS "Users can create own deletion requests" ON deletion_requests;
 CREATE POLICY "Users can create own deletion requests"
     ON deletion_requests FOR INSERT
     WITH CHECK (auth.uid() IN (
@@ -47,6 +49,7 @@ CREATE POLICY "Users can create own deletion requests"
     ));
 
 -- Admins can view all deletion requests
+DROP POLICY IF EXISTS "Admins can view all deletion requests" ON deletion_requests;
 CREATE POLICY "Admins can view all deletion requests"
     ON deletion_requests FOR SELECT
     USING (auth.uid() IN (
@@ -54,6 +57,7 @@ CREATE POLICY "Admins can view all deletion requests"
     ));
 
 -- Admins can update deletion requests (approve/reject)
+DROP POLICY IF EXISTS "Admins can update deletion requests" ON deletion_requests;
 CREATE POLICY "Admins can update deletion requests"
     ON deletion_requests FOR UPDATE
     USING (auth.uid() IN (

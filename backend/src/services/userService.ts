@@ -29,7 +29,7 @@ export class UserService {
         .from('farmers')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       return { ...user, farmer };
     }
@@ -44,14 +44,26 @@ export class UserService {
     userId: string,
     updates: { name?: string; phone?: string }
   ) {
+    // Only allow known fields to be updated
+    const safeUpdates: Record<string, unknown> = {};
+    if (updates.name !== undefined) safeUpdates.name = updates.name;
+    if (updates.phone !== undefined) safeUpdates.phone = updates.phone;
+
+    if (Object.keys(safeUpdates).length === 0) {
+      throw new AppError('No valid settings to update', 400);
+    }
+
     const { data, error } = await supabaseAdmin
       .from('users')
-      .update(updates)
+      .update(safeUpdates)
       .eq('id', userId)
       .select()
       .single();
 
-    if (error) throw new AppError('Failed to update settings', 500);
+    if (error) {
+      logger.error('Failed to update settings', { userId, error: error.message });
+      throw new AppError('Failed to update settings', 500);
+    }
     return data;
   }
 
@@ -79,7 +91,7 @@ export class UserService {
         .from('farmers')
         .select('id, profile_image_url, id_document_url, farm_images')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (farmer) {
         // 2. Delete stored files
@@ -201,7 +213,17 @@ export class UserService {
       .select()
       .single();
 
-    if (error) throw new AppError('Failed to update address', 500);
+    if (error) {
+      // If address columns don't exist yet (migration-profile-address.sql not run)
+      if (error.code === '42703' || error.message?.includes('column')) {
+        logger.warn('Address columns missing — run migration-profile-address.sql', { error: error.message });
+        throw new AppError(
+          'Address fields not available. Database migration required.',
+          503
+        );
+      }
+      throw new AppError('Failed to update address', 500);
+    }
     return data;
   }
 }

@@ -45,7 +45,7 @@ export class ChatService {
           .select('room_id')
           .eq('room_id', m.room_id)
           .eq('user_id', otherUserId)
-          .single();
+          .maybeSingle();
 
         if (otherMember) {
           // Check it's a DM (not group)
@@ -54,7 +54,7 @@ export class ChatService {
             .select('*')
             .eq('id', m.room_id)
             .eq('is_group', false)
-            .single();
+            .maybeSingle();
 
           if (room) return room;
         }
@@ -117,7 +117,7 @@ export class ChatService {
       .select('room_id')
       .eq('room_id', roomId)
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (!member) throw new AppError('Not a member of this chat', 403);
 
@@ -142,7 +142,7 @@ export class ChatService {
       .select('room_id')
       .eq('room_id', roomId)
       .eq('user_id', senderId)
-      .single();
+      .maybeSingle();
 
     if (!member) throw new AppError('Not a member of this chat', 403);
 

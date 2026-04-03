@@ -56,10 +56,12 @@ ALTER TABLE profile_permissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_profile_edits ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies (service role bypasses these)
+DROP POLICY IF EXISTS "Users can view own login activity" ON login_activity;
 CREATE POLICY "Users can view own login activity"
   ON login_activity FOR SELECT
   USING (auth.uid() IN (SELECT auth_id FROM users WHERE id = user_id));
 
+DROP POLICY IF EXISTS "Users can view own permissions" ON profile_permissions;
 CREATE POLICY "Users can view own permissions"
   ON profile_permissions FOR SELECT
   USING (auth.uid() IN (SELECT auth_id FROM users WHERE id = user_id));

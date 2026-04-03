@@ -35,12 +35,14 @@ CREATE INDEX IF NOT EXISTS idx_verification_docs_status ON verification_document
 -- RLS for verification_documents
 ALTER TABLE verification_documents ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS verdocs_own_read ON verification_documents;
 CREATE POLICY verdocs_own_read ON verification_documents
     FOR SELECT USING (
         user_id = (SELECT id FROM users WHERE auth_id = auth.uid())
         OR EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'admin')
     );
 
+DROP POLICY IF EXISTS verdocs_own_insert ON verification_documents;
 CREATE POLICY verdocs_own_insert ON verification_documents
     FOR INSERT WITH CHECK (
         user_id = (SELECT id FROM users WHERE auth_id = auth.uid())
@@ -84,12 +86,14 @@ CREATE INDEX IF NOT EXISTS idx_data_changes_status ON data_change_requests(statu
 -- RLS for data_change_requests
 ALTER TABLE data_change_requests ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS datareq_read ON data_change_requests;
 CREATE POLICY datareq_read ON data_change_requests
     FOR SELECT USING (
         user_id = (SELECT id FROM users WHERE auth_id = auth.uid())
         OR EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role IN ('admin', 'government'))
     );
 
+DROP POLICY IF EXISTS datareq_insert ON data_change_requests;
 CREATE POLICY datareq_insert ON data_change_requests
     FOR INSERT WITH CHECK (
         user_id = (SELECT id FROM users WHERE auth_id = auth.uid())

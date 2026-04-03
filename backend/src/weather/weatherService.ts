@@ -174,7 +174,7 @@ export class WeatherService {
       .eq('farmer_id', farmerId)
       .order('date', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (error) return null;
     return data as WeatherRecord;

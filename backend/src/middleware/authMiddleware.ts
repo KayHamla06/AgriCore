@@ -7,7 +7,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { supabaseAdmin } from '../config/supabaseClient';
 import logger from '../utils/logger';
-import type { AuthUser, UserRole } from '../models/types';
+import type { AuthUser, UserRole, VerificationStatus } from '../models/types';
 
 // Extend Express Request to carry authenticated user
 declare global {
@@ -48,11 +48,29 @@ export async function authMiddleware(
     }
 
     // 2. Get role and profile from our users table
-    const { data: profile, error: profileError } = await supabaseAdmin
+    let profile: Record<string, unknown> | null = null;
+    let profileError: unknown = null;
+
+    // Try with verification_status first; fall back without it if column missing
+    const result = await supabaseAdmin
       .from('users')
       .select('id, email, role, name, verification_status')
       .eq('auth_id', user.id)
       .single();
+
+    if (result.error && (result.error.code === '42703' || result.error.message?.includes('verification_status'))) {
+      // verification_status column doesn't exist yet — query without it
+      const fallback = await supabaseAdmin
+        .from('users')
+        .select('id, email, role, name')
+        .eq('auth_id', user.id)
+        .single();
+      profile = fallback.data;
+      profileError = fallback.error;
+    } else {
+      profile = result.data;
+      profileError = result.error;
+    }
 
     if (profileError || !profile) {
       logger.warn('Auth: user profile not found', { authId: user.id });
@@ -62,11 +80,11 @@ export async function authMiddleware(
 
     // 3. Attach to request
     req.user = {
-      id: profile.id,
-      email: profile.email,
+      id: profile.id as string,
+      email: profile.email as string,
       role: profile.role as UserRole,
-      name: profile.name,
-      verification_status: profile.verification_status,
+      name: profile.name as string,
+      verification_status: (profile.verification_status as VerificationStatus) || undefined,
     };
 
     next();
@@ -102,7 +120,7 @@ export async function optionalAuth(
         .from('users')
         .select('id, email, role, name, verification_status')
         .eq('auth_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (profile) {
         req.user = {

@@ -74,7 +74,7 @@ export class AuthService {
       .from('users')
       .select('id, email, role, name, verification_status')
       .eq('auth_id', authUser.id)
-      .single();
+      .maybeSingle();
 
     if (existing) {
       return existing as ProfileRow;
@@ -336,13 +336,13 @@ export class AuthService {
    * Get user profile by auth ID.
    */
   async getUserByAuthId(authId: string): Promise<AuthUser | null> {
-    const { data, error } = await supabaseAdmin
+    const { data } = await supabaseAdmin
       .from('users')
       .select('id, email, role, name, verification_status')
       .eq('auth_id', authId)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) return null;
+    if (!data) return null;
 
     return {
       id: data.id,

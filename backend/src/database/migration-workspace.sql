@@ -60,6 +60,7 @@ CREATE INDEX IF NOT EXISTS idx_tasks_deadline ON tasks(deadline);
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 
 -- Users can see tasks assigned to them or by them
+DROP POLICY IF EXISTS tasks_select ON tasks;
 CREATE POLICY tasks_select ON tasks FOR SELECT USING (
   auth.uid()::text IN (
     SELECT auth_id FROM users WHERE id = tasks.assigned_to
@@ -91,6 +92,7 @@ CREATE INDEX IF NOT EXISTS idx_todos_due ON todos(due_date) WHERE completed = fa
 ALTER TABLE todos ENABLE ROW LEVEL SECURITY;
 
 -- Todos are strictly private
+DROP POLICY IF EXISTS todos_owner ON todos;
 CREATE POLICY todos_owner ON todos FOR ALL USING (
   auth.uid()::text = (SELECT auth_id FROM users WHERE id = todos.user_id)
 );
@@ -115,12 +117,14 @@ CREATE INDEX IF NOT EXISTS idx_notes_user ON notes(user_id);
 ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
 
 -- Owner + shared recipients can view
+DROP POLICY IF EXISTS notes_select ON notes;
 CREATE POLICY notes_select ON notes FOR SELECT USING (
   auth.uid()::text = (SELECT auth_id FROM users WHERE id = notes.user_id)
   OR (is_shared = true AND (SELECT id FROM users WHERE auth_id = auth.uid()::text) = ANY(shared_with))
 );
 
 -- Only owner can modify
+DROP POLICY IF EXISTS notes_modify ON notes;
 CREATE POLICY notes_modify ON notes FOR ALL USING (
   auth.uid()::text = (SELECT auth_id FROM users WHERE id = notes.user_id)
 );
@@ -150,6 +154,7 @@ CREATE INDEX IF NOT EXISTS idx_field_visits_farmer ON field_visits(farmer_id);
 
 ALTER TABLE field_visits ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS field_visits_select ON field_visits;
 CREATE POLICY field_visits_select ON field_visits FOR SELECT USING (
   auth.uid()::text = (SELECT auth_id FROM users WHERE id = field_visits.agent_id)
   OR (SELECT id FROM users WHERE auth_id = auth.uid()::text) = ANY(shared_with)
@@ -193,6 +198,7 @@ ALTER TABLE chat_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
 
 -- Members can access their rooms
+DROP POLICY IF EXISTS chat_rooms_member ON chat_rooms;
 CREATE POLICY chat_rooms_member ON chat_rooms FOR SELECT USING (
   EXISTS (
     SELECT 1 FROM chat_members cm
@@ -201,6 +207,7 @@ CREATE POLICY chat_rooms_member ON chat_rooms FOR SELECT USING (
   )
 );
 
+DROP POLICY IF EXISTS chat_messages_member ON chat_messages;
 CREATE POLICY chat_messages_member ON chat_messages FOR SELECT USING (
   EXISTS (
     SELECT 1 FROM chat_members cm
@@ -232,6 +239,7 @@ CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at
 
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS notifications_owner ON notifications;
 CREATE POLICY notifications_owner ON notifications FOR ALL USING (
   auth.uid()::text = (SELECT auth_id FROM users WHERE id = notifications.user_id)
 );
@@ -258,6 +266,7 @@ CREATE INDEX IF NOT EXISTS idx_activity_logs_created ON activity_logs(created_at
 ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
 
 -- Only admins can read activity logs
+DROP POLICY IF EXISTS activity_logs_admin ON activity_logs;
 CREATE POLICY activity_logs_admin ON activity_logs FOR SELECT USING (
   EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid()::text AND role = 'admin')
 );

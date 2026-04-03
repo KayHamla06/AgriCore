@@ -176,46 +176,54 @@ ALTER TABLE weather_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE support_plans ENABLE ROW LEVEL SECURITY;
 
 -- Users: can read own row
+DROP POLICY IF EXISTS users_own_read ON users;
 CREATE POLICY users_own_read ON users
     FOR SELECT USING (auth.uid() = auth_id);
 
 -- Farmers: farmers see own data, gov sees all
+DROP POLICY IF EXISTS farmers_own_read ON farmers;
 CREATE POLICY farmers_own_read ON farmers
     FOR SELECT USING (
         user_id = (SELECT id FROM users WHERE auth_id = auth.uid())
         OR EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'government')
     );
 
+DROP POLICY IF EXISTS farmers_own_update ON farmers;
 CREATE POLICY farmers_own_update ON farmers
     FOR UPDATE USING (
         user_id = (SELECT id FROM users WHERE auth_id = auth.uid())
     );
 
 -- Livestock: same pattern
+DROP POLICY IF EXISTS livestock_access ON livestock;
 CREATE POLICY livestock_access ON livestock
     FOR SELECT USING (
         farmer_id IN (SELECT id FROM farmers WHERE user_id = (SELECT id FROM users WHERE auth_id = auth.uid()))
         OR EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'government')
     );
 
+DROP POLICY IF EXISTS livestock_insert ON livestock;
 CREATE POLICY livestock_insert ON livestock
     FOR INSERT WITH CHECK (
         farmer_id IN (SELECT id FROM farmers WHERE user_id = (SELECT id FROM users WHERE auth_id = auth.uid()))
     );
 
 -- Crops: same pattern
+DROP POLICY IF EXISTS crops_access ON crops;
 CREATE POLICY crops_access ON crops
     FOR SELECT USING (
         farmer_id IN (SELECT id FROM farmers WHERE user_id = (SELECT id FROM users WHERE auth_id = auth.uid()))
         OR EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'government')
     );
 
+DROP POLICY IF EXISTS crops_insert ON crops;
 CREATE POLICY crops_insert ON crops
     FOR INSERT WITH CHECK (
         farmer_id IN (SELECT id FROM farmers WHERE user_id = (SELECT id FROM users WHERE auth_id = auth.uid()))
     );
 
 -- Soil data: same pattern
+DROP POLICY IF EXISTS soil_access ON soil_data;
 CREATE POLICY soil_access ON soil_data
     FOR SELECT USING (
         farmer_id IN (SELECT id FROM farmers WHERE user_id = (SELECT id FROM users WHERE auth_id = auth.uid()))
@@ -223,6 +231,7 @@ CREATE POLICY soil_access ON soil_data
     );
 
 -- Weather: same pattern
+DROP POLICY IF EXISTS weather_access ON weather_history;
 CREATE POLICY weather_access ON weather_history
     FOR SELECT USING (
         farmer_id IN (SELECT id FROM farmers WHERE user_id = (SELECT id FROM users WHERE auth_id = auth.uid()))
@@ -230,17 +239,20 @@ CREATE POLICY weather_access ON weather_history
     );
 
 -- Support plans: farmers see own, gov sees all
+DROP POLICY IF EXISTS plans_read ON support_plans;
 CREATE POLICY plans_read ON support_plans
     FOR SELECT USING (
         farmer_id IN (SELECT id FROM farmers WHERE user_id = (SELECT id FROM users WHERE auth_id = auth.uid()))
         OR EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'government')
     );
 
+DROP POLICY IF EXISTS plans_insert ON support_plans;
 CREATE POLICY plans_insert ON support_plans
     FOR INSERT WITH CHECK (
         created_by = (SELECT id FROM users WHERE auth_id = auth.uid())
     );
 
+DROP POLICY IF EXISTS plans_update ON support_plans;
 CREATE POLICY plans_update ON support_plans
     FOR UPDATE USING (
         created_by = (SELECT id FROM users WHERE auth_id = auth.uid())

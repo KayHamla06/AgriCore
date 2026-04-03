@@ -51,7 +51,7 @@ export class PdfService {
       .from('users')
       .select('*')
       .eq('id', farmer.user_id)
-      .single();
+      .maybeSingle();
 
     // 4. Get related data
     const [livestockRes, cropsRes, soilRes] = await Promise.all([
@@ -238,7 +238,7 @@ export class PdfService {
       .from('users')
       .select('name, role')
       .eq('id', requestingUserId)
-      .single();
+      .maybeSingle();
 
     const generatedBy = generatedByUser ? `${generatedByUser.name} (${generatedByUser.role})` : requestingUserId;
     doc.fontSize(8).font('Helvetica').fillColor('#999')
@@ -626,7 +626,7 @@ export class PdfService {
         .from('users')
         .select('verification_status')
         .eq('id', farmerUserId)
-        .single();
+        .maybeSingle();
 
       const verStatus = farmerUser?.verification_status || 'unverified';
       const badgeColor = verStatus === 'verified' ? '#2563eb' : '#f59e0b';
@@ -641,7 +641,7 @@ export class PdfService {
       .from('users')
       .select('name, role')
       .eq('id', requestingUserId)
-      .single();
+      .maybeSingle();
 
     const generatedBy = genUser ? `${genUser.name} (${genUser.role})` : requestingUserId;
     doc.fontSize(8).font('Helvetica').fillColor('#999')

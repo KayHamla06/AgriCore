@@ -226,7 +226,7 @@ export class AdminService {
         .from('farmers')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
       return { ...user, farmer };
     }
 
@@ -386,7 +386,7 @@ export class AdminService {
       .from('farmers')
       .select('profile_image_url, id_document_url, farm_images')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (farmer) {
       if (farmer.profile_image_url) {
@@ -425,13 +425,13 @@ export class AdminService {
    * Get a user's profile edit permission.
    */
   async getProfilePermission(userId: string): Promise<ProfilePermission | null> {
-    const { data, error } = await supabaseAdmin
+    const { data } = await supabaseAdmin
       .from('profile_permissions')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) return null;
+    if (!data) return null;
     return data as ProfilePermission;
   }
 

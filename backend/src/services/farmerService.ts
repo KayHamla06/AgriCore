@@ -58,7 +58,7 @@ export class FarmerService {
       .from('farmers')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (!error && data) {
       return data as FarmerProfile;

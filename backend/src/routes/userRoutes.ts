@@ -28,7 +28,7 @@ async function checkEditPermission(req: Request, res: Response, next: NextFuncti
       .from('profile_permissions')
       .select('can_edit_profile')
       .eq('user_id', req.user!.id)
-      .single();
+      .maybeSingle();
 
     // If no record exists, allow edits by default
     if (data && data.can_edit_profile === false) {
@@ -97,7 +97,7 @@ router.get('/edit-permission', async (req: Request, res: Response, next: NextFun
       .from('profile_permissions')
       .select('can_edit_profile, notes')
       .eq('user_id', req.user!.id)
-      .single();
+      .maybeSingle();
 
     res.json({
       success: true,
