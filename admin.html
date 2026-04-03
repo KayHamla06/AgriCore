@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="referrer" content="strict-origin-when-cross-origin">
+  <!-- Update your CSP meta tag to include https://unpkg.com -->
+  <meta http-equiv="Content-Security-Policy" content="connect-src 'self' https://*.supabase.co https://api.open-meteo.com https://archive-api.open-meteo.com https://unpkg.com;">
   <base href="/">
   <meta name="robots" content="noindex, nofollow">
   <title>Admin Dashboard — AgriCore</title>
@@ -378,14 +380,14 @@
             <button class="filter-tab" data-tstatus="resolved">Resolved</button>
           </div>
 
-          <div style="display:flex;gap:.5rem;margin-top:.75rem;flex-wrap:wrap;">
-            <select class="form-select" id="ticketTypeFilter" style="width:auto;font-size:.8125rem;padding:.375rem .75rem;">
+          <div class="ticket-filters">
+            <select class="form-select ticket-filter-select" id="ticketTypeFilter" title="Filter tickets by type">
               <option value="">All Types</option>
               <option value="bug">Bug</option>
               <option value="feature_request">Feature Request</option>
               <option value="general_inquiry">General Enquiry</option>
             </select>
-            <select class="form-select" id="ticketUrgencyFilter" style="width:auto;font-size:.8125rem;padding:.375rem .75rem;">
+            <select class="form-select ticket-filter-select" id="ticketUrgencyFilter" title="Filter tickets by urgency">
               <option value="">All Urgency</option>
               <option value="high">High</option>
               <option value="medium">Medium</option>
