@@ -128,6 +128,13 @@ app.use(requestLogger);
 // =============================================
 //  HEALTH CHECK
 // =============================================
+app.get('/', (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'AgriCore backend is running',
+  });
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({
     success: true,
