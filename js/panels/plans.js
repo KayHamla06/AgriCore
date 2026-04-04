@@ -61,10 +61,10 @@
 
       function renderFarmerPlans() {
         var user = ctx.user;
-        var myPlans = AgriCore.mockPlans.filter(function(p) {
+        var myPlans = [].filter(function(p) {
           return p.farmerId === user.id && p.createdByRole === 'farmer';
         });
-        var govPlans = AgriCore.mockPlans.filter(function(p) {
+        var govPlans = [].filter(function(p) {
           return p.farmerId === user.id && p.createdByRole === 'government';
         });
 
@@ -191,7 +191,7 @@
           }
 
           var newPlan = {
-            id: 'PLN-' + String(AgriCore.mockPlans.length + 1).padStart(3, '0'),
+            id: 'PLN-' + Date.now(),
             farmerId: ctx.user.id,
             farmerName: ctx.user.name,
             type: type,
@@ -206,7 +206,6 @@
             approvedDate: null
           };
 
-          AgriCore.mockPlans.push(newPlan);
           AgriCore.showToast('Farm plan created successfully!', 'success');
           renderFarmerPlans();
         });
@@ -243,7 +242,7 @@
         var tbody = document.getElementById('plansTableBody');
         if (!tbody) return;
 
-        tbody.innerHTML = AgriCore.mockPlans.map(function(p) {
+        tbody.innerHTML = [].map(function(p) {
           var statusClass = p.status === 'Active' ? 'success' : p.status === 'Pending' ? 'warning' : p.status === 'Completed' ? 'info' : 'secondary';
           return '<tr>' +
             '<td>' + escape(p.id) + '</td>' +

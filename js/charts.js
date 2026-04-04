@@ -447,10 +447,15 @@ document.addEventListener('DOMContentLoaded', function() {
             livestockRecords: []
           }
         : {
-            ...AgriCore.mockFarmers[0],
-            coordinates: (realData && Array.isArray(realData.farmers) && realData.farmers.length && realData.farmers[0].latitude && realData.farmers[0].longitude)
-              ? { lat: parseFloat(realData.farmers[0].latitude), lng: parseFloat(realData.farmers[0].longitude) }
-              : AgriCore.mockFarmers[0].coordinates
+            id: '',
+            name: '',
+            province: '',
+            district: '',
+            coordinates: { lat: -25.75, lng: 28.19 },
+            yieldHistory: Array(12).fill(0),
+            productionHistory: Array(12).fill(0),
+            cropRecords: [],
+            livestockRecords: []
           });
 
     // ---- Yield Trends (12-month line chart) ----
@@ -730,7 +735,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const provinceScores = {};
       const regionFarmers = (realData && Array.isArray(realData.farmers) && realData.farmers.length)
         ? realData.farmers
-        : AgriCore.mockFarmers;
+        : [];
       const thirtyDaysAgoTs = Date.now() - (30 * 24 * 60 * 60 * 1000);
       regionFarmers.forEach(f => {
         const province = f.province || 'Unknown';
@@ -780,7 +785,7 @@ document.addEventListener('DOMContentLoaded', function() {
       let riskCounts = { Low: 0, Medium: 0, High: 0, Critical: 0 };
       const riskFarmers = (realData && Array.isArray(realData.farmers) && realData.farmers.length)
         ? realData.farmers
-        : AgriCore.mockFarmers;
+        : [];
       const thirtyDaysAgoTs = Date.now() - (30 * 24 * 60 * 60 * 1000);
       riskFarmers.forEach(f => {
         if (f.yieldHistory || f.productionHistory || f.livestockRecords) {
