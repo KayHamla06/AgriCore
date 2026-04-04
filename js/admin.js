@@ -477,13 +477,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // ------ Users ------
   var currentUserFilter = '';
-  var lastUsersCache = [];
+  var usersCacheByFilter = {
+    all: [],
+    farmer: [],
+    government: [],
+    admin: [],
+  };
   var usersRetryTimer = null;
+
+  function normalizeUserFilter(filter) {
+    if (filter === 'farmer' || filter === 'government' || filter === 'admin') return filter;
+    return '';
+  }
+
+  function filterKey(filter) {
+    return filter || 'all';
+  }
 
   function getActiveUsersFilterFromUi() {
     var active = document.querySelector('#userFilters .filter-tab.active');
     if (!active) return '';
-    return active.getAttribute('data-role') || '';
+    return normalizeUserFilter(active.getAttribute('data-role') || '');
   }
 
   function scheduleUsersRetry(delayMs) {
@@ -537,7 +551,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function loadUsers(role) {
     if (role !== undefined) {
-      currentUserFilter = role;
+      currentUserFilter = normalizeUserFilter(role);
     } else {
       currentUserFilter = getActiveUsersFilterFromUi();
     }
@@ -551,8 +565,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
       if (!res || !res.success) {
         setUsersDebugMeta('[Users API] failed at ' + at + ' | filter=' + (currentUserFilter || 'all') + ' | error=' + ((res && res.error) || 'unknown'));
-        if (lastUsersCache.length > 0) {
-          renderUsersTable(lastUsersCache);
+        var cached = usersCacheByFilter[filterKey(currentUserFilter)] || [];
+        if (cached.length > 0) {
+          renderUsersTable(cached);
         } else {
           usersTableBody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>Failed to load users. Retrying...</p></td></tr>';
         }
@@ -565,13 +580,14 @@ document.addEventListener('DOMContentLoaded', function () {
         setUsersDebugMeta('[Users API] ok at ' + at + ' | filter=' + (currentUserFilter || 'all') + ' | returned=' + users.length);
       }
 
-      lastUsersCache = users;
+      usersCacheByFilter[filterKey(currentUserFilter)] = users;
       renderUsersTable(users);
     }).catch(function() {
       var at = new Date().toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       setUsersDebugMeta('[Users API] network/parsing error at ' + at + ' | filter=' + (currentUserFilter || 'all'));
-      if (lastUsersCache.length > 0) {
-        renderUsersTable(lastUsersCache);
+      var cached = usersCacheByFilter[filterKey(currentUserFilter)] || [];
+      if (cached.length > 0) {
+        renderUsersTable(cached);
       } else {
         usersTableBody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>Failed to load users. Retrying...</p></td></tr>';
       }
@@ -586,7 +602,7 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!tab) return;
       userFilters.querySelectorAll('.filter-tab').forEach(function (t) { t.classList.remove('active'); });
       tab.classList.add('active');
-      loadUsers(tab.getAttribute('data-role'));
+      loadUsers(normalizeUserFilter(tab.getAttribute('data-role')));
     });
   }
 
