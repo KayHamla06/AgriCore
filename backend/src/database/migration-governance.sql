@@ -103,6 +103,11 @@ CREATE POLICY datareq_insert ON data_change_requests
 --  5. AUDIT LOGS TABLE (enhanced)
 -- =============================================
 -- Already have activity_logs from migration-workspace.sql
--- Add additional index for faster lookups
-CREATE INDEX IF NOT EXISTS idx_activity_logs_target ON activity_logs(resource_type, resource_id);
-CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON activity_logs(action);
+-- Add additional indexes only if the table exists in this environment.
+DO $$
+BEGIN
+    IF to_regclass('public.activity_logs') IS NOT NULL THEN
+        CREATE INDEX IF NOT EXISTS idx_activity_logs_target ON activity_logs(resource_type, resource_id);
+        CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON activity_logs(action);
+    END IF;
+END $$;

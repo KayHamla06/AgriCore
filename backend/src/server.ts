@@ -15,6 +15,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 dotenv.config(); // Also try CWD for Render compatibility
 
 import { config, validateConfig } from './config';
+import { runSupabaseStartupDiagnostics } from './config/supabaseClient';
 import { errorHandler, notFoundHandler, sanitizeBody, requestLogger } from './middleware';
 import logger from './utils/logger';
 import { startWeatherCron } from './weather/weatherCron';
@@ -184,6 +185,10 @@ process.on('unhandledRejection', (reason: unknown) => {
 // =============================================
 const server = app.listen(config.port, () => {
   logger.info(`AgriCore API running on port ${config.port} [${config.nodeEnv}]`);
+
+  runSupabaseStartupDiagnostics().catch(err => {
+    logger.warn('Supabase startup diagnostics failed', { error: err instanceof Error ? err.message : String(err) });
+  });
 
   // Start weather cron job
   if (config.weather.apiUrl) {

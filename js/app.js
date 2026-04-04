@@ -362,17 +362,35 @@ const AgriCore = (() => {
   }
 
   // ===== Session Management =====
+  const USER_STORAGE_KEY = 'agricore_user';
+
   function setCurrentUser(user) {
-    sessionStorage.setItem('agricore_user', JSON.stringify(user));
+    const serialized = JSON.stringify(user);
+    // Persist across normal refreshes/restarts; keep sessionStorage for legacy reads.
+    localStorage.setItem(USER_STORAGE_KEY, serialized);
+    sessionStorage.setItem(USER_STORAGE_KEY, serialized);
   }
 
   function getCurrentUser() {
-    const data = sessionStorage.getItem('agricore_user');
-    return data ? JSON.parse(data) : null;
+    const fromLocal = localStorage.getItem(USER_STORAGE_KEY);
+    const fromSession = sessionStorage.getItem(USER_STORAGE_KEY);
+    const data = fromLocal || fromSession;
+    if (!data) return null;
+
+    try {
+      const parsed = JSON.parse(data);
+      // Backfill sessionStorage when user came from localStorage only.
+      if (!fromSession) sessionStorage.setItem(USER_STORAGE_KEY, data);
+      return parsed;
+    } catch (_err) {
+      clearCurrentUser();
+      return null;
+    }
   }
 
   function clearCurrentUser() {
-    sessionStorage.removeItem('agricore_user');
+    localStorage.removeItem(USER_STORAGE_KEY);
+    sessionStorage.removeItem(USER_STORAGE_KEY);
   }
 
   // ===== Toast Notifications =====
