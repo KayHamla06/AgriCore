@@ -1,336 +1,16 @@
 /* ============================================
-   AgriCore — Shared Utilities & Mock Data Store
+   AgriCore — Shared Utilities
    ============================================ */
 
 const AgriCore = (() => {
   'use strict';
 
-  // ===== Mock Farmers Data =====
-  const mockFarmers = [
-    {
-      id: 'F001', name: 'Thabo Molefe', email: 'thabo@agricore.com',
-      farmName: 'Sunrise Valley Farm', province: 'Limpopo', district: 'Vhembe',
-      farmSize: 45, farmerType: 'Smallholder', mainActivity: 'Crops',
-      performanceScore: 87, status: 'improving',
-      yieldHistory: [3.1, 3.4, 3.2, 3.5, 3.8, 4.0, 3.7, 4.1, 4.2, 4.0, 4.3, 4.5],
-      productionHistory: [120, 135, 128, 142, 155, 160, 148, 165, 170, 162, 175, 182],
-      livestock: 45,
-      timeline: [
-        { date: 'Mar 2026', content: 'Uploaded March yield data — 4.5t/ha' },
-        { date: 'Feb 2026', content: 'Performance score increased to 87' },
-        { date: 'Jan 2026', content: 'Received irrigation support plan' },
-        { date: 'Dec 2025', content: 'Completed training program' },
-        { date: 'Nov 2025', content: 'Flagged for follow-up — yield dropped' },
-      ]
-    },
-    {
-      id: 'F002', name: 'Nomsa Dlamini', email: 'nomsa@agricore.com',
-      farmName: 'Green Hills Estate', province: 'KwaZulu-Natal', district: 'uMgungundlovu',
-      farmSize: 120, farmerType: 'Commercial', mainActivity: 'Mixed',
-      performanceScore: 92, status: 'improving',
-      yieldHistory: [4.0, 4.2, 4.1, 4.3, 4.5, 4.4, 4.6, 4.7, 4.8, 4.6, 4.9, 5.0],
-      productionHistory: [200, 215, 210, 225, 235, 230, 245, 250, 260, 248, 265, 275],
-      livestock: 230,
-      timeline: [
-        { date: 'Mar 2026', content: 'Record yield of 5.0t/ha achieved' },
-        { date: 'Feb 2026', content: 'Expanded livestock operation' },
-        { date: 'Jan 2026', content: 'Performance score: 92 — Top performer' },
-      ]
-    },
-    {
-      id: 'F003', name: 'Sipho Nkosi', email: 'sipho@agricore.com',
-      farmName: 'Riverside Farm', province: 'Mpumalanga', district: 'Ehlanzeni',
-      farmSize: 28, farmerType: 'Subsistence', mainActivity: 'Crops',
-      performanceScore: 54, status: 'declining',
-      yieldHistory: [3.5, 3.3, 3.1, 3.0, 2.8, 2.9, 2.6, 2.5, 2.7, 2.4, 2.3, 2.1],
-      productionHistory: [95, 90, 85, 82, 78, 80, 72, 70, 74, 68, 65, 60],
-      livestock: 12,
-      timeline: [
-        { date: 'Mar 2026', content: 'Yield dropped to 2.1t/ha — critical' },
-        { date: 'Feb 2026', content: 'Flagged for follow-up by district office' },
-        { date: 'Jan 2026', content: 'Financial aid plan created' },
-        { date: 'Dec 2025', content: 'Drought impact assessment completed' },
-      ]
-    },
-    {
-      id: 'F004', name: 'Lindiwe Zulu', email: 'lindiwe@agricore.com',
-      farmName: 'Golden Harvest', province: 'Free State', district: 'Thabo Mofutsanyane',
-      farmSize: 85, farmerType: 'Smallholder', mainActivity: 'Livestock',
-      performanceScore: 73, status: 'improving',
-      yieldHistory: [2.5, 2.6, 2.8, 2.7, 2.9, 3.0, 3.1, 3.0, 3.2, 3.3, 3.4, 3.5],
-      productionHistory: [65, 70, 75, 72, 78, 82, 85, 80, 88, 90, 92, 95],
-      livestock: 380,
-      timeline: [
-        { date: 'Mar 2026', content: 'Livestock herd expanded to 380' },
-        { date: 'Feb 2026', content: 'Market access plan initiated' },
-      ]
-    },
-    {
-      id: 'F005', name: 'Bongani Mthembu', email: 'bongani@agricore.com',
-      farmName: 'Misty Ridge', province: 'Eastern Cape', district: 'Amathole',
-      farmSize: 35, farmerType: 'Subsistence', mainActivity: 'Mixed',
-      performanceScore: 41, status: 'declining',
-      yieldHistory: [2.8, 2.6, 2.5, 2.3, 2.4, 2.2, 2.0, 1.9, 2.1, 1.8, 1.7, 1.6],
-      productionHistory: [72, 68, 65, 60, 62, 58, 52, 50, 54, 48, 45, 42],
-      livestock: 25,
-      timeline: [
-        { date: 'Mar 2026', content: 'Critical — performance below threshold' },
-        { date: 'Feb 2026', content: 'Comprehensive support plan underway' },
-        { date: 'Jan 2026', content: 'Flagged as high-risk farmer' },
-      ]
-    },
-    {
-      id: 'F006', name: 'Fatima Patel', email: 'fatima@agricore.com',
-      farmName: 'Sunflower Fields', province: 'North West', district: 'Ngaka Modiri Molema',
-      farmSize: 200, farmerType: 'Commercial', mainActivity: 'Crops',
-      performanceScore: 95, status: 'improving',
-      yieldHistory: [4.5, 4.7, 4.6, 4.8, 4.9, 5.0, 5.1, 5.0, 5.2, 5.3, 5.4, 5.5],
-      productionHistory: [280, 295, 290, 305, 315, 320, 325, 318, 335, 340, 348, 355],
-      livestock: 0,
-      timeline: [
-        { date: 'Mar 2026', content: 'Top performer in North West province' },
-        { date: 'Feb 2026', content: 'New irrigation system installed' },
-      ]
-    },
-    {
-      id: 'F007', name: 'Johannes van der Merwe', email: 'johannes@agricore.com',
-      farmName: 'Oak Valley', province: 'Western Cape', district: 'Cape Winelands',
-      farmSize: 150, farmerType: 'Commercial', mainActivity: 'Mixed',
-      performanceScore: 88, status: 'improving',
-      yieldHistory: [3.8, 3.9, 4.0, 4.1, 4.0, 4.2, 4.3, 4.4, 4.3, 4.5, 4.6, 4.7],
-      productionHistory: [190, 200, 205, 210, 208, 218, 225, 230, 226, 238, 242, 248],
-      livestock: 175,
-      timeline: [
-        { date: 'Mar 2026', content: 'Diversified into wine grapes' },
-        { date: 'Feb 2026', content: 'Performance consistently improving' },
-      ]
-    },
-    {
-      id: 'F008', name: 'Mpho Kgatlhane', email: 'mpho@agricore.com',
-      farmName: 'Baobab Kraal', province: 'Limpopo', district: 'Capricorn',
-      farmSize: 18, farmerType: 'Subsistence', mainActivity: 'Livestock',
-      performanceScore: 38, status: 'declining',
-      yieldHistory: [2.0, 1.9, 1.8, 1.7, 1.8, 1.6, 1.5, 1.4, 1.5, 1.3, 1.2, 1.1],
-      productionHistory: [40, 38, 36, 34, 36, 32, 30, 28, 30, 26, 24, 22],
-      livestock: 18,
-      timeline: [
-        { date: 'Mar 2026', content: 'Emergency intervention recommended' },
-        { date: 'Feb 2026', content: 'Lost livestock to disease outbreak' },
-        { date: 'Jan 2026', content: 'Flagged — critical condition' },
-      ]
-    }
-  ];
-
-  // ===== Mock Plans Data =====
-  const mockPlans = [
-    { id: 'PLN-001', farmerId: 'F003', farmerName: 'Sipho Nkosi', type: 'Financial Aid', created: '2026-01-15', budget: 25000, status: 'Active', createdBy: 'Dr. Sarah Ndlovu', createdByRole: 'government', objectives: 'Provide emergency financial support for drought recovery', timeline: '6 months', approvalStatus: 'Approved', approvedDate: '2026-01-18' },
-    { id: 'PLN-002', farmerId: 'F005', farmerName: 'Bongani Mthembu', type: 'Comprehensive', created: '2026-02-01', budget: 75000, status: 'Active', createdBy: 'Dr. Sarah Ndlovu', createdByRole: 'government', objectives: 'Full farm rehabilitation including soil, livestock, and infrastructure', timeline: '12 months', approvalStatus: 'Approved', approvedDate: '2026-02-05' },
-    { id: 'PLN-003', farmerId: 'F001', farmerName: 'Thabo Molefe', type: 'Irrigation Support', created: '2026-01-10', budget: 40000, status: 'Completed', createdBy: 'Dr. Sarah Ndlovu', createdByRole: 'government', objectives: 'Install drip irrigation for vegetable plots', timeline: '6 months', approvalStatus: 'Approved', approvedDate: '2026-01-12' },
-    { id: 'PLN-004', farmerId: 'F004', farmerName: 'Lindiwe Zulu', type: 'Market Access', created: '2026-02-20', budget: 15000, status: 'Active', createdBy: 'Dr. Sarah Ndlovu', createdByRole: 'government', objectives: 'Connect farmer to local and regional markets', timeline: '3 months', approvalStatus: 'Approved', approvedDate: '2026-02-22' },
-    { id: 'PLN-005', farmerId: 'F008', farmerName: 'Mpho Kgatlhane', type: 'Training Program', created: '2026-03-01', budget: 10000, status: 'Pending', createdBy: 'Dr. Sarah Ndlovu', createdByRole: 'government', objectives: 'Agricultural best practices and soil management training', timeline: '3 months', approvalStatus: 'Pending', approvedDate: null },
-    { id: 'PLN-006', farmerId: 'F008', farmerName: 'Mpho Kgatlhane', type: 'Equipment Support', created: '2026-03-10', budget: 55000, status: 'Pending', createdBy: 'Dr. Sarah Ndlovu', createdByRole: 'government', objectives: 'Provide essential farming equipment and tools', timeline: '6 months', approvalStatus: 'Pending', approvedDate: null },
-    { id: 'PLN-007', farmerId: 'F001', farmerName: 'Thabo Molefe', type: 'Crop Rotation', created: '2026-02-15', budget: 5000, status: 'In Progress', createdBy: 'Thabo Molefe', createdByRole: 'farmer', objectives: 'Rotate maize and beans to improve soil nitrogen levels', timeline: '6 months', approvalStatus: null, approvedDate: null },
-    { id: 'PLN-008', farmerId: 'F001', farmerName: 'Thabo Molefe', type: 'Livestock Expansion', created: '2026-03-01', budget: 20000, status: 'Draft', createdBy: 'Thabo Molefe', createdByRole: 'farmer', objectives: 'Increase goat herd by 10 head for milk production', timeline: '12 months', approvalStatus: null, approvedDate: null },
-  ];
-
+  // ===== Utility Constants =====
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-  // ===== Livestock Records (per farmer) =====
-  const livestockRecords = {
-    'F001': [
-      { animalType: 'Cattle', total: 25, born: 6, twins: 1, triplets: 0, sold: 3, consumed: 1, young: 8, lastDosed: '2026-02-10', diseases: ['Tick Fever'], treatment: 'Dip treatment applied' },
-      { animalType: 'Goats', total: 15, born: 4, twins: 2, triplets: 0, sold: 2, consumed: 0, young: 5, lastDosed: '2026-01-20', diseases: [], treatment: '' },
-      { animalType: 'Chickens', total: 5, born: 0, twins: 0, triplets: 0, sold: 0, consumed: 0, young: 0, lastDosed: '2026-03-01', diseases: [], treatment: '' }
-    ],
-    'F002': [
-      { animalType: 'Cattle', total: 120, born: 18, twins: 3, triplets: 0, sold: 12, consumed: 2, young: 25, lastDosed: '2026-03-05', diseases: ['Foot-and-Mouth'], treatment: 'Vaccination completed' },
-      { animalType: 'Sheep', total: 80, born: 15, twins: 4, triplets: 1, sold: 8, consumed: 3, young: 18, lastDosed: '2026-02-28', diseases: [], treatment: '' },
-      { animalType: 'Goats', total: 30, born: 8, twins: 2, triplets: 0, sold: 4, consumed: 1, young: 10, lastDosed: '2026-02-15', diseases: [], treatment: '' }
-    ],
-    'F003': [
-      { animalType: 'Goats', total: 8, born: 1, twins: 0, triplets: 0, sold: 0, consumed: 1, young: 2, lastDosed: '2025-11-10', diseases: ['Heartwater'], treatment: 'Antibiotics administered' },
-      { animalType: 'Chickens', total: 4, born: 0, twins: 0, triplets: 0, sold: 0, consumed: 2, young: 0, lastDosed: '2025-12-01', diseases: ['Newcastle Disease'], treatment: 'Vaccination pending' }
-    ],
-    'F004': [
-      { animalType: 'Cattle', total: 200, born: 30, twins: 5, triplets: 0, sold: 20, consumed: 5, young: 45, lastDosed: '2026-03-10', diseases: [], treatment: '' },
-      { animalType: 'Sheep', total: 120, born: 22, twins: 6, triplets: 1, sold: 10, consumed: 4, young: 28, lastDosed: '2026-03-08', diseases: ['Blue Tongue'], treatment: 'Under observation' },
-      { animalType: 'Goats', total: 60, born: 12, twins: 3, triplets: 0, sold: 6, consumed: 2, young: 15, lastDosed: '2026-02-20', diseases: [], treatment: '' }
-    ],
-    'F005': [
-      { animalType: 'Cattle', total: 10, born: 1, twins: 0, triplets: 0, sold: 0, consumed: 1, young: 2, lastDosed: '2025-10-15', diseases: ['Lumpy Skin Disease', 'Tick Fever'], treatment: 'Treatment ongoing' },
-      { animalType: 'Goats', total: 12, born: 2, twins: 0, triplets: 0, sold: 0, consumed: 2, young: 3, lastDosed: '2025-11-01', diseases: ['Heartwater'], treatment: 'Antibiotics' },
-      { animalType: 'Chickens', total: 3, born: 0, twins: 0, triplets: 0, sold: 0, consumed: 1, young: 0, lastDosed: '2025-09-20', diseases: [], treatment: '' }
-    ],
-    'F006': [],
-    'F007': [
-      { animalType: 'Cattle', total: 80, born: 10, twins: 2, triplets: 0, sold: 8, consumed: 2, young: 15, lastDosed: '2026-03-12', diseases: [], treatment: '' },
-      { animalType: 'Sheep', total: 60, born: 10, twins: 3, triplets: 0, sold: 5, consumed: 2, young: 12, lastDosed: '2026-03-01', diseases: [], treatment: '' },
-      { animalType: 'Pigs', total: 35, born: 8, twins: 0, triplets: 0, sold: 6, consumed: 1, young: 10, lastDosed: '2026-02-25', diseases: [], treatment: '' }
-    ],
-    'F008': [
-      { animalType: 'Cattle', total: 8, born: 0, twins: 0, triplets: 0, sold: 0, consumed: 2, young: 1, lastDosed: '2025-08-20', diseases: ['Anthrax', 'Lumpy Skin Disease'], treatment: 'Emergency veterinary care' },
-      { animalType: 'Goats', total: 10, born: 1, twins: 0, triplets: 0, sold: 0, consumed: 3, young: 2, lastDosed: '2025-09-15', diseases: ['Heartwater'], treatment: 'Antibiotics administered' }
-    ]
-  };
-
-  // ===== Crop Records (per farmer) =====
-  const cropRecords = {
-    'F001': [
-      { cropType: 'Maize', areaPlanted: 20, yieldTons: 90, plantingDate: '2025-10-15', harvestDate: '2026-03-10' },
-      { cropType: 'Beans', areaPlanted: 10, yieldTons: 15, plantingDate: '2025-11-01', harvestDate: '2026-02-28' },
-      { cropType: 'Sunflower', areaPlanted: 15, yieldTons: 22, plantingDate: '2025-10-20', harvestDate: '2026-03-15' }
-    ],
-    'F002': [
-      { cropType: 'Sugarcane', areaPlanted: 50, yieldTons: 250, plantingDate: '2025-09-01', harvestDate: '2026-03-20' },
-      { cropType: 'Maize', areaPlanted: 40, yieldTons: 180, plantingDate: '2025-10-10', harvestDate: '2026-03-05' },
-      { cropType: 'Soya Beans', areaPlanted: 30, yieldTons: 48, plantingDate: '2025-11-05', harvestDate: '2026-03-12' }
-    ],
-    'F003': [
-      { cropType: 'Maize', areaPlanted: 15, yieldTons: 32, plantingDate: '2025-10-20', harvestDate: '2026-03-01' },
-      { cropType: 'Sweet Potato', areaPlanted: 8, yieldTons: 18, plantingDate: '2025-11-10', harvestDate: '2026-02-20' }
-    ],
-    'F004': [
-      { cropType: 'Wheat', areaPlanted: 30, yieldTons: 105, plantingDate: '2025-05-15', harvestDate: '2025-11-20' },
-      { cropType: 'Maize', areaPlanted: 20, yieldTons: 70, plantingDate: '2025-10-15', harvestDate: '2026-03-05' }
-    ],
-    'F005': [
-      { cropType: 'Maize', areaPlanted: 15, yieldTons: 24, plantingDate: '2025-10-25', harvestDate: '2026-03-08' },
-      { cropType: 'Cabbage', areaPlanted: 5, yieldTons: 8, plantingDate: '2025-09-15', harvestDate: '2026-01-10' }
-    ],
-    'F006': [
-      { cropType: 'Sunflower', areaPlanted: 80, yieldTons: 440, plantingDate: '2025-10-05', harvestDate: '2026-03-18' },
-      { cropType: 'Maize', areaPlanted: 60, yieldTons: 330, plantingDate: '2025-10-10', harvestDate: '2026-03-10' },
-      { cropType: 'Soya Beans', areaPlanted: 40, yieldTons: 72, plantingDate: '2025-11-01', harvestDate: '2026-03-08' },
-      { cropType: 'Wheat', areaPlanted: 20, yieldTons: 80, plantingDate: '2025-05-10', harvestDate: '2025-11-15' }
-    ],
-    'F007': [
-      { cropType: 'Grapes', areaPlanted: 50, yieldTons: 235, plantingDate: '2025-09-01', harvestDate: '2026-02-15' },
-      { cropType: 'Wheat', areaPlanted: 40, yieldTons: 160, plantingDate: '2025-05-20', harvestDate: '2025-11-25' },
-      { cropType: 'Citrus', areaPlanted: 30, yieldTons: 120, plantingDate: '2025-08-01', harvestDate: '2026-01-20' }
-    ],
-    'F008': [
-      { cropType: 'Maize', areaPlanted: 10, yieldTons: 11, plantingDate: '2025-10-30', harvestDate: '2026-03-05' },
-      { cropType: 'Groundnuts', areaPlanted: 5, yieldTons: 4, plantingDate: '2025-11-15', harvestDate: '2026-02-28' }
-    ]
-  };
-
-  // ===== Weather Data (per farmer location, simulated) =====
-  const weatherData = {
-    'F001': { rainfall: 480, avgTemp: 26.5, maxTemp: 34, minTemp: 18, humidity: 62, droughtRisk: 'Low', lastRain: '2026-03-18', season: 'Summer' },
-    'F002': { rainfall: 820, avgTemp: 23.8, maxTemp: 32, minTemp: 16, humidity: 75, droughtRisk: 'Very Low', lastRain: '2026-03-20', season: 'Summer' },
-    'F003': { rainfall: 350, avgTemp: 27.2, maxTemp: 36, minTemp: 19, humidity: 55, droughtRisk: 'Moderate', lastRain: '2026-03-08', season: 'Summer' },
-    'F004': { rainfall: 520, avgTemp: 22.0, maxTemp: 30, minTemp: 12, humidity: 58, droughtRisk: 'Low', lastRain: '2026-03-15', season: 'Summer' },
-    'F005': { rainfall: 280, avgTemp: 21.5, maxTemp: 29, minTemp: 13, humidity: 50, droughtRisk: 'High', lastRain: '2026-02-22', season: 'Summer' },
-    'F006': { rainfall: 410, avgTemp: 25.8, maxTemp: 33, minTemp: 17, humidity: 48, droughtRisk: 'Moderate', lastRain: '2026-03-12', season: 'Summer' },
-    'F007': { rainfall: 550, avgTemp: 20.5, maxTemp: 28, minTemp: 11, humidity: 65, droughtRisk: 'Low', lastRain: '2026-03-19', season: 'Summer' },
-    'F008': { rainfall: 220, avgTemp: 28.5, maxTemp: 38, minTemp: 20, humidity: 40, droughtRisk: 'Very High', lastRain: '2026-02-05', season: 'Summer' }
-  };
-
-  // ===== Soil & Farm Info (per farmer) =====
-  const soilData = {
-    'F001': { soilType: 'Loamy', irrigation: true, irrigationType: 'Drip', waterSource: 'Borehole', fencingType: 'Wire', landGradient: 'Flat' },
-    'F002': { soilType: 'Clay', irrigation: true, irrigationType: 'Sprinkler', waterSource: 'River', fencingType: 'Electric', landGradient: 'Gently Sloping' },
-    'F003': { soilType: 'Sandy', irrigation: false, irrigationType: 'None', waterSource: 'Rain-fed', fencingType: 'None', landGradient: 'Hilly' },
-    'F004': { soilType: 'Clay Loam', irrigation: true, irrigationType: 'Centre Pivot', waterSource: 'Dam', fencingType: 'Wire', landGradient: 'Flat' },
-    'F005': { soilType: 'Sandy Loam', irrigation: false, irrigationType: 'None', waterSource: 'Rain-fed', fencingType: 'Partial Wire', landGradient: 'Steep' },
-    'F006': { soilType: 'Loamy', irrigation: true, irrigationType: 'Centre Pivot', waterSource: 'Borehole', fencingType: 'Electric', landGradient: 'Flat' },
-    'F007': { soilType: 'Alluvial', irrigation: true, irrigationType: 'Drip', waterSource: 'River', fencingType: 'Electric', landGradient: 'Gently Sloping' },
-    'F008': { soilType: 'Sandy', irrigation: false, irrigationType: 'None', waterSource: 'Rain-fed', fencingType: 'None', landGradient: 'Rocky' }
-  };
-
-  // ===== Extended Farmer Data =====
-  const farmerExtras = {
-    'F001': {
-      coordinates: { lat: -22.97, lng: 30.45 },
-      lastUpdated: '2026-03-20',
-      uploadHistory: [
-        { date: '2025-10', yield: 4.0, livestock: 40, notes: '' },
-        { date: '2025-11', yield: 4.3, livestock: 42, notes: 'Yield recovering' },
-        { date: '2025-12', yield: 4.0, livestock: 43, notes: 'Completed training' },
-        { date: '2026-01', yield: 4.2, livestock: 43, notes: 'Irrigation support received' },
-        { date: '2026-02', yield: 4.3, livestock: 44, notes: 'Score increased' },
-        { date: '2026-03', yield: 4.5, livestock: 45, notes: 'Record yield' }
-      ]
-    },
-    'F002': {
-      coordinates: { lat: -29.60, lng: 30.38 },
-      lastUpdated: '2026-03-18',
-      uploadHistory: [
-        { date: '2025-11', yield: 4.6, livestock: 220, notes: '' },
-        { date: '2025-12', yield: 4.9, livestock: 225, notes: '' },
-        { date: '2026-01', yield: 4.8, livestock: 225, notes: '' },
-        { date: '2026-02', yield: 4.9, livestock: 228, notes: 'Expanded livestock' },
-        { date: '2026-03', yield: 5.0, livestock: 230, notes: 'Record yield' }
-      ]
-    },
-    'F003': {
-      coordinates: { lat: -25.47, lng: 31.00 },
-      lastUpdated: '2026-03-15',
-      uploadHistory: [
-        { date: '2025-11', yield: 2.4, livestock: 14, notes: '' },
-        { date: '2025-12', yield: 2.3, livestock: 13, notes: 'Drought impact' },
-        { date: '2026-01', yield: 2.1, livestock: 12, notes: 'Financial aid received' },
-        { date: '2026-02', yield: 2.3, livestock: 12, notes: 'Slight recovery' },
-        { date: '2026-03', yield: 2.1, livestock: 12, notes: 'Dropped again' }
-      ]
-    },
-    'F004': {
-      coordinates: { lat: -28.73, lng: 28.78 },
-      lastUpdated: '2026-03-22',
-      uploadHistory: [
-        { date: '2025-12', yield: 3.2, livestock: 360, notes: '' },
-        { date: '2026-01', yield: 3.3, livestock: 365, notes: '' },
-        { date: '2026-02', yield: 3.4, livestock: 372, notes: 'Market access plan' },
-        { date: '2026-03', yield: 3.5, livestock: 380, notes: 'Herd expanded' }
-      ]
-    },
-    'F005': {
-      coordinates: { lat: -32.88, lng: 27.44 },
-      lastUpdated: '2026-02-10',
-      uploadHistory: [
-        { date: '2025-11', yield: 1.8, livestock: 28, notes: '' },
-        { date: '2025-12', yield: 1.7, livestock: 26, notes: 'Declining' },
-        { date: '2026-01', yield: 1.6, livestock: 25, notes: 'High risk flagged' },
-        { date: '2026-02', yield: 1.6, livestock: 25, notes: 'Support plan underway' }
-      ]
-    },
-    'F006': {
-      coordinates: { lat: -25.86, lng: 25.64 },
-      lastUpdated: '2026-03-21',
-      uploadHistory: [
-        { date: '2026-01', yield: 5.2, livestock: 0, notes: '' },
-        { date: '2026-02', yield: 5.4, livestock: 0, notes: 'New irrigation' },
-        { date: '2026-03', yield: 5.5, livestock: 0, notes: 'Top performer' }
-      ]
-    },
-    'F007': {
-      coordinates: { lat: -33.72, lng: 18.96 },
-      lastUpdated: '2026-03-19',
-      uploadHistory: [
-        { date: '2026-01', yield: 4.5, livestock: 170, notes: '' },
-        { date: '2026-02', yield: 4.6, livestock: 173, notes: '' },
-        { date: '2026-03', yield: 4.7, livestock: 175, notes: 'Wine grapes diversification' }
-      ]
-    },
-    'F008': {
-      coordinates: { lat: -23.90, lng: 29.45 },
-      lastUpdated: '2026-01-28',
-      uploadHistory: [
-        { date: '2025-11', yield: 1.3, livestock: 22, notes: '' },
-        { date: '2025-12', yield: 1.2, livestock: 20, notes: 'Disease outbreak' },
-        { date: '2026-01', yield: 1.1, livestock: 18, notes: 'Emergency intervention needed' }
-      ]
-    }
-  };
-
-  // Merge extended data into farmers
-  mockFarmers.forEach(f => {
-    if (farmerExtras[f.id]) Object.assign(f, farmerExtras[f.id]);
-    f.livestockRecords = livestockRecords[f.id] || [];
-    f.cropRecords = cropRecords[f.id] || [];
-    f.weatherData = weatherData[f.id] || {};
-    f.soilData = soilData[f.id] || {};
-  });
+  // ===== Backward Compatibility: empty arrays (real data comes from API) =====
+  const mockFarmers = [];
+  const mockPlans = [];
 
   // ===== Utility Functions =====
   function isValidEmail(email) {
@@ -432,9 +112,6 @@ const AgriCore = (() => {
     if (recent3[2] >= recent3[0]) score += 10;
     else score -= 10;
 
-    // Active support plan bonus (+5)
-    if (mockPlans.some(p => p.farmerId === farmer.id && p.status === 'Active')) score += 5;
-
     return Math.max(0, Math.min(100, score));
   }
 
@@ -526,9 +203,10 @@ const AgriCore = (() => {
   }
 
   // ===== Notifications Generator =====
-  function generateNotifications() {
+  function generateNotifications(farmers) {
+    farmers = farmers || [];
     const notifications = [];
-    mockFarmers.forEach(f => {
+    farmers.forEach(f => {
       const score = calculatePerformanceScore(f);
       const level = getScoreLevel(score);
       const warnings = detectWarnings(f);
@@ -563,8 +241,9 @@ const AgriCore = (() => {
     return notifications;
   }
 
-  function getFarmersNeedingAttention() {
-    return mockFarmers.filter(f => {
+  function getFarmersNeedingAttention(farmers) {
+    farmers = farmers || [];
+    return farmers.filter(f => {
       const score = calculatePerformanceScore(f);
       return score < 50 || detectWarnings(f).some(w => w.type === 'critical' || w.type === 'warning');
     });
@@ -721,9 +400,10 @@ const AgriCore = (() => {
   }
 
   // ===== District Summary (Government) =====
-  function getDistrictSummary() {
+  function getDistrictSummary(farmers) {
+    farmers = farmers || [];
     const districts = {};
-    mockFarmers.forEach(f => {
+    farmers.forEach(f => {
       const key = f.district;
       if (!districts[key]) {
         districts[key] = { district: key, province: f.province, farmers: [], totalLivestock: 0, totalCrops: 0, totalArea: 0, diseases: [], scores: [], riskScores: [] };
@@ -755,9 +435,10 @@ const AgriCore = (() => {
   }
 
   // ===== Smart Alerts Generator =====
-  function generateSmartAlerts() {
+  function generateSmartAlerts(farmers) {
+    farmers = farmers || [];
     const alerts = [];
-    const districtSummaries = getDistrictSummary();
+    const districtSummaries = getDistrictSummary(farmers);
 
     // District-level alerts
     districtSummaries.forEach(d => {
@@ -773,7 +454,7 @@ const AgriCore = (() => {
     });
 
     // Individual farmer alerts
-    mockFarmers.forEach(f => {
+    farmers.forEach(f => {
       const risk = calculateRiskScore(f);
       if (risk.score >= 60) {
         alerts.push({ type: 'critical', icon: 'alert-circle', message: f.name + ': Critical risk (' + risk.score + ') — ' + risk.reasons[0], district: f.district });
@@ -864,10 +545,6 @@ const AgriCore = (() => {
     mockFarmers,
     mockPlans,
     months,
-    livestockRecords,
-    cropRecords,
-    weatherData,
-    soilData,
     isValidEmail,
     escapeHtml,
     formatCurrency,

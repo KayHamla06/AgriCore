@@ -332,8 +332,8 @@
 
       // === Weather Auto-fill ===
       function fillWeatherData() {
-        var farmerData = AgriCore.mockFarmers.find(function(f) { return f.id === user.id; }) || AgriCore.mockFarmers[0];
-        var weather = farmerData.weatherData || {};
+        var farmerData = (AgriCore.mockFarmers || []).find(function(f) { return f.id === user.id; });
+        var weather = (farmerData && farmerData.weatherData) || {};
 
         var rainfall = document.getElementById('weatherRainfall');
         var temp = document.getElementById('weatherTemp');
