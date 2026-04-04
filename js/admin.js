@@ -477,9 +477,70 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // ------ Users ------
   var currentUserFilter = '';
+  var lastUsersCache = [];
+  var usersRetryTimer = null;
+
+  function getActiveUsersFilterFromUi() {
+    var active = document.querySelector('#userFilters .filter-tab.active');
+    if (!active) return '';
+    return active.getAttribute('data-role') || '';
+  }
+
+  function scheduleUsersRetry(delayMs) {
+    if (usersRetryTimer) clearTimeout(usersRetryTimer);
+    usersRetryTimer = setTimeout(function() {
+      loadUsers();
+    }, delayMs || 3000);
+  }
+
+  function renderUsersTable(users) {
+    if (!usersTableBody) return;
+    if (!users || users.length === 0) {
+      usersTableBody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>No users found</p></td></tr>';
+      return;
+    }
+
+    usersTableBody.innerHTML = users.map(function (u) {
+      var createdAt = u && u.created_at ? new Date(u.created_at) : null;
+      var date = createdAt && !isNaN(createdAt.getTime()) ? createdAt.toLocaleDateString('en-ZA', {
+        year: 'numeric', month: 'short', day: 'numeric',
+      }) : '—';
+      var verStatus = (u && u.verification_status) || 'unverified';
+      var roleName = (u && u.role) || 'farmer';
+      var userName = (u && u.name) || 'Unknown User';
+      var userEmail = (u && u.email) || '—';
+      var verBadge = '';
+      if (verStatus === 'verified') {
+        var badgeClass = roleName === 'farmer' ? 'badge-verified-farmer' : 'badge-verified-gov';
+        verBadge = '<span class="ver-badge ' + badgeClass + '">✓</span>';
+      } else if (verStatus === 'pending') {
+        verBadge = '<span class="ver-badge badge-pending">⏳</span>';
+      } else {
+        verBadge = '<span class="ver-badge badge-unverified">✗</span>';
+      }
+      return '<tr data-user-id="' + (u && u.id ? u.id : '') + '">' +
+        '<td>' + AgriCore.escapeHtml(userName) + ' ' + verBadge + '</td>' +
+        '<td>' + AgriCore.escapeHtml(userEmail) + '</td>' +
+        '<td><span class="role-badge ' + roleName + '">' + roleName + '</span></td>' +
+        '<td><span class="ver-status-badge ' + verStatus + '">' + verStatus + '</span></td>' +
+        '<td>' + AgriCore.escapeHtml((u && u.phone) || '—') + '</td>' +
+        '<td>' + date + '</td>' +
+        '</tr>';
+    }).join('');
+
+    usersTableBody.querySelectorAll('tr[data-user-id]').forEach(function(row) {
+      row.addEventListener('click', function() {
+        openUserDetail(row.getAttribute('data-user-id'));
+      });
+    });
+  }
 
   function loadUsers(role) {
-    if (role !== undefined) currentUserFilter = role;
+    if (role !== undefined) {
+      currentUserFilter = role;
+    } else {
+      currentUserFilter = getActiveUsersFilterFromUi();
+    }
     var url = '/admin/users' + (currentUserFilter ? '?role=' + currentUserFilter : '');
 
     if (!usersTableBody) return Promise.resolve();
@@ -490,53 +551,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
       if (!res || !res.success) {
         setUsersDebugMeta('[Users API] failed at ' + at + ' | filter=' + (currentUserFilter || 'all') + ' | error=' + ((res && res.error) || 'unknown'));
+        if (lastUsersCache.length > 0) {
+          renderUsersTable(lastUsersCache);
+        } else {
+          usersTableBody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>Failed to load users. Retrying...</p></td></tr>';
+        }
+
+        if ((res && typeof res.error === 'string' && res.error.indexOf('429') > -1) || (res && res.error === 'Network error')) {
+          scheduleUsersRetry(5000);
+        }
+        return;
       } else {
         setUsersDebugMeta('[Users API] ok at ' + at + ' | filter=' + (currentUserFilter || 'all') + ' | returned=' + users.length);
       }
 
-      if (users.length === 0) {
-        usersTableBody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>No users found</p></td></tr>';
-        return;
-      }
-
-      usersTableBody.innerHTML = users.map(function (u) {
-        var createdAt = u && u.created_at ? new Date(u.created_at) : null;
-        var date = createdAt && !isNaN(createdAt.getTime()) ? createdAt.toLocaleDateString('en-ZA', {
-          year: 'numeric', month: 'short', day: 'numeric',
-        }) : '—';
-        var verStatus = (u && u.verification_status) || 'unverified';
-        var roleName = (u && u.role) || 'farmer';
-        var userName = (u && u.name) || 'Unknown User';
-        var userEmail = (u && u.email) || '—';
-        var verBadge = '';
-        if (verStatus === 'verified') {
-          var badgeClass = roleName === 'farmer' ? 'badge-verified-farmer' : 'badge-verified-gov';
-          verBadge = '<span class="ver-badge ' + badgeClass + '">✓</span>';
-        } else if (verStatus === 'pending') {
-          verBadge = '<span class="ver-badge badge-pending">⏳</span>';
-        } else {
-          verBadge = '<span class="ver-badge badge-unverified">✗</span>';
-        }
-        return '<tr data-user-id="' + (u && u.id ? u.id : '') + '">' +
-          '<td>' + AgriCore.escapeHtml(userName) + ' ' + verBadge + '</td>' +
-          '<td>' + AgriCore.escapeHtml(userEmail) + '</td>' +
-          '<td><span class="role-badge ' + roleName + '">' + roleName + '</span></td>' +
-          '<td><span class="ver-status-badge ' + verStatus + '">' + verStatus + '</span></td>' +
-          '<td>' + AgriCore.escapeHtml((u && u.phone) || '—') + '</td>' +
-          '<td>' + date + '</td>' +
-          '</tr>';
-      }).join('');
-
-      // Make rows clickable
-      usersTableBody.querySelectorAll('tr[data-user-id]').forEach(function(row) {
-        row.addEventListener('click', function() {
-          openUserDetail(row.getAttribute('data-user-id'));
-        });
-      });
+      lastUsersCache = users;
+      renderUsersTable(users);
     }).catch(function() {
       var at = new Date().toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       setUsersDebugMeta('[Users API] network/parsing error at ' + at + ' | filter=' + (currentUserFilter || 'all'));
-      usersTableBody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>Failed to load users. Please refresh.</p></td></tr>';
+      if (lastUsersCache.length > 0) {
+        renderUsersTable(lastUsersCache);
+      } else {
+        usersTableBody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>Failed to load users. Retrying...</p></td></tr>';
+      }
+      scheduleUsersRetry(5000);
     });
   }
 
