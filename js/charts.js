@@ -447,10 +447,17 @@ document.addEventListener('DOMContentLoaded', function() {
             livestockRecords: []
           }
         : {
-            ...AgriCore.mockFarmers[0],
+            id: 'unknown',
+            name: '',
+            province: '',
+            district: '',
             coordinates: (realData && Array.isArray(realData.farmers) && realData.farmers.length && realData.farmers[0].latitude && realData.farmers[0].longitude)
               ? { lat: parseFloat(realData.farmers[0].latitude), lng: parseFloat(realData.farmers[0].longitude) }
-              : AgriCore.mockFarmers[0].coordinates
+              : { lat: -25.75, lng: 28.19 },
+            yieldHistory: Array(12).fill(0),
+            productionHistory: Array(12).fill(0),
+            cropRecords: [],
+            livestockRecords: []
           });
 
     // ---- Yield Trends (12-month line chart) ----
