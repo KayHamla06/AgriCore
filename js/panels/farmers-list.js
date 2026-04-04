@@ -56,7 +56,7 @@
         var tbody = document.getElementById('farmersTableBody');
         if (!tbody) return;
 
-        var farmers = AgriCore.mockFarmers;
+        var farmers = [];
         if (filter && filter !== 'all') {
           farmers = farmers.filter(function(f) { return f.status === filter; });
         }

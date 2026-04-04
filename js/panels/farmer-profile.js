@@ -166,7 +166,7 @@
 
       // === viewFarmerProfile — exposed globally ===
       window.viewFarmerProfile = function(farmerId) {
-        var farmer = AgriCore.mockFarmers.find(function(f) { return f.id === farmerId; });
+        var farmer = null; // farmer data will come from API
         if (!farmer) return;
 
         // Track current farmer for PDF download

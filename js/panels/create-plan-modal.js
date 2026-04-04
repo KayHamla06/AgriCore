@@ -77,7 +77,7 @@
       // Populate farmer select
       var planFarmerSelect = document.getElementById('planFarmer');
       if (planFarmerSelect) {
-        AgriCore.mockFarmers.forEach(function(f) {
+        [].forEach(function(f) {
           var opt = document.createElement('option');
           opt.value = f.id;
           opt.textContent = f.name + ' — ' + f.farmName;
@@ -95,7 +95,7 @@
           var farmerId = planFarmerSelect.value;
           if (!farmerId) { planSuggestions.style.display = 'none'; return; }
 
-          var farmer = AgriCore.mockFarmers.find(function(f) { return f.id === farmerId; });
+          var farmer = null; // farmer lookup requires API data
           if (!farmer) return;
 
           var suggestions = AgriCore.generatePlanSuggestions(farmer);
@@ -139,11 +139,14 @@
             return;
           }
 
-          var farmer = AgriCore.mockFarmers.find(function(f) { return f.id === farmerId; });
+          var farmerSelect = document.getElementById('planFarmer');
+          var farmerName = (farmerSelect && farmerSelect.selectedIndex >= 0)
+            ? farmerSelect.options[farmerSelect.selectedIndex].textContent.split(' — ')[0]
+            : 'Unknown';
           var newPlan = {
-            id: 'PLN-' + String(AgriCore.mockPlans.length + 1).padStart(3, '0'),
+            id: 'PLN-' + Date.now(),
             farmerId: farmerId,
-            farmerName: farmer ? farmer.name : 'Unknown',
+            farmerName: farmerName,
             type: type,
             createdBy: ctx.user.name,
             createdByRole: 'government',
@@ -156,7 +159,6 @@
             approvedDate: null
           };
 
-          AgriCore.mockPlans.push(newPlan);
           if (window.populatePlansTable) window.populatePlansTable();
           AgriCore.showToast('Support plan generated successfully!', 'success');
           ctx.closeModal('createPlanModal');

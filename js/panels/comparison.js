@@ -71,7 +71,7 @@
         var tbody = document.getElementById('compareTableBody');
         if (!tbody) return;
 
-        var farmers = AgriCore.mockFarmers;
+        var farmers = [];
         if (province && province !== 'all') {
           farmers = farmers.filter(function(f) { return f.province === province; });
         }
@@ -109,7 +109,7 @@
       if (select) {
         var provinces = [];
         var seen = {};
-        AgriCore.mockFarmers.forEach(function(f) {
+        [].forEach(function(f) {
           if (!seen[f.province]) { seen[f.province] = true; provinces.push(f.province); }
         });
         provinces.sort().forEach(function(p) {
@@ -128,10 +128,10 @@
       if (compPdfBtn) {
         compPdfBtn.addEventListener('click', function() {
           // Get selected farmer IDs from the current, visible table
-          var farmerIds = AgriCore.mockFarmers.map(function(f) { return f.id; });
+          var farmerIds = [];
           var province = select ? select.value : 'all';
           if (province && province !== 'all') {
-            farmerIds = AgriCore.mockFarmers.filter(function(f) { return f.province === province; }).map(function(f) { return f.id; });
+            farmerIds = [];
           }
 
           if (farmerIds.length < 2) {
