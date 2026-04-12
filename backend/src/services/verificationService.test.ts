@@ -6,6 +6,22 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { verificationService } from '../services/verificationService';
 import { supabaseAdmin } from '../config/supabaseClient';
 
+function createTwoStepEqChain(result: { error: any }) {
+  let callCount = 0;
+  const chain: { eq: ReturnType<typeof vi.fn> } = {
+    eq: vi.fn().mockImplementation(() => {
+      callCount += 1;
+      if (callCount === 1) {
+        return chain;
+      }
+
+      return Promise.resolve(result);
+    }),
+  };
+
+  return chain;
+}
+
 vi.mock('../services/notificationService', () => ({
   notificationService: {
     create: vi.fn().mockResolvedValue(null),
@@ -71,7 +87,7 @@ describe('VerificationService', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({
+            maybeSingle: vi.fn().mockResolvedValue({
               data: { verification_status: 'verified' },
               error: null,
             }),
@@ -96,7 +112,7 @@ describe('VerificationService', () => {
       const fromChain = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({
+        maybeSingle: vi.fn().mockResolvedValue({
           data: null,
           error: { message: 'Not found' },
         }),
@@ -110,20 +126,41 @@ describe('VerificationService', () => {
   describe('approveUser', () => {
     it('approves a user and updates documents', async () => {
       let callCount = 0;
-      vi.mocked(supabaseAdmin.from).mockImplementation(() => {
+      vi.mocked(supabaseAdmin.from).mockImplementation((table: string) => {
         callCount++;
-        if (callCount === 1) {
-          // Update user verification_status
+        if (table === 'users' && callCount === 1) {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { role: 'farmer', email: 'u1@test.com', verification_status: 'pending' },
+              error: null,
+            }),
+          } as any;
+        }
+        if (table === 'users' && callCount === 2) {
           return {
             update: vi.fn().mockReturnThis(),
             eq: vi.fn().mockResolvedValue({ error: null }),
           } as any;
         }
-        if (callCount === 2) {
-          // Update documents
+        if (table === 'verification_documents') {
           return {
             update: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
+          } as any;
+        }
+        if (table === 'verification_requests') {
+          return {
+            update: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+          } as any;
+        }
+        if (table === 'users' && callCount === 5) {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({ data: { name: 'Admin' }, error: null }),
           } as any;
         }
         // Remaining calls (notifications, etc.)
@@ -131,7 +168,7 @@ describe('VerificationService', () => {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
           insert: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: null, error: null }),
+          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
         } as any;
       });
 
@@ -140,39 +177,85 @@ describe('VerificationService', () => {
     });
 
     it('throws on database error', async () => {
-      const fromChain = {
-        update: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({ error: { message: 'DB error' } }),
-      };
-      vi.mocked(supabaseAdmin.from).mockReturnValue(fromChain as any);
+      let usersCallCount = 0;
+
+      vi.mocked(supabaseAdmin.from).mockImplementation((table: string) => {
+        if (table === 'users') {
+          usersCallCount += 1;
+
+          if (usersCallCount === 1) {
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { role: 'farmer', email: 'u1@test.com', verification_status: 'pending' },
+                error: null,
+              }),
+            } as any;
+          }
+
+          return {
+            update: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ error: { message: 'DB error' } }),
+            }),
+          } as any;
+        }
+
+        return {
+          update: vi.fn().mockReturnValue(createTwoStepEqChain({ error: { message: 'DB error' } })),
+        } as any;
+      });
 
       await expect(verificationService.approveUser('u1', 'admin1'))
-        .rejects.toThrow('Failed to approve verification');
+        .rejects.toThrow('Failed to update user verification status');
     });
   });
 
   describe('rejectUser', () => {
     it('rejects a user and updates documents', async () => {
       let callCount = 0;
-      vi.mocked(supabaseAdmin.from).mockImplementation(() => {
+      vi.mocked(supabaseAdmin.from).mockImplementation((table: string) => {
         callCount++;
-        if (callCount === 1) {
+        if (table === 'users' && callCount === 1) {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { verification_status: 'pending' },
+              error: null,
+            }),
+          } as any;
+        }
+        if (table === 'users' && callCount === 2) {
           return {
             update: vi.fn().mockReturnThis(),
             eq: vi.fn().mockResolvedValue({ error: null }),
           } as any;
         }
-        if (callCount === 2) {
+        if (table === 'verification_documents') {
           return {
             update: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
+          } as any;
+        }
+        if (table === 'verification_requests') {
+          return {
+            update: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+          } as any;
+        }
+        if (table === 'users' && callCount === 5) {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({ data: { name: 'Admin' }, error: null }),
           } as any;
         }
         return {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
           insert: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: null, error: null }),
+          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
         } as any;
       });
 
@@ -181,23 +264,46 @@ describe('VerificationService', () => {
     });
 
     it('throws on database error', async () => {
-      const fromChain = {
-        update: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({ error: { message: 'DB error' } }),
-      };
-      vi.mocked(supabaseAdmin.from).mockReturnValue(fromChain as any);
+      let usersCallCount = 0;
+
+      vi.mocked(supabaseAdmin.from).mockImplementation((table: string) => {
+        if (table === 'users') {
+          usersCallCount += 1;
+
+          if (usersCallCount === 1) {
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { verification_status: 'pending' },
+                error: null,
+              }),
+            } as any;
+          }
+
+          return {
+            update: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ error: { message: 'DB error' } }),
+            }),
+          } as any;
+        }
+
+        return {
+          update: vi.fn().mockReturnValue(createTwoStepEqChain({ error: { message: 'DB error' } })),
+        } as any;
+      });
 
       await expect(verificationService.rejectUser('u1', 'admin1'))
-        .rejects.toThrow('Failed to reject verification');
+        .rejects.toThrow('Failed to update user verification status');
     });
   });
 
   describe('getPendingRequests', () => {
     it('returns users with pending status and documents', async () => {
       let callCount = 0;
-      vi.mocked(supabaseAdmin.from).mockImplementation(() => {
+      vi.mocked(supabaseAdmin.from).mockImplementation((table: string) => {
         callCount++;
-        if (callCount === 1) {
+        if (table === 'users') {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
@@ -209,12 +315,12 @@ describe('VerificationService', () => {
             }),
           } as any;
         }
-        // Docs for u1
+
         return {
           select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
+          in: vi.fn().mockReturnThis(),
           order: vi.fn().mockResolvedValue({
-            data: [{ id: 'doc1', document_type: 'id_document' }],
+            data: [{ id: 'doc1', user_id: 'u1', document_type: 'id_document' }],
             error: null,
           }),
         } as any;
@@ -223,6 +329,41 @@ describe('VerificationService', () => {
       const results = await verificationService.getPendingRequests();
       expect(results).toHaveLength(1);
       expect(results[0].documents).toHaveLength(1);
+    });
+
+    it('rolls back canonical status if document sync fails during approval', async () => {
+      vi.mocked(supabaseAdmin.from).mockImplementation((table: string) => {
+        if (table === 'users') {
+          const updateChain = {
+            eq: vi.fn()
+              .mockResolvedValueOnce({ error: null })
+              .mockResolvedValueOnce({ error: null }),
+          };
+
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { role: 'farmer', email: 'u1@test.com', verification_status: 'pending' },
+              error: null,
+            }),
+            update: vi.fn().mockReturnValue(updateChain),
+          } as any;
+        }
+
+        if (table === 'verification_documents') {
+          return {
+            update: vi.fn().mockReturnValue(createTwoStepEqChain({ error: { message: 'DB error' } })),
+          } as any;
+        }
+
+        return {
+          update: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+        } as any;
+      });
+
+      await expect(verificationService.approveUser('u1', 'admin1')).rejects.toThrow('Failed to approve verification documents');
     });
   });
 
@@ -233,7 +374,7 @@ describe('VerificationService', () => {
         size: 1024,
         originalname: 'test.zip',
         buffer: Buffer.from('test'),
-      } as Express.Multer.File;
+      } as any;
 
       await expect(verificationService.uploadDocument('u1', 'id_document', file))
         .rejects.toThrow('Invalid file type');
@@ -245,7 +386,7 @@ describe('VerificationService', () => {
         size: 11 * 1024 * 1024,
         originalname: 'big.jpg',
         buffer: Buffer.from('test'),
-      } as Express.Multer.File;
+      } as any;
 
       await expect(verificationService.uploadDocument('u1', 'id_document', file))
         .rejects.toThrow('File too large');

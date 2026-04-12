@@ -20,6 +20,10 @@ type ProfileRow = {
 };
 
 export class AuthService {
+  private normalizeEmail(email?: string | null): string {
+    return String(email || '').trim().toLowerCase();
+  }
+
   private async ensureFarmerProfile(userId: string, profile: { name: string; email: string }, details?: { province?: string; district?: string; farmSize?: string | number }): Promise<void> {
     const { data: existing, error: existingError } = await supabaseAdmin
       .from('farmers')
@@ -85,7 +89,7 @@ export class AuthService {
     const role: UserRole = this.isUserRole(roleFromMeta) ? roleFromMeta : 'farmer';
 
     const nameFromMeta = metadata.name;
-    const email = (authUser.email || '').trim();
+    const email = this.normalizeEmail(authUser.email);
     const fallbackName = email ? email.split('@')[0] : 'New User';
     const name = (typeof nameFromMeta === 'string' && nameFromMeta.trim()) ? nameFromMeta.trim() : fallbackName;
 
@@ -134,7 +138,8 @@ export class AuthService {
    * Supabase sends verification email automatically.
    */
   async signUp(payload: SignUpRequest): Promise<AuthResponse> {
-    const { email, password, name, role, province, district, farmSize } = payload;
+    const { password, name, role, province, district, farmSize } = payload;
+    const email = this.normalizeEmail(payload.email);
 
     // Determine initial verification_status based on role
     const verificationStatus = role === 'government' ? 'pending' : 'none';
@@ -219,8 +224,10 @@ export class AuthService {
     password: string,
     meta?: { ip_address?: string; user_agent?: string }
   ): Promise<AuthResponse> {
+    const normalizedEmail = this.normalizeEmail(email);
+
     const { data, error } = await supabaseAdmin.auth.signInWithPassword({
-      email,
+      email: normalizedEmail,
       password,
     });
 
@@ -358,10 +365,16 @@ export class AuthService {
    * Returns true if the email is NOT yet taken, false if it is.
    */
   async isEmailAvailable(email: string): Promise<boolean> {
-    const { count } = await supabaseAdmin
+    const normalizedEmail = this.normalizeEmail(email);
+
+    const { count, error } = await supabaseAdmin
       .from('users')
       .select('id', { count: 'exact', head: true })
-      .eq('email', email.toLowerCase().trim());
+      .ilike('email', normalizedEmail);
+
+    if (error) {
+      throw new AppError('Failed to check email availability', 500);
+    }
 
     return (count ?? 0) === 0;
   }

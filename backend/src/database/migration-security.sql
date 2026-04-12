@@ -63,6 +63,27 @@ CREATE INDEX IF NOT EXISTS idx_support_plans_approval ON support_plans(approval_
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_auth_id ON users(auth_id);
+CREATE INDEX IF NOT EXISTS idx_users_role_verification_status ON users(role, verification_status);
+
+-- Enforce case-insensitive uniqueness for email identities.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM users
+    WHERE email IS NOT NULL
+    GROUP BY lower(btrim(email))
+    HAVING COUNT(*) > 1
+  ) THEN
+    RAISE EXCEPTION 'Cannot create case-insensitive unique email index: duplicate normalized emails exist in users';
+  END IF;
+END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower_unique ON users (lower(btrim(email)));
+
+-- Verification lookups for admin review flows
+CREATE INDEX IF NOT EXISTS idx_verification_docs_user_status ON verification_documents(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_verification_requests_user_status ON verification_requests(user_id, status);
 
 -- Deletion requests — status filtering
 CREATE INDEX IF NOT EXISTS idx_deletion_requests_status ON deletion_requests(status);

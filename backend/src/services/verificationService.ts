@@ -25,6 +25,98 @@ export class VerificationService {
       || /could not find the table/i.test(error.message || '');
   }
 
+  private async syncUserVerificationStatus(userId: string, status: VerificationStatus): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from('users')
+      .update({ verification_status: status })
+      .eq('id', userId);
+
+    if (error) {
+      throw new AppError('Failed to update user verification status', 500);
+    }
+  }
+
+  private async syncVerificationRequests(
+    userId: string,
+    status: 'pending' | 'approved' | 'rejected',
+    adminId?: string,
+    notes?: string,
+    reviewedAt?: string
+  ): Promise<void> {
+    const updatePayload: Record<string, unknown> = {
+      status,
+      reviewed_by: adminId || null,
+      review_notes: notes || null,
+      reviewed_at: status === 'pending' ? null : (reviewedAt || new Date().toISOString()),
+    };
+
+    const { error } = await supabaseAdmin
+      .from('verification_requests')
+      .update(updatePayload)
+      .eq('user_id', userId)
+      .eq('status', 'pending');
+
+    if (error && !this.isMissingRelationError(error)) {
+      throw new AppError('Failed to update verification request records', 500);
+    }
+  }
+
+  private async syncVerificationDocuments(
+    userId: string,
+    status: 'approved' | 'rejected',
+    adminId: string,
+    notes?: string,
+    reviewedAt?: string
+  ): Promise<void> {
+    const action = status === 'approved' ? 'approve' : 'reject';
+
+    const { error } = await supabaseAdmin
+      .from('verification_documents')
+      .update({
+        status,
+        reviewed_by: adminId,
+        reviewed_at: reviewedAt || new Date().toISOString(),
+        review_notes: notes || null,
+      })
+      .eq('user_id', userId)
+      .eq('status', 'pending');
+
+    if (error && !this.isMissingRelationError(error)) {
+      throw new AppError(`Failed to ${action} verification documents`, 500);
+    }
+  }
+
+  private async getDocumentsByUserIds(userIds: string[]): Promise<Map<string, VerificationDocument[]>> {
+    const documentsByUserId = new Map<string, VerificationDocument[]>();
+
+    if (userIds.length === 0) {
+      return documentsByUserId;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('verification_documents')
+      .select('*')
+      .in('user_id', userIds)
+      .order('uploaded_at', { ascending: false });
+
+    if (error) {
+      if (this.isMissingRelationError(error)) {
+        logger.warn('verification_documents table missing; returning empty document lists', { userIds });
+        return documentsByUserId;
+      }
+
+      throw new AppError('Failed to fetch verification documents', 500);
+    }
+
+    for (const record of (data || []) as VerificationDocument[]) {
+      const bucket = documentsByUserId.get(record.user_id) || [];
+      bucket.push(record);
+      documentsByUserId.set(record.user_id, bucket);
+    }
+
+    return documentsByUserId;
+  }
+
   /**
    * Upload a verification document for a user.
    */
@@ -75,11 +167,8 @@ export class VerificationService {
 
     if (insertError) throw new AppError('Failed to save document record', 500);
 
-    // Set user verification status to pending
-    await supabaseAdmin
-      .from('users')
-      .update({ verification_status: 'pending' })
-      .eq('id', userId);
+    await this.syncUserVerificationStatus(userId, 'pending');
+    await this.syncVerificationRequests(userId, 'pending');
 
     // Notify all admins
     const { data: uploadUser } = await supabaseAdmin
@@ -138,23 +227,11 @@ export class VerificationService {
 
     if (error) throw new AppError('Failed to fetch verification requests', 500);
 
-    // For each user, get their documents
-    const results = [];
-    for (const user of (data || [])) {
-      const { data: docs, error: docsError } = await supabaseAdmin
-        .from('verification_documents')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('uploaded_at', { ascending: false });
-
-      if (docsError && !this.isMissingRelationError(docsError)) {
-        throw new AppError('Failed to fetch verification documents', 500);
-      }
-
-      if (docs && docs.length > 0) {
-        results.push({ ...user, documents: docs });
-      }
-    }
+    const users = data || [];
+    const documentsByUserId = await this.getDocumentsByUserIds(users.map(user => user.id));
+    const results = users
+      .map(user => ({ ...user, documents: documentsByUserId.get(user.id) || [] }))
+      .filter(user => user.documents.length > 0);
 
     return results;
   }
@@ -175,19 +252,12 @@ export class VerificationService {
     const { data, error } = await query;
     if (error) throw new AppError('Failed to fetch users', 500);
 
-    const results = [];
-    for (const user of (data || [])) {
-      const { data: docs, error: docsError } = await supabaseAdmin
-        .from('verification_documents')
-        .select('*')
-        .eq('user_id', user.id);
-
-      if (docsError && !this.isMissingRelationError(docsError)) {
-        throw new AppError('Failed to fetch verification documents', 500);
-      }
-
-      results.push({ ...user, documents: docs || [] });
-    }
+    const users = data || [];
+    const documentsByUserId = await this.getDocumentsByUserIds(users.map(user => user.id));
+    const results = users.map(user => ({
+      ...user,
+      documents: documentsByUserId.get(user.id) || [],
+    }));
 
     return results;
   }
@@ -201,11 +271,15 @@ export class VerificationService {
     adminId: string,
     notes?: string
   ): Promise<void> {
-    const { data: targetUser } = await supabaseAdmin
+    const { data: targetUser, error: targetUserError } = await supabaseAdmin
       .from('users')
-      .select('role, email')
+      .select('role, email, verification_status')
       .eq('id', userId)
       .maybeSingle();
+
+    if (targetUserError) {
+      throw new AppError('Failed to fetch user verification record', 500);
+    }
 
     if (!targetUser) {
       throw new AppError('User not found', 404);
@@ -218,26 +292,18 @@ export class VerificationService {
       await emailVerificationService.sendVerificationEmail(targetUser.email);
     }
 
-    const { error } = await supabaseAdmin
-      .from('users')
-      .update({
-        verification_status: 'verified',
-      })
-      .eq('id', userId);
+    const previousStatus = targetUser.verification_status as VerificationStatus;
+    const reviewedAt = new Date().toISOString();
 
-    if (error) throw new AppError('Failed to approve verification', 500);
+    await this.syncUserVerificationStatus(userId, 'verified');
 
-    // Update all pending docs to approved
-    await supabaseAdmin
-      .from('verification_documents')
-      .update({
-        status: 'approved',
-        reviewed_by: adminId,
-        reviewed_at: new Date().toISOString(),
-        review_notes: notes || null,
-      })
-      .eq('user_id', userId)
-      .eq('status', 'pending');
+    try {
+      await this.syncVerificationDocuments(userId, 'approved', adminId, notes, reviewedAt);
+      await this.syncVerificationRequests(userId, 'approved', adminId, notes, reviewedAt);
+    } catch (error) {
+      await this.syncUserVerificationStatus(userId, previousStatus);
+      throw error;
+    }
 
     // Get admin name for personalized notification
     const { data: admin } = await supabaseAdmin
@@ -276,24 +342,32 @@ export class VerificationService {
     adminId: string,
     notes?: string
   ): Promise<void> {
-    const { error } = await supabaseAdmin
+    const { data: targetUser, error: targetUserError } = await supabaseAdmin
       .from('users')
-      .update({ verification_status: 'rejected' })
-      .eq('id', userId);
+      .select('verification_status')
+      .eq('id', userId)
+      .maybeSingle();
 
-    if (error) throw new AppError('Failed to reject verification', 500);
+    if (targetUserError) {
+      throw new AppError('Failed to fetch user verification record', 500);
+    }
 
-    // Update all pending docs to rejected
-    await supabaseAdmin
-      .from('verification_documents')
-      .update({
-        status: 'rejected',
-        reviewed_by: adminId,
-        reviewed_at: new Date().toISOString(),
-        review_notes: notes || null,
-      })
-      .eq('user_id', userId)
-      .eq('status', 'pending');
+    if (!targetUser) {
+      throw new AppError('User not found', 404);
+    }
+
+    const previousStatus = targetUser.verification_status as VerificationStatus;
+    const reviewedAt = new Date().toISOString();
+
+    await this.syncUserVerificationStatus(userId, 'rejected');
+
+    try {
+      await this.syncVerificationDocuments(userId, 'rejected', adminId, notes, reviewedAt);
+      await this.syncVerificationRequests(userId, 'rejected', adminId, notes, reviewedAt);
+    } catch (error) {
+      await this.syncUserVerificationStatus(userId, previousStatus);
+      throw error;
+    }
 
     // Notify the user
     const { data: rejectAdmin } = await supabaseAdmin
