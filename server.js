@@ -14,26 +14,32 @@ const fs = require('fs');
 //  START BACKEND IN SAME PROCESS
 // =============================================
 const BACKEND_INTERNAL_PORT = process.env.BACKEND_PORT || 3001;
+const EXTERNAL_BACKEND_URL = process.env.BACKEND_URL;
+const SHOULD_START_EMBEDDED_BACKEND = !EXTERNAL_BACKEND_URL;
 
-// Set PORT for backend before loading it
-const originalPort = process.env.PORT;
-process.env.PORT = String(BACKEND_INTERNAL_PORT);
+if (SHOULD_START_EMBEDDED_BACKEND) {
+  // Set PORT for backend before loading it
+  const originalPort = process.env.PORT;
+  process.env.PORT = String(BACKEND_INTERNAL_PORT);
 
-try {
-  require('./backend/dist/server');
-  console.log(`Backend API started on internal port ${BACKEND_INTERNAL_PORT}`);
-} catch (err) {
-  console.error('Failed to start backend:', err.message);
-}
+  try {
+    require('./backend/dist/server');
+    console.log(`Backend API started on internal port ${BACKEND_INTERNAL_PORT}`);
+  } catch (err) {
+    console.error('Failed to start embedded backend:', err.message);
+  }
 
-// Restore PORT for frontend
-if (originalPort !== undefined) {
-  process.env.PORT = originalPort;
+  // Restore PORT for frontend
+  if (originalPort !== undefined) {
+    process.env.PORT = originalPort;
+  } else {
+    delete process.env.PORT;
+  }
 } else {
-  delete process.env.PORT;
+  console.log(`Using external backend from BACKEND_URL: ${EXTERNAL_BACKEND_URL}`);
 }
 
-const BACKEND_URL = `http://localhost:${BACKEND_INTERNAL_PORT}`;
+const BACKEND_URL = EXTERNAL_BACKEND_URL || `http://localhost:${BACKEND_INTERNAL_PORT}`;
 
 const app = express();
 const PORT = parseInt(process.env.PORT, 10) || 3000;
