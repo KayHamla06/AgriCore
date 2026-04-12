@@ -4,11 +4,21 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { farmerService } from '../services/farmerService';
+import { notificationService } from '../services/notificationService';
 
 export class FarmerController {
   async createFarmRecord(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await farmerService.createFarmRecord(req.user!.id, req.body);
+
+      // Notify farmer that data was received
+      await notificationService.create({
+        user_id: req.user!.id,
+        type: 'data_submission',
+        title: 'Farm Data Received',
+        body: `Your farm data for ${req.body.start_date} to ${req.body.end_date} has been submitted and is being processed.`
+      });
+
       res.status(201).json({ success: true, data: result, message: 'Farm record saved and synced' });
     } catch (err) {
       next(err);

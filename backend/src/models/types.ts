@@ -304,6 +304,7 @@ export type NotificationType =
   | 'verification_request'
   | 'verification_approved'
   | 'verification_rejected'
+  | 'data_submission'
   | 'data_pending'
   | 'data_approved'
   | 'data_rejected'

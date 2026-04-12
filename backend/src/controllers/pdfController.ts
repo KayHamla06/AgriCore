@@ -26,6 +26,7 @@ export class PdfController {
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
       doc.pipe(res);
+      doc.end();
     } catch (err) {
       next(err);
     }
@@ -50,6 +51,7 @@ export class PdfController {
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
       doc.pipe(res);
+      doc.end();
     } catch (err) {
       next(err);
     }
@@ -58,7 +60,6 @@ export class PdfController {
   /**
    * POST /api/pdf/compare
    * Generate a multi-farmer comparison PDF.
-   * Body: { farmerIds: string[], dataTypes: string[], timeRange: { from?: string, to?: string } }
    */
   async getComparisonReport(req: Request, res: Response, next: NextFunction) {
     try {
@@ -77,6 +78,7 @@ export class PdfController {
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
       doc.pipe(res);
+      doc.end();
     } catch (err) {
       next(err);
     }
@@ -85,7 +87,6 @@ export class PdfController {
   /**
    * POST /api/pdf/export
    * Generate a filtered data export PDF.
-   * Body: { farmerId: string, fields: string[], timeRange: { from?: string, to?: string } }
    */
   async getFilteredExport(req: Request, res: Response, next: NextFunction) {
     try {
@@ -109,6 +110,7 @@ export class PdfController {
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
       doc.pipe(res);
+      doc.end();
     } catch (err) {
       next(err);
     }

@@ -284,6 +284,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (n.type && n.type.indexOf('verif') > -1) iconName = 'badge-check';
             else if (n.type && n.type.indexOf('delet') > -1) iconName = 'trash-2';
             else if (n.type && n.type.indexOf('data') > -1) iconName = 'database';
+            else if (n.type && n.type.indexOf('ticket') > -1) iconName = 'message-circle';
+            else if (n.type && n.type.indexOf('plan') > -1) iconName = 'clipboard-list';
+            else if (n.type && n.type.indexOf('task') > -1) iconName = 'check-square';
             var timeAgo = n.created_at ? new Date(n.created_at).toLocaleDateString('en-ZA', { month: 'short', day: 'numeric' }) : '';
             return '<div class="notif-item" data-notif-id="' + escape(n.id) + '">' +
               '<div class="notif-icon info"><i data-lucide="' + iconName + '"></i></div>' +
@@ -309,6 +312,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (typeof lucide !== 'undefined') lucide.createIcons();
       }
+    }).catch(function() {
+      // Silently handle if notifications API is unavailable
+      if (notifCountEl) notifCountEl.textContent = '0';
+      if (notifDot) notifDot.style.display = 'none';
     });
   }
 

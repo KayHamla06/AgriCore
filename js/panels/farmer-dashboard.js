@@ -502,7 +502,7 @@
 
       // === Load Real Farmer Data from API ===
       // Fetches profile + crops + livestock, then updates KPIs and upload history in-place.
-      (function loadRealData() {
+      function loadRealData() {
         var API_BASE_R = window.AGRICORE_API_BASE || '/api';
         var tokenR = user.token || '';
 
@@ -648,7 +648,13 @@
           .finally(function() {
             hideFarmerLoader();
           });
-      })();
+      }
+      loadRealData();
+
+      // Re-load data when upload modal submits new data
+      window.addEventListener('agricore:data-uploaded', function() {
+        loadRealData();
+      });
 
       // === Weather History Lookup (Farmer) ===
       var farmerDateInput = document.getElementById('farmerWeatherDateInput');

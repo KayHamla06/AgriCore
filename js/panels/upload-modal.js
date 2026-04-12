@@ -29,14 +29,14 @@
               <h4 class="form-section-title"><i data-lucide="mountain"></i> Soil &amp; Farm Information</h4>
               <div class="form-row">
                 <div class="form-group">
-                  <label class="form-label">Data Period</label>
-                  <select class="form-select" id="uploadPeriod">
-                    <option value="2026-03">March 2026</option>
-                    <option value="2026-02">February 2026</option>
-                    <option value="2026-01">January 2026</option>
-                    <option value="2025-12">December 2025</option>
-                  </select>
+                  <label class="form-label">Period Start Date</label>
+                  <input type="date" class="form-input" id="uploadPeriodStart">
                 </div>
+                <div class="form-group">
+                  <label class="form-label">Period End Date</label>
+                  <input type="date" class="form-input" id="uploadPeriodEnd">
+                </div>
+              </div>
                 <div class="form-group">
                   <label class="form-label">Soil Type</label>
                   <select class="form-select" id="uploadSoilType">
@@ -186,6 +186,17 @@
     init: function(ctx) {
       var user = ctx.user;
 
+      // === Default date range: first and last day of current month ===
+      var now = new Date();
+      var y = now.getFullYear();
+      var m = now.getMonth(); // 0-based
+      var firstDay = new Date(y, m, 1).toISOString().split('T')[0];
+      var lastDay = new Date(y, m + 1, 0).toISOString().split('T')[0];
+      var periodStart = document.getElementById('uploadPeriodStart');
+      var periodEnd = document.getElementById('uploadPeriodEnd');
+      if (periodStart) { periodStart.value = firstDay; periodStart.max = new Date().toISOString().split('T')[0]; }
+      if (periodEnd) { periodEnd.value = lastDay; periodEnd.max = new Date().toISOString().split('T')[0]; }
+
       // === Tab Navigation ===
       var formTabs = document.querySelectorAll('.form-tab');
       var formTabContents = document.querySelectorAll('.form-tab-content');
@@ -226,11 +237,158 @@
         });
       }
 
-      // Submit
+      // Submit — POST data to backend
       if (submitDataBtn) {
         submitDataBtn.addEventListener('click', function() {
-          AgriCore.showToast('Farm data submitted successfully!', 'success');
-          ctx.closeModal('uploadDataModal');
+          submitDataBtn.disabled = true;
+          submitDataBtn.innerHTML = '<i data-lucide="loader"></i> Submitting...';
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+
+          var API_BASE = window.AGRICORE_API_BASE || '/api';
+          var token = user.token || '';
+          var headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
+
+          // 1. Resolve farmer profile ID
+          fetch(API_BASE + '/farmers/me', { headers: { 'Authorization': 'Bearer ' + token } })
+            .then(function(r) { return r.json(); })
+            .then(function(profileRes) {
+              if (!profileRes.success || !profileRes.data || !profileRes.data.id) {
+                throw new Error('Could not resolve farmer profile');
+              }
+              var farmerId = profileRes.data.id;
+
+              // 2. Collect livestock entries
+              var livestockEntries = [];
+              var lsNodes = document.querySelectorAll('.livestock-entry');
+              lsNodes.forEach(function(entry) {
+                var animalType = entry.querySelector('.ls-animal-type');
+                if (animalType && animalType.value) {
+                  var diseaseSelect = entry.querySelector('.ls-disease-select');
+                  var diseases = diseaseSelect && diseaseSelect.value ? [diseaseSelect.value] : [];
+                  livestockEntries.push({
+                    animal_type: animalType.value,
+                    total: parseInt(entry.querySelector('.ls-total').value) || 0,
+                    born: parseInt(entry.querySelector('.ls-born').value) || 0,
+                    twins: parseInt(entry.querySelector('.ls-twins').value) || 0,
+                    triplets: parseInt(entry.querySelector('.ls-triplets').value) || 0,
+                    sold: parseInt(entry.querySelector('.ls-sold').value) || 0,
+                    consumed: parseInt(entry.querySelector('.ls-consumed').value) || 0,
+                    young: parseInt(entry.querySelector('.ls-young').value) || 0,
+                    last_dosed: entry.querySelector('.ls-dosed').value || null,
+                    diseases: diseases,
+                    treatment: entry.querySelector('.ls-treatment').value || ''
+                  });
+                }
+              });
+
+              // 3. Collect crop entries
+              var cropEntries = [];
+              var crNodes = document.querySelectorAll('.crop-entry');
+              crNodes.forEach(function(entry) {
+                var cropType = entry.querySelector('.cr-type');
+                if (cropType && cropType.value) {
+                  var plantingDate = entry.querySelector('.cr-planting').value || '';
+                  var harvestDate = entry.querySelector('.cr-harvest').value || '';
+                  var season = '';
+                  if (plantingDate) {
+                    var m = parseInt(plantingDate.split('-')[1]);
+                    season = m >= 10 || m <= 3 ? 'Summer' : m >= 4 && m <= 6 ? 'Autumn' : m >= 7 && m <= 9 ? 'Winter' : '';
+                  }
+                  cropEntries.push({
+                    crop_name: cropType.value,
+                    hectares_planted: parseFloat(entry.querySelector('.cr-area').value) || 0,
+                    yield_tonnes: parseFloat(entry.querySelector('.cr-yield').value) || 0,
+                    season: season,
+                    irrigation_type: document.getElementById('uploadIrrigationType').value || 'None'
+                  });
+                }
+              });
+
+              // 4. Collect soil/farm info
+              var soilType = document.getElementById('uploadSoilType').value;
+              var waterSource = document.getElementById('uploadWaterSource').value;
+              var gradient = document.getElementById('uploadGradient').value;
+              var fencing = document.getElementById('uploadFencing').value;
+              var hasSoilInfo = soilType || waterSource || gradient || fencing;
+
+              // 5. Build period dates from date inputs
+              var startDate = document.getElementById('uploadPeriodStart').value;
+              var endDate = document.getElementById('uploadPeriodEnd').value;
+              if (!startDate || !endDate) {
+                throw new Error('Please select both a start and end date for the data period.');
+              }
+              if (endDate < startDate) {
+                throw new Error('End date must be on or after start date.');
+              }
+
+              // 6. POST all data in parallel
+              var promises = [];
+
+              livestockEntries.forEach(function(ls) {
+                promises.push(
+                  fetch(API_BASE + '/farmers/' + farmerId + '/livestock', {
+                    method: 'POST', headers: headers, body: JSON.stringify(ls)
+                  }).then(function(r) { return r.json(); })
+                );
+              });
+
+              cropEntries.forEach(function(cr) {
+                promises.push(
+                  fetch(API_BASE + '/farmers/' + farmerId + '/crops', {
+                    method: 'POST', headers: headers, body: JSON.stringify(cr)
+                  }).then(function(r) { return r.json(); })
+                );
+              });
+
+              // Soil data
+              if (hasSoilInfo) {
+                promises.push(
+                  fetch(API_BASE + '/farmers/' + farmerId + '/soil', {
+                    method: 'POST', headers: headers,
+                    body: JSON.stringify({ soil_type: soilType, water_source: waterSource, gradient: gradient, fencing: fencing })
+                  }).then(function(r) { return r.json(); })
+                );
+              }
+
+              // Farm record for period tracking + analytics
+              var totalYield = cropEntries.reduce(function(s, c) { return s + c.yield_tonnes; }, 0);
+              var totalLivestock = livestockEntries.reduce(function(s, l) { return s + l.total; }, 0);
+
+              promises.push(
+                fetch(API_BASE + '/farmers/me/records', {
+                  method: 'POST', headers: headers,
+                  body: JSON.stringify({
+                    start_date: startDate,
+                    end_date: endDate,
+                    crop_yield: totalYield,
+                    livestock_count: totalLivestock,
+                    has_crop_data: cropEntries.length > 0,
+                    has_livestock_data: livestockEntries.length > 0
+                  })
+                }).then(function(r) { return r.json(); })
+              );
+
+              return Promise.all(promises);
+            })
+            .then(function(results) {
+              var anyFailed = results.some(function(r) { return r && r.success === false; });
+              if (anyFailed) {
+                AgriCore.showToast('Some data could not be saved. Please check and retry.', 'warning');
+              } else {
+                AgriCore.showToast('Farm data submitted successfully!', 'success');
+              }
+              // Notify dashboard to reload data
+              window.dispatchEvent(new CustomEvent('agricore:data-uploaded'));
+              ctx.closeModal('uploadDataModal');
+            })
+            .catch(function(err) {
+              AgriCore.showToast('Failed to submit data: ' + (err.message || 'Unknown error'), 'error');
+            })
+            .finally(function() {
+              submitDataBtn.disabled = false;
+              submitDataBtn.innerHTML = '<i data-lucide="check"></i> Submit All Data';
+              if (typeof lucide !== 'undefined') lucide.createIcons();
+            });
         });
       }
 
@@ -330,11 +488,8 @@
 
       if (addCropBtn) addCropBtn.addEventListener('click', addCropEntry);
 
-      // === Weather Auto-fill ===
+      // === Weather Auto-fill from real API ===
       function fillWeatherData() {
-        var farmerData = (AgriCore.mockFarmers || []).find(function(f) { return f.id === user.id; });
-        var weather = (farmerData && farmerData.weatherData) || {};
-
         var rainfall = document.getElementById('weatherRainfall');
         var temp = document.getElementById('weatherTemp');
         var humidity = document.getElementById('weatherHumidity');
@@ -342,21 +497,77 @@
         var lastRain = document.getElementById('weatherLastRain');
         var season = document.getElementById('weatherSeason');
 
-        if (rainfall) rainfall.textContent = weather.rainfall || '--';
-        if (temp) temp.textContent = (weather.avgTemp || '--') + '\u00B0C';
-        if (humidity) humidity.textContent = (weather.humidity || '--') + '%';
-        if (drought) {
-          drought.textContent = weather.droughtRisk || '--';
-          if (weather.droughtRisk === 'Very High' || weather.droughtRisk === 'High') {
-            drought.style.color = 'var(--danger)';
-          } else if (weather.droughtRisk === 'Moderate') {
-            drought.style.color = 'var(--warning)';
-          } else {
-            drought.style.color = 'var(--success)';
-          }
-        }
-        if (lastRain) lastRain.value = weather.lastRain || '--';
-        if (season) season.value = weather.season || '--';
+        // Determine season from current month
+        var monthNow = new Date().getMonth() + 1; // 1-12
+        var seasonName = (monthNow >= 10 || monthNow <= 3) ? 'Summer' :
+                         (monthNow >= 4 && monthNow <= 6) ? 'Autumn' : 'Winter';
+        if (season) season.value = seasonName;
+
+        // Fetch farmer profile for coordinates
+        var API_BASE = window.AGRICORE_API_BASE || '/api';
+        var token = user.token || '';
+        fetch(API_BASE + '/farmers/me', { headers: { 'Authorization': 'Bearer ' + token } })
+          .then(function(r) { return r.json(); })
+          .then(function(res) {
+            if (!res.success || !res.data) return;
+            var profile = res.data;
+            if (!profile.latitude || !profile.longitude) {
+              if (rainfall) rainfall.textContent = '--';
+              if (temp) temp.textContent = '--';
+              if (humidity) humidity.textContent = '--';
+              if (drought) drought.textContent = 'N/A';
+              if (lastRain) lastRain.value = 'Set farm location in Settings';
+              return;
+            }
+            var lat = parseFloat(profile.latitude);
+            var lng = parseFloat(profile.longitude);
+            var today = new Date().toISOString().split('T')[0];
+            var weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            var url = 'https://archive-api.open-meteo.com/v1/archive?latitude=' + lat +
+              '&longitude=' + lng +
+              '&start_date=' + weekAgo + '&end_date=' + today +
+              '&daily=temperature_2m_max,temperature_2m_min,precipitation_sum' +
+              '&hourly=relative_humidity_2m&timezone=auto';
+            return fetch(url).then(function(r) { return r.json(); });
+          })
+          .then(function(data) {
+            if (!data || !data.daily) return;
+            var d = data.daily;
+            var totalRain = d.precipitation_sum ? d.precipitation_sum.reduce(function(s, v) { return s + (v || 0); }, 0) : 0;
+            var maxTemps = d.temperature_2m_max || [];
+            var avgTemp = maxTemps.length > 0 ? (maxTemps.reduce(function(s, v) { return s + v; }, 0) / maxTemps.length).toFixed(1) : '--';
+            var humArr = data.hourly && data.hourly.relative_humidity_2m ? data.hourly.relative_humidity_2m : [];
+            var avgHum = humArr.length > 0 ? Math.round(humArr.reduce(function(s, v) { return s + v; }, 0) / humArr.length) : '--';
+
+            if (rainfall) rainfall.textContent = totalRain.toFixed(1);
+            if (temp) temp.textContent = avgTemp + '\u00B0C';
+            if (humidity) humidity.textContent = avgHum + '%';
+
+            // Simple drought risk based on rainfall
+            var droughtRisk = totalRain < 5 ? 'High' : totalRain < 15 ? 'Moderate' : 'Low';
+            if (drought) {
+              drought.textContent = droughtRisk;
+              drought.style.color = droughtRisk === 'High' ? 'var(--danger)' : droughtRisk === 'Moderate' ? 'var(--warning)' : 'var(--success)';
+            }
+
+            // Find last rain date
+            if (lastRain && d.precipitation_sum) {
+              var lastRainDate = '--';
+              for (var i = d.precipitation_sum.length - 1; i >= 0; i--) {
+                if (d.precipitation_sum[i] > 0 && d.time && d.time[i]) {
+                  lastRainDate = d.time[i];
+                  break;
+                }
+              }
+              lastRain.value = lastRainDate;
+            }
+          })
+          .catch(function() {
+            if (rainfall) rainfall.textContent = '--';
+            if (temp) temp.textContent = '--';
+            if (humidity) humidity.textContent = '--';
+            if (drought) drought.textContent = 'N/A';
+          });
       }
     }
   });
