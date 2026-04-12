@@ -21,6 +21,8 @@ type ProfileRow = {
 };
 
 export class AuthService {
+  private readonly loginRetryDelaysMs = [500, 1200];
+
   private createAuthClient() {
     return createClient(supabaseUrl || '', supabaseAnonKey || '', {
       auth: {
@@ -74,6 +76,54 @@ export class AuthService {
     return ['farmer', 'government', 'admin', 'supervisor', 'field_agent', 'office_staff'].includes(
       String(value)
     );
+  }
+
+  private isTransientAuthFailure(error: { message?: string; status?: number } | null | undefined): boolean {
+    const message = String(error?.message || '').toLowerCase();
+    const status = error?.status;
+
+    if (typeof status === 'number' && status >= 500) {
+      return true;
+    }
+
+    return (
+      message.includes('network') ||
+      message.includes('timeout') ||
+      message.includes('fetch failed') ||
+      message.includes('service unavailable') ||
+      message.includes('temporarily unavailable') ||
+      message.includes('gateway')
+    );
+  }
+
+  private async wait(ms: number): Promise<void> {
+    await new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private async signInWithRetries(authClient: ReturnType<AuthService['createAuthClient']>, email: string, password: string) {
+    let lastResult = await authClient.auth.signInWithPassword({ email, password });
+
+    for (let i = 0; i < this.loginRetryDelaysMs.length; i += 1) {
+      const authError = lastResult.error as { message?: string; status?: number; code?: string } | null;
+      if (!authError || !this.isTransientAuthFailure(authError)) {
+        return lastResult;
+      }
+
+      const delayMs = this.loginRetryDelaysMs[i];
+      logger.warn('Supabase login transient failure, retrying', {
+        email,
+        attempt: i + 1,
+        nextAttemptInMs: delayMs,
+        status: authError.status,
+        code: authError.code,
+        message: authError.message,
+      });
+
+      await this.wait(delayMs);
+      lastResult = await authClient.auth.signInWithPassword({ email, password });
+    }
+
+    return lastResult;
   }
 
   /**
@@ -238,10 +288,7 @@ export class AuthService {
     const normalizedEmail = this.normalizeEmail(email);
     const authClient = this.createAuthClient();
 
-    const { data, error } = await authClient.auth.signInWithPassword({
-      email: normalizedEmail,
-      password,
-    });
+    const { data, error } = await this.signInWithRetries(authClient, normalizedEmail, password);
 
 
 
