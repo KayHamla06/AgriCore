@@ -5,7 +5,7 @@
 // PKCE code exchange for email verification callbacks.
 // ============================================
 
-import { supabaseAdmin } from '../config/supabaseClient';
+import { supabase, supabaseAdmin } from '../config/supabaseClient';
 import { AppError } from '../middleware/errorHandler';
 import { loginActivityService } from './loginActivityService';
 import logger from '../utils/logger';
@@ -226,7 +226,7 @@ export class AuthService {
   ): Promise<AuthResponse> {
     const normalizedEmail = this.normalizeEmail(email);
 
-    const { data, error } = await supabaseAdmin.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: normalizedEmail,
       password,
     });
@@ -272,7 +272,7 @@ export class AuthService {
    * Used when Supabase redirects back after email verification (PKCE flow).
    */
   async exchangeCodeForSession(code: string): Promise<AuthResponse> {
-    const { data, error } = await supabaseAdmin.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error || !data.session) {
       throw new AppError('Invalid or expired auth code', 400);
@@ -318,7 +318,7 @@ export class AuthService {
    * Refresh an existing session token.
    */
   async refreshToken(refreshToken: string): Promise<{ token: string }> {
-    const { data, error } = await supabaseAdmin.auth.refreshSession({
+    const { data, error } = await supabase.auth.refreshSession({
       refresh_token: refreshToken,
     });
 
