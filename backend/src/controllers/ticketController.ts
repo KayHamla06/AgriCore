@@ -88,6 +88,31 @@ export class TicketController {
   }
 
   /**
+   * GET /api/tickets/:id/replies
+   */
+  async getReplies(req: Request, res: Response, next: NextFunction) {
+    try {
+      const replies = await ticketService.getReplies(req.params.id, req.user!.id, req.user!.role as any);
+      res.json({ success: true, data: replies });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * POST /api/tickets/:id/replies
+   */
+  async addReply(req: Request, res: Response, next: NextFunction) {
+    try {
+      const message = req.body?.message;
+      const reply = await ticketService.addReply(req.params.id, req.user!.id, req.user!.role as any, message);
+      res.status(201).json({ success: true, data: reply, message: 'Reply sent' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
    * GET /api/admin/tickets/stats
    * Admin: ticket statistics.
    */

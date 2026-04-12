@@ -12,6 +12,7 @@ export const config = {
   weather: {
     apiUrl: process.env.WEATHER_API_URL || '',
     apiKey: process.env.WEATHER_API_KEY || '',
+    archiveApiUrl: process.env.WEATHER_ARCHIVE_API_URL || 'https://archive-api.open-meteo.com/v1/archive',
   },
 } as const;
 

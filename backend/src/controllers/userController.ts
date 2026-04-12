@@ -6,6 +6,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { userService } from '../services/userService';
 import { supabaseAdmin } from '../config/supabaseClient';
+import { notificationService } from '../services/notificationService';
+import { activityLogService } from '../services/activityLogService';
 
 export class UserController {
   async getProfile(req: Request, res: Response, next: NextFunction) {
@@ -21,6 +23,53 @@ export class UserController {
     try {
       const updated = await userService.updateSettings(req.user!.id, req.body);
       res.json({ success: true, data: updated, message: 'Settings updated' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async updateProfile(req: Request, res: Response, next: NextFunction) {
+    try {
+      const updated = await userService.updateProfile(req.user!.id, req.body);
+      res.json({ success: true, data: updated, message: 'Profile updated' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async updateLocation(req: Request, res: Response, next: NextFunction) {
+    try {
+      const updated = await userService.updateLocation(req.user!.id, req.body);
+      res.json({ success: true, data: updated, message: 'Location updated' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async updateSecurity(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { data } = await supabaseAdmin
+        .from('users')
+        .select('auth_id')
+        .eq('id', req.user!.id)
+        .maybeSingle();
+
+      if (!data) {
+        res.status(404).json({ success: false, error: 'User not found' });
+        return;
+      }
+
+      await userService.changePassword(data.auth_id, req.body.newPassword);
+      res.json({ success: true, message: 'Security settings updated' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async updateNotificationSettings(req: Request, res: Response, next: NextFunction) {
+    try {
+      const updated = await userService.updateNotificationSettings(req.user!.id, req.body || {});
+      res.json({ success: true, data: updated, message: 'Notification settings updated' });
     } catch (err) {
       next(err);
     }
@@ -124,6 +173,30 @@ export class UserController {
         res.status(500).json({ success: false, error: 'Failed to create deletion request' });
         return;
       }
+
+      const { data: admins } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('role', 'admin');
+
+      if (admins) {
+        for (const admin of admins) {
+          await notificationService.create({
+            user_id: admin.id,
+            type: 'system',
+            title: 'New Deletion Request',
+            body: 'A user submitted an account deletion request and is awaiting admin review.',
+          });
+        }
+      }
+
+      await activityLogService.log({
+        user_id: req.user!.id,
+        action: 'request_account_deletion',
+        resource_type: 'deletion_request',
+        resource_id: data.id,
+        details: { reason: deletion_reason || reason || null },
+      });
 
       res.status(201).json({
         success: true,

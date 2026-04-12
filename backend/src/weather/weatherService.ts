@@ -70,6 +70,81 @@ export class WeatherService {
   }
 
   /**
+   * Fetch historical daily weather from Open-Meteo archive API for a date period.
+   */
+  async fetchHistoricalRange(
+    lat: number,
+    lng: number,
+    startDate: string,
+    endDate: string
+  ): Promise<Array<{ date: string; temperature_min: number | null; temperature_max: number | null; rainfall: number; wind_speed: number | null }>> {
+    const baseUrl = config.weather.archiveApiUrl || 'https://archive-api.open-meteo.com/v1/archive';
+    const url = `${baseUrl}?latitude=${lat}&longitude=${lng}`
+      + `&start_date=${startDate}&end_date=${endDate}`
+      + '&daily=temperature_2m_min,temperature_2m_max,precipitation_sum,wind_speed_10m_max'
+      + '&timezone=auto';
+
+    const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    if (!response.ok) {
+      throw new AppError('Failed to fetch historical weather', 502);
+    }
+
+    const json = await response.json() as {
+      daily?: {
+        time?: string[];
+        temperature_2m_min?: Array<number | null>;
+        temperature_2m_max?: Array<number | null>;
+        precipitation_sum?: Array<number | null>;
+        wind_speed_10m_max?: Array<number | null>;
+      };
+    };
+
+    const days = json.daily?.time || [];
+    const mins = json.daily?.temperature_2m_min || [];
+    const maxes = json.daily?.temperature_2m_max || [];
+    const rain = json.daily?.precipitation_sum || [];
+    const wind = json.daily?.wind_speed_10m_max || [];
+
+    return days.map((date, index) => ({
+      date,
+      temperature_min: mins[index] ?? null,
+      temperature_max: maxes[index] ?? null,
+      rainfall: rain[index] ?? 0,
+      wind_speed: wind[index] ?? null,
+    }));
+  }
+
+  /**
+   * Persist historical weather rows and link them to the farm record.
+   */
+  async storeHistoricalSnapshot(
+    farmerId: string,
+    farmRecordId: string,
+    rows: Array<{ date: string; temperature_min: number | null; temperature_max: number | null; rainfall: number; wind_speed: number | null }>
+  ): Promise<void> {
+    if (rows.length === 0) return;
+
+    const payload = rows.map(row => ({
+      farmer_id: farmerId,
+      farm_record_id: farmRecordId,
+      date: row.date,
+      temperature_min: row.temperature_min,
+      temperature_max: row.temperature_max,
+      rainfall: row.rainfall,
+      wind_speed: row.wind_speed,
+      description: 'archive_snapshot',
+    }));
+
+    const { error } = await supabaseAdmin
+      .from('weather_history')
+      .upsert(payload, { onConflict: 'farmer_id,date' });
+
+    if (error) {
+      logger.warn('Weather: failed to store historical snapshot', { farmerId, farmRecordId, error: error.message });
+    }
+  }
+
+  /**
    * Store a weather record for a farmer.
    */
   async storeWeatherRecord(

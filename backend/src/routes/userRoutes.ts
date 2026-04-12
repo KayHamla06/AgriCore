@@ -49,6 +49,19 @@ const updateSettingsSchema = z.object({
   phone: z.string().max(20).optional(),
 });
 
+const updateLocationSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+});
+
+const updateNotificationSettingsSchema = z.object({
+  email: z.boolean().optional(),
+  sms: z.boolean().optional(),
+  in_app: z.boolean().optional(),
+  ticket_updates: z.boolean().optional(),
+  marketing: z.boolean().optional(),
+});
+
 const changePasswordSchema = z.object({
   newPassword: z.string().min(8, 'Password must be at least 8 characters'),
 });
@@ -68,8 +81,20 @@ router.get('/profile', userController.getProfile);
 // PUT /api/user/settings — update settings (requires edit permission)
 router.put('/settings', checkEditPermission, validate(updateSettingsSchema), userController.updateSettings);
 
+// PUT /api/user/profile — full profile settings sync endpoint
+router.put('/profile', checkEditPermission, validate(updateSettingsSchema), userController.updateProfile);
+
+// PUT /api/user/location — user location sync
+router.put('/location', checkEditPermission, validate(updateLocationSchema), userController.updateLocation);
+
 // PUT /api/user/password — change password
 router.put('/password', validate(changePasswordSchema), userController.changePassword);
+
+// PUT /api/user/security — security settings sync endpoint (password for now)
+router.put('/security', validate(changePasswordSchema), userController.updateSecurity);
+
+// PUT /api/user/notification-settings — persist in users.notification_settings
+router.put('/notification-settings', validate(updateNotificationSettingsSchema), userController.updateNotificationSettings);
 
 // POST /api/user/profile-image — upload profile image (requires edit permission)
 router.post('/profile-image', checkEditPermission, upload.single('file'), userController.uploadProfileImage);

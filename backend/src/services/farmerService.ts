@@ -6,16 +6,200 @@
 import { supabaseAdmin } from '../config/supabaseClient';
 import { AppError } from '../middleware/errorHandler';
 import { dataApprovalService } from './dataApprovalService';
+import { weatherService } from '../weather/weatherService';
 import type {
   FarmerProfile,
   LivestockRecord,
   CropRecord,
   SoilData,
+  FarmRecord,
+  AnalyticsSummary,
   PaginationParams,
   PaginatedResponse,
 } from '../models/types';
 
 export class FarmerService {
+  private calculateAnalytics(payload: {
+    cropYield: number;
+    livestockCount: number;
+    hasCropData?: boolean;
+    hasLivestockData?: boolean;
+  }): { performanceScore: number; riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' } {
+    const cropYield = Number.isFinite(payload.cropYield) ? payload.cropYield : 0;
+    const livestockCount = Number.isFinite(payload.livestockCount) ? payload.livestockCount : 0;
+    const hasCrop = payload.hasCropData !== undefined ? payload.hasCropData : true;
+    const hasLivestock = payload.hasLivestockData !== undefined ? payload.hasLivestockData : true;
+
+    if (hasCrop && hasLivestock && cropYield <= 0 && livestockCount <= 0) {
+      return { performanceScore: 0, riskLevel: 'HIGH' };
+    }
+
+    if (hasCrop && !hasLivestock && cropYield <= 0) {
+      return { performanceScore: 0, riskLevel: 'HIGH' };
+    }
+
+    if (hasLivestock && !hasCrop && livestockCount <= 0) {
+      return { performanceScore: 0, riskLevel: 'HIGH' };
+    }
+
+    const cropScore = hasCrop ? Math.max(0, Math.min(100, Math.round(cropYield * 10))) : 0;
+    const livestockScore = hasLivestock ? Math.max(0, Math.min(100, livestockCount > 0 ? Math.round(20 + (livestockCount * 2)) : 0)) : 0;
+    const denominator = (hasCrop ? 1 : 0) + (hasLivestock ? 1 : 0) || 1;
+    const performanceScore = Math.round((cropScore + livestockScore) / denominator);
+
+    if (performanceScore < 40) return { performanceScore, riskLevel: 'HIGH' };
+    if (performanceScore < 70) return { performanceScore, riskLevel: 'MEDIUM' };
+    return { performanceScore, riskLevel: 'LOW' };
+  }
+
+  private async getUserProvince(userId: string): Promise<string | null> {
+    const { data, error } = await supabaseAdmin
+      .from('users')
+      .select('province')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error) {
+      throw new AppError('Failed to load user province', 500);
+    }
+
+    return (data?.province as string | null) || null;
+  }
+
+  async createFarmRecord(
+    userId: string,
+    payload: {
+      start_date: string;
+      end_date: string;
+      crop_yield?: number;
+      livestock_count?: number;
+      has_crop_data?: boolean;
+      has_livestock_data?: boolean;
+    }
+  ): Promise<{ record: FarmRecord; analytics: AnalyticsSummary; weatherDaysStored: number }> {
+    if (!payload.start_date || !payload.end_date) {
+      throw new AppError('start_date and end_date are required', 400);
+    }
+
+    if (payload.end_date < payload.start_date) {
+      throw new AppError('end_date must be on or after start_date', 400);
+    }
+
+    const farmer = await this.getByUserId(userId);
+    const province = await this.getUserProvince(userId);
+
+    const cropYield = Number(payload.crop_yield || 0);
+    const livestockCount = Number(payload.livestock_count || 0);
+
+    const { data: record, error: recordError } = await supabaseAdmin
+      .from('farm_records')
+      .insert({
+        farmer_id: farmer.id,
+        user_id: userId,
+        province,
+        start_date: payload.start_date,
+        end_date: payload.end_date,
+        crop_yield: cropYield,
+        livestock_count: livestockCount,
+      })
+      .select('*')
+      .maybeSingle();
+
+    if (recordError || !record) {
+      throw new AppError('Failed to create farm record. Ensure migration-farm-records-v2.sql is applied.', 500);
+    }
+
+    const calculated = this.calculateAnalytics({
+      cropYield,
+      livestockCount,
+      hasCropData: payload.has_crop_data,
+      hasLivestockData: payload.has_livestock_data,
+    });
+
+    const { data: analytics, error: analyticsError } = await supabaseAdmin
+      .from('analytics')
+      .upsert({
+        user_id: userId,
+        province,
+        performance_score: calculated.performanceScore,
+        risk_level: calculated.riskLevel,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' })
+      .select('*')
+      .maybeSingle();
+
+    if (analyticsError || !analytics) {
+      throw new AppError('Failed to update analytics. Ensure migration-farm-records-v2.sql is applied.', 500);
+    }
+
+    let weatherDaysStored = 0;
+    if (farmer.latitude !== null && farmer.longitude !== null) {
+      try {
+        const rows = await weatherService.fetchHistoricalRange(
+          Number(farmer.latitude),
+          Number(farmer.longitude),
+          payload.start_date,
+          payload.end_date
+        );
+
+        weatherDaysStored = rows.length;
+        await weatherService.storeHistoricalSnapshot(farmer.id, record.id, rows);
+      } catch {
+        weatherDaysStored = 0;
+      }
+    }
+
+    return {
+      record: record as FarmRecord,
+      analytics: analytics as AnalyticsSummary,
+      weatherDaysStored,
+    };
+  }
+
+  async getFarmHistory(userId: string, startDate?: string, endDate?: string): Promise<FarmRecord[]> {
+    let query = supabaseAdmin
+      .from('farm_records')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (startDate && endDate) {
+      query = query.gte('created_at', `${startDate}T00:00:00.000Z`).lte('created_at', `${endDate}T23:59:59.999Z`);
+    } else {
+      const since = new Date();
+      since.setMonth(since.getMonth() - 12);
+      query = query.gte('created_at', since.toISOString());
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      throw new AppError('Failed to fetch farm history. Ensure migration-farm-records-v2.sql is applied.', 500);
+    }
+
+    return (data || []) as FarmRecord[];
+  }
+
+  async getLatestAnalytics(userId: string): Promise<AnalyticsSummary> {
+    const { data, error } = await supabaseAdmin
+      .from('analytics')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error || !data) {
+      return {
+        id: 'generated-default',
+        user_id: userId,
+        province: await this.getUserProvince(userId),
+        performance_score: 0,
+        risk_level: 'HIGH',
+        updated_at: new Date().toISOString(),
+      };
+    }
+
+    return data as AnalyticsSummary;
+  }
+
   // ==========================================
   //  FARMER PROFILES
   // ==========================================

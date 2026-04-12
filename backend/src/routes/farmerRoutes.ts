@@ -33,6 +33,16 @@ router.get('/me/livestock', requireRole('farmer'), farmerController.getMyLivesto
 // GET /api/farmers/me/soil — farmer's own soil data (token-based, no fid)
 router.get('/me/soil', requireRole('farmer'), farmerController.getMySoilData);
 
+// POST /api/farmers/me/records — create period-based farm record and trigger backend sync
+router.post('/me/records', requireRole('farmer'), farmerController.createFarmRecord);
+
+// GET /api/farmers/me/history?start=YYYY-MM-DD&end=YYYY-MM-DD
+// Default response window is last 12 months when no query range is provided.
+router.get('/me/history', requireRole('farmer'), farmerController.getHistory);
+
+// GET /api/farmers/me/analytics — latest backend-calculated performance/risk
+router.get('/me/analytics', requireRole('farmer'), farmerController.getAnalytics);
+
 // PUT /api/farmers/me — update farmer's own profile (token-based, no fid)
 router.put('/me', requireRole('farmer'), farmerController.updateMyProfile);
 

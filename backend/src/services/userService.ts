@@ -9,6 +9,7 @@ import { config } from '../config';
 import { AppError } from '../middleware/errorHandler';
 import logger from '../utils/logger';
 import path from 'path';
+import type { UserNotificationSettings } from '../models/types';
 
 export class UserService {
   /**
@@ -64,6 +65,61 @@ export class UserService {
       logger.error('Failed to update settings', { userId, error: error.message });
       throw new AppError('Failed to update settings', 500);
     }
+    return data;
+  }
+
+  async updateProfile(userId: string, updates: { name?: string; phone?: string }) {
+    return this.updateSettings(userId, updates);
+  }
+
+  async updateLocation(
+    userId: string,
+    location: { latitude: number; longitude: number }
+  ) {
+    if (!Number.isFinite(location.latitude) || !Number.isFinite(location.longitude)) {
+      throw new AppError('latitude and longitude must be valid numbers', 400);
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('users')
+      .update({
+        latitude: location.latitude,
+        longitude: location.longitude,
+      })
+      .eq('id', userId)
+      .select('*')
+      .maybeSingle();
+
+    if (error) {
+      if (error.code === '42703' || error.message?.includes('column')) {
+        throw new AppError('Location fields not available. Run migration-support-settings-v2.sql.', 503);
+      }
+      throw new AppError('Failed to update location', 500);
+    }
+
+    await supabaseAdmin
+      .from('farmers')
+      .update({ latitude: location.latitude, longitude: location.longitude, updated_at: new Date().toISOString() })
+      .eq('user_id', userId);
+
+    return data;
+  }
+
+  async updateNotificationSettings(userId: string, settings: UserNotificationSettings) {
+    const { data, error } = await supabaseAdmin
+      .from('users')
+      .update({ notification_settings: settings || {} })
+      .eq('id', userId)
+      .select('id, notification_settings')
+      .maybeSingle();
+
+    if (error) {
+      if (error.code === '42703' || error.message?.includes('column')) {
+        throw new AppError('Notification settings field not available. Run migration-support-settings-v2.sql.', 503);
+      }
+      throw new AppError('Failed to update notification settings', 500);
+    }
+
     return data;
   }
 

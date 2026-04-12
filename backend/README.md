@@ -133,3 +133,11 @@ See `.env.example` for the full list. Required:
 - `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`
 - `JWT_SECRET` (min 32 characters)
 - `WEATHER_API_URL` / `WEATHER_API_KEY` (optional, disables cron if missing)
+
+SMTP (if using custom SMTP for Supabase Auth emails):
+- `SMTP_HOST=pro.turbo-smtp.com`
+- `SMTP_PORT=465`
+- `SMTP_ALT_PORT=25025`
+- `SMTP_SECURE=true`
+- `SMTP_USER` (Consumer Key)
+- `SMTP_PASS` (Consumer Secret)

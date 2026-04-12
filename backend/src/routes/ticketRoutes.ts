@@ -36,6 +36,12 @@ router.post('/', ticketCreateLimiter, upload.single('file'), ticketController.cr
 // GET /api/tickets/my — get current user's tickets
 router.get('/my', ticketController.getMyTickets);
 
+// GET /api/tickets/:id/replies — view ticket thread
+router.get('/:id/replies', ticketController.getReplies);
+
+// POST /api/tickets/:id/replies — add reply to ticket thread
+router.post('/:id/replies', ticketController.addReply);
+
 // ─── Admin Endpoints ─────────────────────────
 
 // PATCH /api/tickets/:id — admin update ticket

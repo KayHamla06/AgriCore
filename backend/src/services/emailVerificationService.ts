@@ -1,7 +1,7 @@
 // ============================================
 // AgriCore — Email Verification Service
-// Delegates ALL email verification to Supabase Auth.
-// No SMTP / Nodemailer — Supabase sends the emails.
+// Delegates verification emails to Supabase Auth.
+// Supabase can be configured with custom SMTP credentials.
 // ============================================
 
 import { supabaseAdmin } from '../config/supabaseClient';

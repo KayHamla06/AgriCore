@@ -6,6 +6,35 @@ import { Request, Response, NextFunction } from 'express';
 import { farmerService } from '../services/farmerService';
 
 export class FarmerController {
+  async createFarmRecord(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await farmerService.createFarmRecord(req.user!.id, req.body);
+      res.status(201).json({ success: true, data: result, message: 'Farm record saved and synced' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getHistory(req: Request, res: Response, next: NextFunction) {
+    try {
+      const start = req.query.start as string | undefined;
+      const end = req.query.end as string | undefined;
+      const records = await farmerService.getFarmHistory(req.user!.id, start, end);
+      res.json({ success: true, data: records });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getAnalytics(req: Request, res: Response, next: NextFunction) {
+    try {
+      const analytics = await farmerService.getLatestAnalytics(req.user!.id);
+      res.json({ success: true, data: analytics });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async getAll(req: Request, res: Response, next: NextFunction) {
     try {
       const page = parseInt(req.query.page as string) || 1;

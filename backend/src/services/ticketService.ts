@@ -11,9 +11,23 @@ import { activityLogService } from './activityLogService';
 import logger from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
-import type { Ticket, TicketStatus } from '../models/types';
+import type { Ticket, TicketReply, TicketStatus, UserRole } from '../models/types';
 
 export class TicketService {
+  private async getTicketById(ticketId: string): Promise<Ticket> {
+    const { data, error } = await supabaseAdmin
+      .from('tickets')
+      .select('*')
+      .eq('id', ticketId)
+      .maybeSingle();
+
+    if (error || !data) {
+      throw new AppError('Ticket not found', 404);
+    }
+
+    return data as Ticket;
+  }
+
   /**
    * Create a new support ticket.
    */
@@ -228,6 +242,82 @@ export class TicketService {
       resolved: resolved || 0,
       total: (open || 0) + (inProgress || 0) + (resolved || 0),
     };
+  }
+
+  async getReplies(ticketId: string, requesterId: string, requesterRole: UserRole): Promise<TicketReply[]> {
+    const ticket = await this.getTicketById(ticketId);
+
+    if (requesterRole !== 'admin' && ticket.user_id !== requesterId) {
+      throw new AppError('You are not allowed to view replies for this ticket', 403);
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('ticket_replies')
+      .select('*')
+      .eq('ticket_id', ticketId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      throw new AppError('Failed to fetch ticket replies. Ensure migration-support-settings-v2.sql is applied.', 500);
+    }
+
+    return (data || []) as TicketReply[];
+  }
+
+  async addReply(
+    ticketId: string,
+    senderId: string,
+    senderRole: UserRole,
+    message: string
+  ): Promise<TicketReply> {
+    const trimmed = (message || '').trim();
+    if (!trimmed) {
+      throw new AppError('Reply message is required', 400);
+    }
+
+    const ticket = await this.getTicketById(ticketId);
+    if (senderRole !== 'admin' && ticket.user_id !== senderId) {
+      throw new AppError('You are not allowed to reply to this ticket', 403);
+    }
+
+    const { data: reply, error } = await supabaseAdmin
+      .from('ticket_replies')
+      .insert({
+        ticket_id: ticketId,
+        sender_id: senderId,
+        message: trimmed,
+      })
+      .select('*')
+      .maybeSingle();
+
+    if (error || !reply) {
+      throw new AppError('Failed to add ticket reply. Ensure migration-support-settings-v2.sql is applied.', 500);
+    }
+
+    if (senderRole === 'admin') {
+      await notificationService.create({
+        user_id: ticket.user_id,
+        type: 'ticket_updated',
+        title: 'New Reply On Your Ticket',
+        body: `An admin replied to your ticket: ${ticket.title}`,
+      });
+    } else {
+      await this.notifyAdmins(
+        'ticket_updated',
+        'User Replied To Ticket',
+        `A user replied to ticket: ${ticket.title}`
+      );
+    }
+
+    await activityLogService.log({
+      user_id: senderId,
+      action: 'ticket_reply',
+      resource_type: 'ticket',
+      resource_id: ticketId,
+      details: { role: senderRole },
+    });
+
+    return reply as TicketReply;
   }
 
   private async notifyAdmins(type: string, title: string, body: string): Promise<void> {

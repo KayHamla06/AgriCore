@@ -78,6 +78,7 @@ export interface SoilData {
 export interface WeatherRecord {
   id: string;
   farmer_id: string;
+  farm_record_id?: string | null;
   date: string;
   temperature_min: number;
   temperature_max: number;
@@ -102,6 +103,27 @@ export interface SupportPlan {
   approval_status: 'Pending' | 'Approved' | 'Rejected' | null;
   approved_date: string | null;
   created_at: string;
+  updated_at: string;
+}
+
+export interface FarmRecord {
+  id: string;
+  farmer_id: string;
+  user_id: string;
+  province: string | null;
+  start_date: string;
+  end_date: string;
+  crop_yield: number;
+  livestock_count: number;
+  created_at: string;
+}
+
+export interface AnalyticsSummary {
+  id: string;
+  user_id: string;
+  province: string | null;
+  performance_score: number;
+  risk_level: 'LOW' | 'MEDIUM' | 'HIGH';
   updated_at: string;
 }
 
@@ -386,6 +408,22 @@ export interface Ticket {
   resolved_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface TicketReply {
+  id: string;
+  ticket_id: string;
+  sender_id: string;
+  message: string;
+  created_at: string;
+}
+
+export interface UserNotificationSettings {
+  email?: boolean;
+  sms?: boolean;
+  in_app?: boolean;
+  ticket_updates?: boolean;
+  marketing?: boolean;
 }
 
 // =============================================
