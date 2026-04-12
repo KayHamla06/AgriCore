@@ -15,7 +15,9 @@ const fs = require('fs');
 // =============================================
 const BACKEND_INTERNAL_PORT = process.env.BACKEND_PORT || 3001;
 const EXTERNAL_BACKEND_URL = process.env.BACKEND_URL;
-const SHOULD_START_EMBEDDED_BACKEND = !EXTERNAL_BACKEND_URL;
+const DISABLE_EMBEDDED_BACKEND = String(process.env.DISABLE_EMBEDDED_BACKEND || '').toLowerCase() === 'true';
+const SHOULD_START_EMBEDDED_BACKEND = !DISABLE_EMBEDDED_BACKEND;
+const INTERNAL_BACKEND_URL = `http://localhost:${BACKEND_INTERNAL_PORT}`;
 
 if (SHOULD_START_EMBEDDED_BACKEND) {
   // Set PORT for backend before loading it
@@ -36,10 +38,13 @@ if (SHOULD_START_EMBEDDED_BACKEND) {
     delete process.env.PORT;
   }
 } else {
-  console.log(`Using external backend from BACKEND_URL: ${EXTERNAL_BACKEND_URL}`);
+  console.log('Embedded backend disabled via DISABLE_EMBEDDED_BACKEND=true');
 }
 
-const BACKEND_URL = EXTERNAL_BACKEND_URL || `http://localhost:${BACKEND_INTERNAL_PORT}`;
+const BACKEND_URL = EXTERNAL_BACKEND_URL || INTERNAL_BACKEND_URL;
+if (EXTERNAL_BACKEND_URL) {
+  console.log(`Using external backend from BACKEND_URL: ${EXTERNAL_BACKEND_URL}`);
+}
 
 const app = express();
 const PORT = parseInt(process.env.PORT, 10) || 3000;
@@ -122,7 +127,22 @@ app.use(compression());
 
 app.use('/api', async (req, res) => {
   try {
-    const targetUrl = `${BACKEND_URL}/api${req.url}`;
+    var targetBase = BACKEND_URL;
+
+    // Prevent recursive proxying when BACKEND_URL points to this same host.
+    if (EXTERNAL_BACKEND_URL) {
+      try {
+        const externalHost = new URL(EXTERNAL_BACKEND_URL).host;
+        const requestHost = (req.headers.host || '').trim();
+        if (externalHost && requestHost && externalHost === requestHost) {
+          targetBase = INTERNAL_BACKEND_URL;
+        }
+      } catch {
+        // Ignore URL parse errors and keep configured target
+      }
+    }
+
+    const targetUrl = `${targetBase}/api${req.url}`;
 
     // Forward headers (auth, content-type, etc.)
     const headers = {};
