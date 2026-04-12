@@ -47,6 +47,12 @@ async function checkEditPermission(req: Request, res: Response, next: NextFuncti
 const updateSettingsSchema = z.object({
   name: z.string().min(2).max(100).optional(),
   phone: z.string().max(20).optional(),
+  address_number: z.string().max(20).optional(),
+  street_name: z.string().max(200).optional(),
+  suburb: z.string().max(100).optional(),
+  town: z.string().max(100).optional(),
+  province: z.string().max(100).optional(),
+  postal_code: z.string().max(10).regex(/^\d+$/, 'Postal code must be numeric').optional(),
 });
 
 const updateLocationSchema = z.object({

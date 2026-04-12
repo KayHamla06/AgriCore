@@ -43,12 +43,26 @@ export class UserService {
    */
   async updateSettings(
     userId: string,
-    updates: { name?: string; phone?: string }
+    updates: {
+      name?: string;
+      phone?: string;
+      address_number?: string;
+      street_name?: string;
+      suburb?: string;
+      town?: string;
+      province?: string;
+      postal_code?: string;
+    }
   ) {
     // Only allow known fields to be updated
+    const allowedFields = [
+      'name', 'phone',
+      'address_number', 'street_name', 'suburb', 'town', 'province', 'postal_code',
+    ] as const;
     const safeUpdates: Record<string, unknown> = {};
-    if (updates.name !== undefined) safeUpdates.name = updates.name;
-    if (updates.phone !== undefined) safeUpdates.phone = updates.phone;
+    for (const field of allowedFields) {
+      if (updates[field] !== undefined) safeUpdates[field] = updates[field];
+    }
 
     if (Object.keys(safeUpdates).length === 0) {
       throw new AppError('No valid settings to update', 400);

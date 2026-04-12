@@ -163,8 +163,7 @@ export class UserController {
         .from('deletion_requests')
         .insert({
           user_id: req.user!.id,
-          reason: reason || deletion_reason || '',
-          deletion_reason: deletion_reason || reason || '',
+          reason: deletion_reason || reason || '',
         })
         .select()
         .maybeSingle();
