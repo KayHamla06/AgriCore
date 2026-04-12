@@ -28,13 +28,13 @@ const createPlanSchema = z.object({
 });
 
 // GET /api/plans — all plans (gov only)
-router.get('/', requireRole('government'), planController.getAll);
+router.get('/', requireRole('advisor'), planController.getAll);
 
 // GET /api/plans/mine — farmer's own plans
 router.get('/mine', requireRole('farmer'), planController.getMyPlans);
 
 // GET /api/plans/farmer/:farmerId — plans for a specific farmer (gov)
-router.get('/farmer/:farmerId', requireRole('government'), planController.getByFarmerId);
+router.get('/farmer/:farmerId', requireRole('advisor'), planController.getByFarmerId);
 
 // POST /api/plans — create a plan
 router.post('/', validate(createPlanSchema), planController.create);
@@ -43,10 +43,10 @@ router.post('/', validate(createPlanSchema), planController.create);
 router.put('/:planId', planController.update);
 
 // POST /api/plans/:planId/approve — approve (gov only)
-router.post('/:planId/approve', requireRole('government'), planController.approve);
+router.post('/:planId/approve', requireRole('advisor'), planController.approve);
 
 // POST /api/plans/:planId/reject — reject (gov only)
-router.post('/:planId/reject', requireRole('government'), planController.reject);
+router.post('/:planId/reject', requireRole('advisor'), planController.reject);
 
 // DELETE /api/plans/:planId — delete a draft plan
 router.delete('/:planId', planController.delete);

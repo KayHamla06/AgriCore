@@ -41,14 +41,14 @@ router.get('/created', taskController.getCreatedTasks);
 // Get tasks for a department
 router.get(
   '/department/:departmentId',
-  requireRole('admin', 'supervisor', 'government'),
+  requireRole('admin', 'supervisor', 'advisor'),
   taskController.getDepartmentTasks
 );
 
-// Create task (admin/supervisor/government only)
+// Create task (admin/supervisor/advisor only)
 router.post(
   '/',
-  requireRole('admin', 'supervisor', 'government'),
+  requireRole('admin', 'supervisor', 'advisor'),
   validate(createTaskSchema),
   taskController.create
 );

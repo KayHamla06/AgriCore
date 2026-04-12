@@ -46,8 +46,8 @@
           '</div>' +
 
           '<div class="plans-section" style="margin-top:28px;">' +
-            '<h3 class="chart-card-title" style="margin-bottom:12px;"><i data-lucide="building-2" style="width:18px;height:18px;display:inline;"></i> Government Support Plans</h3>' +
-            '<p style="color:var(--gray-500);font-size:.8rem;margin-bottom:12px;">Plans created for you by government representatives.</p>' +
+            '<h3 class="chart-card-title" style="margin-bottom:12px;"><i data-lucide="building-2" style="width:18px;height:18px;display:inline;"></i> Advisor Support Plans</h3>' +
+            '<p style="color:var(--gray-500);font-size:.8rem;margin-bottom:12px;">Plans created for you by advisors.</p>' +
             '<div id="farmerGovPlans"><div style="text-align:center;padding:24px;color:var(--gray-400)">Loading plans...</div></div>' +
           '</div>';
 
@@ -68,7 +68,7 @@
           var plans = (res.success && res.data) ? res.data : [];
 
           var myPlans = plans.filter(function(p) { return p.created_by_role === 'farmer'; });
-          var govPlans = plans.filter(function(p) { return p.created_by_role === 'government'; });
+          var govPlans = plans.filter(function(p) { return p.created_by_role === 'advisor'; });
 
           var ownContainer = document.getElementById('farmerOwnPlans');
           if (ownContainer) {
@@ -99,7 +99,7 @@
           var govContainer = document.getElementById('farmerGovPlans');
           if (govContainer) {
             if (govPlans.length === 0) {
-              govContainer.innerHTML = '<div class="card" style="padding:24px;text-align:center;color:var(--gray-400);"><i data-lucide="building-2" style="width:32px;height:32px;display:block;margin:0 auto 8px;opacity:.5;"></i>No government support plans assigned to you.</div>';
+              govContainer.innerHTML = '<div class="card" style="padding:24px;text-align:center;color:var(--gray-400);"><i data-lucide="building-2" style="width:32px;height:32px;display:block;margin:0 auto 8px;opacity:.5;"></i>No advisor support plans assigned to you.</div>';
             } else {
               govContainer.innerHTML = '<div class="plans-cards">' + govPlans.map(function(p) {
                 var approvalClass = p.approval_status === 'Approved' ? 'success' : p.approval_status === 'Rejected' ? 'danger' : 'warning';
@@ -225,7 +225,7 @@
         });
       }
 
-      // === GOVERNMENT PLANS VIEW ===
+      // === ADVISOR PLANS VIEW ===
       function initGovPlans() {
         container.innerHTML =
           '<div class="plans-header">' +

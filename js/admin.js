@@ -481,13 +481,13 @@ document.addEventListener('DOMContentLoaded', function () {
   var usersCacheByFilter = {
     all: [],
     farmer: [],
-    government: [],
+    advisor: [],
     admin: [],
   };
   var usersRetryTimer = null;
 
   function normalizeUserFilter(filter) {
-    if (filter === 'farmer' || filter === 'government' || filter === 'admin') return filter;
+    if (filter === 'farmer' || filter === 'advisor' || filter === 'admin') return filter;
     return '';
   }
 
@@ -1313,8 +1313,8 @@ document.addEventListener('DOMContentLoaded', function () {
       if (verStatus !== 'verified') {
         verifyBtn.style.display = '';
         verifyBtn.textContent = '';
-        if (u.role === 'government' && verStatus === 'pending') {
-          verifyBtn.innerHTML = '<i data-lucide="check-circle" style="width:14px;height:14px;margin-right:4px;"></i> Approve & Send Email';
+        if (u.role === 'advisor' && verStatus === 'pending') {
+          verifyBtn.innerHTML = '<i data-lucide="check-circle" style="width:14px;height:14px;margin-right:4px;"></i> Approve Advisor';
         } else {
           verifyBtn.innerHTML = '<i data-lucide="badge-check" style="width:14px;height:14px;margin-right:4px;"></i> Verify User';
         }
@@ -1324,8 +1324,8 @@ document.addEventListener('DOMContentLoaded', function () {
           apiPost('/verification/' + u.id + '/approve', { notes: 'Approved by admin' }).then(function(res) {
             if (res.success) {
               AgriCore.showToast(
-                u.role === 'government'
-                  ? 'Government official approved and verification email sent.'
+                u.role === 'advisor'
+                  ? 'Advisor approved successfully.'
                   : 'User verified!',
                 'success'
               );
@@ -1335,8 +1335,8 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
               AgriCore.showToast(res.error || 'Verification failed.', 'error');
               verifyBtn.disabled = false;
-              verifyBtn.innerHTML = u.role === 'government'
-                ? '<i data-lucide="check-circle" style="width:14px;height:14px;margin-right:4px;"></i> Approve & Send Email'
+              verifyBtn.innerHTML = u.role === 'advisor'
+                ? '<i data-lucide="check-circle" style="width:14px;height:14px;margin-right:4px;"></i> Approve Advisor'
                 : '<i data-lucide="badge-check" style="width:14px;height:14px;margin-right:4px;"></i> Verify User';
             }
             if (typeof lucide !== 'undefined') lucide.createIcons();

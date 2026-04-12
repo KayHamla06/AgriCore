@@ -35,7 +35,7 @@ router.get('/:farmerId/latest', requireOwnerOrGov, async (req, res, next) => {
 });
 
 // POST /api/weather/fetch-all — manually trigger weather fetch (gov only)
-router.post('/fetch-all', requireRole('government'), async (_req, res, next) => {
+router.post('/fetch-all', requireRole('advisor'), async (_req, res, next) => {
   try {
     await weatherService.fetchAllFarmersWeather();
     res.json({ success: true, message: 'Weather data fetched for all farmers' });

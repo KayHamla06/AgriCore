@@ -8,7 +8,6 @@ import { supabaseAdmin } from '../config/supabaseClient';
 import { config } from '../config';
 import { AppError } from '../middleware/errorHandler';
 import { notificationService } from './notificationService';
-import { emailVerificationService } from './emailVerificationService';
 import { activityLogService } from './activityLogService';
 import logger from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
@@ -264,7 +263,7 @@ export class VerificationService {
 
   /**
    * Admin: approve user verification.
-   * For government users: enables dashboard access.
+   * For advisor users: enables dashboard access.
    */
   async approveUser(
     userId: string,
@@ -285,12 +284,7 @@ export class VerificationService {
       throw new AppError('User not found', 404);
     }
 
-    const isGov = targetUser.role === 'government';
-
-    // Government officials must confirm email after approval.
-    if (isGov && targetUser.email) {
-      await emailVerificationService.sendVerificationEmail(targetUser.email);
-    }
+    const isGov = targetUser.role === 'advisor';
 
     const previousStatus = targetUser.verification_status as VerificationStatus;
     const reviewedAt = new Date().toISOString();
@@ -319,7 +313,7 @@ export class VerificationService {
       type: 'verification_approved',
       title: isGov ? 'Application Approved ✅' : 'Account Verified ✅',
       body: isGov
-        ? `${adminName} approved your government official application and sent you a verification email. Please verify your email to complete access setup.`
+        ? `${adminName} approved your advisor application. You now have full access to the platform.`
         : `${adminName} has verified your account. You now have full access to the dashboard.`,
     });
 

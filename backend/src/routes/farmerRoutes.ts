@@ -19,7 +19,7 @@ const router = Router();
 router.use(authMiddleware, requireVerified);
 
 // GET /api/farmers — list all farmers (gov only)
-router.get('/', requireRole('government'), farmerController.getAll);
+router.get('/', requireRole('advisor'), farmerController.getAll);
 
 // GET /api/farmers/me — farmer's own profile
 router.get('/me', requireRole('farmer'), farmerController.getMyProfile);
@@ -47,7 +47,7 @@ router.get('/me/analytics', requireRole('farmer'), farmerController.getAnalytics
 router.put('/me', requireRole('farmer'), farmerController.updateMyProfile);
 
 // GET /api/farmers/district/:district — farmers by district (gov only)
-router.get('/district/:district', requireRole('government'), farmerController.getByDistrict);
+router.get('/district/:district', requireRole('advisor'), farmerController.getByDistrict);
 
 // GET /api/farmers/:farmerId — specific farmer profile
 router.get('/:farmerId', requireOwnerOrGov, farmerController.getById);

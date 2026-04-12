@@ -171,7 +171,7 @@ describe('AdminService', () => {
         order: vi.fn().mockResolvedValue({
           data: [
             { id: 'u1', name: 'User 1', role: 'farmer' },
-            { id: 'u2', name: 'User 2', role: 'government' },
+            { id: 'u2', name: 'User 2', role: 'advisor' },
           ],
           error: null,
         }),

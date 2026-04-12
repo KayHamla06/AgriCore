@@ -2,7 +2,7 @@
 // AgriCore — Shared Type Definitions
 // ============================================
 
-export type UserRole = 'farmer' | 'government' | 'admin' | 'supervisor' | 'field_agent' | 'office_staff';
+export type UserRole = 'farmer' | 'advisor' | 'admin' | 'supervisor' | 'field_agent' | 'office_staff';
 
 export interface AuthUser {
   id: string;

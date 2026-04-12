@@ -42,15 +42,15 @@ document.addEventListener('DOMContentLoaded', () => {
         AgriCore.setCurrentUser(user);
 
         // Check for pending verification notification
-        if (user.verification_status === 'verified' && user.role === 'government') {
+        if (user.verification_status === 'verified' && user.role === 'advisor') {
           AgriCore.showToast('✅ Your account has been verified. You now have access to the dashboard.', 'success');
         }
 
         AgriCore.showToast('Login successful! Redirecting...', 'success');
 
         setTimeout(() => {
-          // Government users with pending verification go to pending page
-          if (user.role === 'government' && user.verification_status !== 'verified') {
+          // Advisor users with pending verification go to pending page
+          if (user.role === 'advisor' && user.verification_status !== 'verified') {
             window.location.href = '/pending-verification';
           } else if (user.role === 'admin') {
             window.location.href = '/platform/admin/console';

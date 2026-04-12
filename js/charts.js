@@ -145,8 +145,8 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
 
-  // ===== GOVERNMENT CHARTS (real data from API) =====
-  if (user.role === 'government') {
+  // ===== ADVISOR CHARTS (real data from API) =====
+  if (user.role === 'advisor') {
     var API_BASE_G = window.AGRICORE_API_BASE || '/api';
     var tokenG = user.token || '';
 

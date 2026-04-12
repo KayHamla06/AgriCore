@@ -89,7 +89,7 @@ export class PlanService {
     if (error) throw new AppError('Failed to create plan', 500);
 
     // Notify the farmer about the new plan (if created by gov)
-    if (plan.created_by_role === 'government') {
+    if (plan.created_by_role === 'advisor') {
       const userId = await this.getFarmerUserId(plan.farmer_id);
       if (userId) {
         await notificationService.create({

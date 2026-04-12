@@ -71,7 +71,7 @@ export class AuthService {
   }
 
   private isUserRole(value: unknown): value is UserRole {
-    return ['farmer', 'government', 'admin', 'supervisor', 'field_agent', 'office_staff'].includes(
+    return ['farmer', 'advisor', 'admin', 'supervisor', 'field_agent', 'office_staff'].includes(
       String(value)
     );
   }
@@ -104,7 +104,7 @@ export class AuthService {
     const fallbackName = email ? email.split('@')[0] : 'New User';
     const name = (typeof nameFromMeta === 'string' && nameFromMeta.trim()) ? nameFromMeta.trim() : fallbackName;
 
-    const verificationStatus = role === 'government' ? 'pending' : 'none';
+    const verificationStatus = role === 'advisor' ? 'pending' : 'none';
 
     const { data: created, error: createError } = await supabaseAdmin
       .from('users')
@@ -152,11 +152,11 @@ export class AuthService {
     const { password, name, role, province, district, farmSize } = payload;
     const email = this.normalizeEmail(payload.email);
 
-    // Determine initial verification_status based on role
-    const verificationStatus = role === 'government' ? 'pending' : 'none';
+    // Advisors need admin approval, everyone else is ready immediately
+    const verificationStatus = role === 'advisor' ? 'pending' : 'none';
 
-    // 1. Create auth user — auto-confirm because GoTrue SMTP may be unreliable.
-    //    The user must still verify via the resend-verification flow.
+    // 1. Create auth user — auto-confirmed so login works immediately.
+    //    Advisor approval is tracked in our own users table, not via GoTrue email.
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -167,7 +167,6 @@ export class AuthService {
     if (authError) {
       logger.warn('SignUp: Supabase auth error', { email, error: authError.message });
 
-      // "User already registered" or similar identity conflict
       if (
         authError.message.toLowerCase().includes('already') ||
         authError.message.toLowerCase().includes('exists') ||
@@ -199,7 +198,6 @@ export class AuthService {
       .maybeSingle();
 
     if (profileError || !profile) {
-      // Rollback: delete the auth user if profile creation fails
       await supabaseAdmin.auth.admin.deleteUser(authUser.id);
       logger.error('SignUp: profile creation failed, rolled back auth user', {
         authId: authUser.id,
@@ -208,6 +206,7 @@ export class AuthService {
       throw new AppError('Failed to create user profile', 500);
     }
 
+    // 3. Create farmer profile if role is farmer
     try {
       if (profile.role === 'farmer') {
         await this.ensureFarmerProfile(profile.id, {
@@ -223,41 +222,6 @@ export class AuthService {
       await supabaseAdmin.from('users').delete().eq('id', profile.id);
       await supabaseAdmin.auth.admin.deleteUser(authUser.id);
       throw farmerProfileError;
-    }
-
-    // 4. Now un-confirm the email so the user must verify it
-    //    and attempt to send verification email (best-effort)
-    try {
-      await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
-        email_confirm: false,
-      });
-    } catch (unconfirmError) {
-      logger.warn('SignUp: could not un-confirm email, user will be pre-verified', {
-        authId: authUser.id,
-        error: (unconfirmError as Error).message,
-      });
-    }
-
-    // 5. Send verification email (best-effort — don't fail signup if SMTP is down)
-    try {
-      const { error: resendError } = await supabaseAdmin.auth.resend({
-        type: 'signup',
-        email,
-        options: {
-          emailRedirectTo: `${process.env.APP_URL || 'https://agricore.site'}/auth/callback`,
-        },
-      });
-      if (resendError) {
-        logger.warn('SignUp: verification email send failed', {
-          email,
-          error: resendError.message,
-        });
-      }
-    } catch (emailError) {
-      logger.warn('SignUp: verification email exception', {
-        email,
-        error: (emailError as Error).message,
-      });
     }
 
     return {
@@ -293,7 +257,6 @@ export class AuthService {
 
     if (error || !data.user || !data.session) {
       const authError = error as { message?: string; status?: number; code?: string } | null;
-      const errorMessage = (authError?.message || '').toLowerCase();
       const errorStatus = authError?.status;
 
       logger.warn('Supabase login failed', {
@@ -303,22 +266,7 @@ export class AuthService {
         message: authError?.message || 'No error message',
       });
 
-      if (errorMessage.includes('email not confirmed')) {
-        throw new AppError('Please verify your email before logging in', 403);
-      }
 
-      // Surface upstream/provider failures distinctly from user credential issues.
-      if (typeof errorStatus === 'number' && errorStatus >= 500) {
-        throw new AppError('Authentication provider is temporarily unavailable', 503);
-      }
-
-      if (
-        errorMessage.includes('network') ||
-        errorMessage.includes('timeout') ||
-        errorMessage.includes('fetch failed')
-      ) {
-        throw new AppError('Authentication provider is temporarily unavailable', 503);
-      }
 
       throw new AppError('Invalid email or password', 401);
     }
@@ -382,10 +330,10 @@ export class AuthService {
 
   /**
    * Set user role (e.g. during onboarding).
-   * If user selects 'government', set verification_status = 'pending'.
+   * If user selects 'advisor', set verification_status = 'pending'.
    */
   async setUserRole(userId: string, role: UserRole): Promise<void> {
-    const verificationStatus = role === 'government' ? 'pending' : 'none';
+    const verificationStatus = role === 'advisor' ? 'pending' : 'none';
 
     const { error } = await supabaseAdmin
       .from('users')

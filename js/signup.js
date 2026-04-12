@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (step === 2) {
       const role = roleInput.value;
       document.getElementById('farmerForm').classList.toggle('active', role === 'farmer');
-      document.getElementById('govForm').classList.toggle('active', role === 'government');
+      document.getElementById('govForm').classList.toggle('active', role === 'advisor');
       lucide.createIcons();
     }
 
@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!document.getElementById('farmName').value.trim()) { AgriCore.showToast('Please enter your farm name.', 'error'); return false; }
         if (!document.getElementById('farmProvince').value) { AgriCore.showToast('Please select a province.', 'error'); return false; }
       }
-      if (role === 'government') {
+      if (role === 'advisor') {
         if (!document.getElementById('deptName').value.trim()) { AgriCore.showToast('Please enter your department name.', 'error'); return false; }
         if (!document.getElementById('employeeId').value.trim()) { AgriCore.showToast('Please enter your employee ID.', 'error'); return false; }
       }
@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="review-grid">
           <div class="review-item"><label>Full Name</label><span>${esc(document.getElementById('fullName').value)}</span></div>
           <div class="review-item"><label>Email</label><span>${esc(document.getElementById('signupEmail').value)}</span></div>
-          <div class="review-item"><label>Role</label><span>${role === 'farmer' ? 'Farmer' : 'Government Official'}</span></div>
+          <div class="review-item"><label>Role</label><span>${role === 'farmer' ? 'Farmer' : 'Advisor'}</span></div>
         </div>
       </div>`;
 
@@ -237,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await AgriCore.apiPost('/auth/signup', payload);
 
       if (res.success) {
-        AgriCore.showToast('Account created! Please check your email to verify your account.', 'success');
+        AgriCore.showToast('Account created successfully!', 'success');
 
         // Show confirmation panel instead of redirecting to dashboard
         document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
@@ -246,20 +246,16 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmPanel.className = 'step-panel active';
         confirmPanel.innerHTML = `
           <div style="text-align:center; padding:2rem;">
-            <div style="font-size:3rem; margin-bottom:1rem;">📧</div>
-            <h2>Check Your Email</h2>
+            <div style="font-size:3rem; margin-bottom:1rem;">✅</div>
+            <h2>Account Created!</h2>
             <p style="color:var(--text-secondary); margin:1rem 0;">
-              We've sent a verification link to <strong>${AgriCore.escapeHtml(email)}</strong>.
-              Click the link in the email to verify your account and log in.
+              Your account has been created for <strong>${AgriCore.escapeHtml(email)}</strong>.
+              You can now log in to your dashboard.
             </p>
-            ${role === 'government' ? '<p style="color:var(--warning); margin:1rem 0;"><strong>Note:</strong> Government accounts require additional admin verification after email verification.</p>' : ''}
+            ${role === 'advisor' ? '<p style="color:var(--warning); margin:1rem 0;"><strong>Note:</strong> Advisor accounts require admin verification before full access is granted.</p>' : ''}
             <div style="margin-top:2rem;">
               <a href="/login" class="btn btn-primary">Go to Login</a>
             </div>
-            <p style="margin-top:1rem; font-size:0.85rem; color:var(--text-muted);">
-              Didn't receive the email? Check your spam folder or
-              <a href="#" id="resendSignupVerify">click here to resend</a>.
-            </p>
           </div>
         `;
         document.querySelector('.signup-card').appendChild(confirmPanel);

@@ -2,7 +2,7 @@
 // AgriCore — PDF Service
 // Generates branded PDF reports for farmers.
 // Access control: farmers see own data only,
-// government can access any farmer's data.
+// advisor can access any farmer's data.
 // ============================================
 
 import PDFDocument from 'pdfkit';

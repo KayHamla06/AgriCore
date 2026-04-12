@@ -84,7 +84,7 @@
     .btn-logout { background: #f3f4f6; color: #374151; }
     .btn-logout:hover { background: #e5e7eb; }
 
-    /* Upload section for government verification docs */
+    /* Upload section for advisor verification docs */
     .upload-section {
       margin-top: 32px;
       padding-top: 32px;
@@ -222,13 +222,13 @@
       }
 
       // If user is verified, redirect to dashboard
-      if (user.role === 'government' && user.verification_status === 'verified') {
+      if (user.role === 'advisor' && user.verification_status === 'verified') {
         window.location.href = '/platform/dashboard';
         return;
       }
 
-      // If user is not government, they shouldn't be here
-      if (user.role !== 'government') {
+      // If user is not advisor, they shouldn't be here
+      if (user.role !== 'advisor') {
         window.location.href = '/platform/dashboard';
         return;
       }

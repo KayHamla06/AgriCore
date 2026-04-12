@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function getRedirectForUser(user) {
-    if (user.role === 'government' && user.verification_status !== 'verified') {
+    if (user.role === 'advisor' && user.verification_status !== 'verified') {
       return '/pending-verification';
     }
     if (user.role === 'admin') {

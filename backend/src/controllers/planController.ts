@@ -20,7 +20,7 @@ export class PlanController {
       const role = req.query.createdByRole as string | undefined;
       const plans = await planService.getByFarmerId(
         req.user!.id,
-        role === 'farmer' || role === 'government' ? role : undefined
+        role === 'farmer' || role === 'advisor' ? role : undefined
       );
       res.json({ success: true, data: plans });
     } catch (err) {

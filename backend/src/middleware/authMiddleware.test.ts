@@ -133,7 +133,7 @@ describe('optionalAuth', () => {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       single: vi.fn().mockResolvedValue({
-        data: { id: 'user-456', email: 'opt@test.com', role: 'government', name: 'Gov User' },
+        data: { id: 'user-456', email: 'opt@test.com', role: 'advisor', name: 'Gov User' },
         error: null,
       }),
     };
@@ -149,7 +149,7 @@ describe('optionalAuth', () => {
     expect(req.user).toEqual({
       id: 'user-456',
       email: 'opt@test.com',
-      role: 'government',
+      role: 'advisor',
       name: 'Gov User',
     });
   });

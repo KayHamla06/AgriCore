@@ -1,5 +1,5 @@
 /* ============================================
-   AgriCore — Government Dashboard Panel
+   AgriCore — Advisor Dashboard Panel
    ============================================ */
 (function() {
   'use strict';
@@ -18,7 +18,7 @@
         </div>
         <div class="section-header">
           <div>
-            <h2 class="section-title">Government Dashboard</h2>
+            <h2 class="section-title">Advisor Dashboard</h2>
             <p style="color:var(--gray-500);font-size:.875rem;">Monitor farmer progress across all regions.</p>
           </div>
           <span class="verified-badge" id="govVerifiedBadge" style="display:none;"><i data-lucide="badge-check"></i> Verified Gov Official</span>

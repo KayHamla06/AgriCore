@@ -18,14 +18,14 @@ document.addEventListener('DOMContentLoaded', function() {
     return;
   }
 
-  // Government users must be verified to access the dashboard
-  if (user.role === 'government' && user.verification_status !== 'verified') {
+  // Advisor users must be verified to access the dashboard
+  if (user.role === 'advisor' && user.verification_status !== 'verified') {
     window.location.href = '/pending-verification';
     return;
   }
 
   var isFarmer = user.role === 'farmer';
-  var isGov = user.role === 'government';
+  var isGov = user.role === 'advisor';
 
   // =============================================
   //  DOM REFERENCES — Shell elements
@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (sidebarAvatar) sidebarAvatar.textContent = initials;
   if (topbarAvatar) topbarAvatar.textContent = initials;
   if (sidebarUserName) sidebarUserName.textContent = user.name;
-  if (sidebarUserRole) sidebarUserRole.textContent = isFarmer ? 'Farmer' : 'Government Rep';
+  if (sidebarUserRole) sidebarUserRole.textContent = isFarmer ? 'Farmer' : 'Advisor';
   if (topbarSubtitle) topbarSubtitle.textContent = 'Welcome back, ' + user.name.split(' ')[0];
 
   // Hide gov-only sidebar items for farmers

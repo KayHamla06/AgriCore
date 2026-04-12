@@ -37,10 +37,10 @@ router.use(authMiddleware, requireVerified);
 // List visits (role-aware)
 router.get('/', fieldVisitController.getAll);
 
-// Create visit (field agents, supervisors, government)
+// Create visit (field agents, supervisors, advisor)
 router.post(
   '/',
-  requireRole('field_agent', 'supervisor', 'government', 'admin'),
+  requireRole('field_agent', 'supervisor', 'advisor', 'admin'),
   validate(createVisitSchema),
   fieldVisitController.create
 );

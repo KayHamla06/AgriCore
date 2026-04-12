@@ -11,12 +11,12 @@ describe('UserService', () => {
   beforeEach(() => vi.clearAllMocks());
 
   describe('getProfile', () => {
-    it('returns user profile for government user', async () => {
+    it('returns user profile for advisor user', async () => {
       const fromChain = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({
-          data: { id: 'u1', email: 'gov@test.com', role: 'government', name: 'Gov' },
+          data: { id: 'u1', email: 'gov@test.com', role: 'advisor', name: 'Gov' },
           error: null,
         }),
       };

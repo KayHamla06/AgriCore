@@ -408,7 +408,7 @@ const AgriCore = (() => {
     return insights;
   }
 
-  // ===== District Summary (Government) =====
+  // ===== District Summary (Advisor) =====
   function getDistrictSummary(farmers) {
     farmers = farmers || [];
     const districts = {};

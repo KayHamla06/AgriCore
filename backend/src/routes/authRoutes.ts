@@ -23,7 +23,7 @@ const signUpSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
-  role: z.enum(['farmer', 'government', 'supervisor', 'field_agent', 'office_staff']),
+  role: z.enum(['farmer', 'advisor', 'supervisor', 'field_agent', 'office_staff']),
   province: z.string().trim().optional(),
   district: z.string().trim().optional(),
   farmSize: z.union([z.string(), z.number()]).optional(),
@@ -47,7 +47,7 @@ const callbackSchema = z.object({
 });
 
 const setRoleSchema = z.object({
-  role: z.enum(['farmer', 'government']),
+  role: z.enum(['farmer', 'advisor']),
 });
 
 const checkEmailSchema = z.object({

@@ -22,8 +22,8 @@ describe('requireRole', () => {
   });
 
   it('allows access when user has one of multiple allowed roles', () => {
-    const middleware = requireRole('farmer', 'government');
-    const req = mockRequest({ user: mockAuthUser({ role: 'government' }) });
+    const middleware = requireRole('farmer', 'advisor');
+    const req = mockRequest({ user: mockAuthUser({ role: 'advisor' }) });
     const res = mockResponse();
     const next = mockNext();
 
@@ -33,7 +33,7 @@ describe('requireRole', () => {
   });
 
   it('denies access when user role is not allowed', () => {
-    const middleware = requireRole('government');
+    const middleware = requireRole('advisor');
     const req = mockRequest({ user: mockAuthUser({ role: 'farmer' }) });
     const res = mockResponse();
     const next = mockNext();
@@ -62,9 +62,9 @@ describe('requireRole', () => {
 describe('requireOwnerOrGov', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('allows government users to access any farmer data', () => {
+  it('allows advisor users to access any farmer data', () => {
     const req = mockRequest({
-      user: mockAuthUser({ role: 'government' }),
+      user: mockAuthUser({ role: 'advisor' }),
       params: { farmerId: 'other-farmer-id' },
     });
     const res = mockResponse();

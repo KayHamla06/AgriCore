@@ -12,9 +12,9 @@ import logger from '../utils/logger';
  * Creates middleware that restricts access to specific roles.
  *
  * Usage:
- *   router.get('/farmers', authMiddleware, requireRole('government'), getFarmers);
+ *   router.get('/farmers', authMiddleware, requireRole('advisor'), getFarmers);
  *   router.post('/upload', authMiddleware, requireRole('farmer'), uploadData);
- *   router.get('/plans', authMiddleware, requireRole('farmer', 'government'), getPlans);
+ *   router.get('/plans', authMiddleware, requireRole('farmer', 'advisor'), getPlans);
  */
 export function requireRole(...allowedRoles: UserRole[]) {
   return (req: Request, res: Response, next: NextFunction): void => {
@@ -44,8 +44,8 @@ export function requireRole(...allowedRoles: UserRole[]) {
 }
 
 /**
- * Middleware that blocks government users whose verification is not approved.
- * Farmers and admins pass through. Government users must have verification_status = 'verified'.
+ * Middleware that blocks advisor users whose verification is not approved.
+ * Farmers and admins pass through. Advisor users must have verification_status = 'verified'.
  *
  * Usage:
  *   router.get('/dashboard-data', authMiddleware, requireVerified, getDashboardData);
@@ -60,9 +60,9 @@ export function requireVerified(
     return;
   }
 
-  // Only enforce verification requirement for government users
-  if (req.user.role === 'government' && req.user.verification_status !== 'verified') {
-    logger.warn('RBAC: unverified government user blocked', {
+  // Only enforce verification requirement for advisor users
+  if (req.user.role === 'advisor' && req.user.verification_status !== 'verified') {
+    logger.warn('RBAC: unverified advisor user blocked', {
       userId: req.user.id,
       status: req.user.verification_status,
       path: req.path,
@@ -82,7 +82,7 @@ export function requireVerified(
 /**
  * Ensures a farmer can only access their own data.
  * Compares req.user.id against the :farmerId route param.
- * Government users bypass this check (they can view any farmer).
+ * Advisor users bypass this check (they can view any farmer).
  *
  * Usage:
  *   router.get('/farmers/:farmerId/data', authMiddleware, requireOwnerOrGov, getData);
@@ -97,8 +97,8 @@ export function requireOwnerOrGov(
     return;
   }
 
-  // Government, admin, and supervisor users can access any farmer's data
-  if (req.user.role === 'government' || req.user.role === 'admin' || req.user.role === 'supervisor') {
+  // Advisor, admin, and supervisor users can access any farmer's data
+  if (req.user.role === 'advisor' || req.user.role === 'admin' || req.user.role === 'supervisor') {
     next();
     return;
   }
