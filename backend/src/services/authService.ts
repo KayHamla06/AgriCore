@@ -146,17 +146,17 @@ export class AuthService {
   /**
    * Register a new user.
    * Creates Supabase Auth user + row in `users` table.
-   * Supabase sends verification email automatically.
+   * Then un-confirms the user and sends a verification email.
    */
   async signUp(payload: SignUpRequest): Promise<AuthResponse> {
     const { password, name, role, province, district, farmSize } = payload;
     const email = this.normalizeEmail(payload.email);
 
-    // Advisors need admin approval, everyone else is ready immediately
+    // Advisors need admin approval, everyone else just needs email verification
     const verificationStatus = role === 'advisor' ? 'pending' : 'none';
 
-    // 1. Create auth user — auto-confirmed so login works immediately.
-    //    Advisor approval is tracked in our own users table, not via GoTrue email.
+    // 1. Create auth user — email_confirm: true so it never crashes on SMTP.
+    //    We un-confirm immediately after, then send verification email separately.
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -183,6 +183,28 @@ export class AuthService {
     }
 
     const authUser = authData.user;
+
+    // 2. Un-confirm the user so they must verify their email before logging in
+    try {
+      await supabaseAdmin.rpc('unconfirm_user_email', { target_user_id: authUser.id });
+    } catch (unconfirmErr) {
+      logger.warn('SignUp: failed to un-confirm user, proceeding anyway', {
+        authId: authUser.id,
+        error: (unconfirmErr as Error).message,
+      });
+    }
+
+    // 3. Send verification email (best-effort — if SMTP is broken, user can resend later)
+    try {
+      const authClient = this.createAuthClient();
+      await authClient.auth.resend({ type: 'signup', email });
+      logger.info('SignUp: verification email sent', { email });
+    } catch (emailErr) {
+      logger.warn('SignUp: verification email failed (user can resend later)', {
+        email,
+        error: (emailErr as Error).message,
+      });
+    }
 
     // 2. Create profile row in users table
     const { data: profile, error: profileError } = await supabaseAdmin
@@ -258,6 +280,7 @@ export class AuthService {
     if (error || !data.user || !data.session) {
       const authError = error as { message?: string; status?: number; code?: string } | null;
       const errorStatus = authError?.status;
+      const errorMessage = (authError?.message || '').toLowerCase();
 
       logger.warn('Supabase login failed', {
         email: normalizedEmail,
@@ -266,7 +289,10 @@ export class AuthService {
         message: authError?.message || 'No error message',
       });
 
-
+      // Give a specific message for unconfirmed emails
+      if (errorMessage.includes('email not confirmed') || errorMessage.includes('not confirmed')) {
+        throw new AppError('Please verify your email address before logging in. Check your inbox for the verification link.', 403);
+      }
 
       throw new AppError('Invalid email or password', 401);
     }

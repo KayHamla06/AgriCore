@@ -3,19 +3,18 @@
 --  Run this in the Supabase SQL Editor
 -- =============================================
 
--- 1. Update existing users with role = 'government' to 'advisor'
-UPDATE users SET role = 'advisor' WHERE role = 'government';
+-- 1. Drop CHECK constraints FIRST (so updates don't violate them)
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE support_plans DROP CONSTRAINT IF EXISTS support_plans_created_by_role_check;
 
--- 2. Update support_plans created_by_role
+-- 2. Update existing data
+UPDATE users SET role = 'advisor' WHERE role = 'government';
 UPDATE support_plans SET created_by_role = 'advisor' WHERE created_by_role = 'government';
 
--- 3. Drop and re-create the CHECK constraint on users.role
-ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+-- 3. Re-create constraints with new values
 ALTER TABLE users ADD CONSTRAINT users_role_check
   CHECK (role IN ('farmer', 'advisor', 'admin', 'supervisor', 'field_agent', 'office_staff'));
 
--- 4. Drop and re-create the CHECK constraint on support_plans.created_by_role
-ALTER TABLE support_plans DROP CONSTRAINT IF EXISTS support_plans_created_by_role_check;
 ALTER TABLE support_plans ADD CONSTRAINT support_plans_created_by_role_check
   CHECK (created_by_role IN ('farmer', 'advisor'));
 

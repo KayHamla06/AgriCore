@@ -6,8 +6,11 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { adminController } from '../controllers/adminController';
+import { adminService } from '../services/adminService';
 import { ticketController } from '../controllers/ticketController';
 import { authMiddleware, requireRole, validate } from '../middleware';
+import { emailVerificationService } from '../services/emailVerificationService';
+import logger from '../utils/logger';
 
 const router = Router();
 
@@ -78,6 +81,22 @@ router.put('/users/:id/permissions', validate(permissionSchema), adminController
 
 // GET /api/admin/users/:id/edit-history — admin edit audit trail
 router.get('/users/:id/edit-history', adminController.getProfileEditHistory);
+
+// POST /api/admin/users/:id/send-verification — send verification email to user
+router.post('/users/:id/send-verification', async (req, res, next) => {
+  try {
+    const user = await adminService.getUserDetails(req.params.id);
+    if (!user) {
+      res.status(404).json({ success: false, error: 'User not found' });
+      return;
+    }
+    await emailVerificationService.sendVerificationEmail(user.email);
+    logger.info('Admin sent verification email', { adminId: req.user!.id, targetEmail: user.email });
+    res.json({ success: true, message: 'Verification email sent to ' + user.email });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // =============================================
 //  STATISTICS

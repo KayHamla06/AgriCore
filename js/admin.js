@@ -1346,6 +1346,30 @@ document.addEventListener('DOMContentLoaded', function () {
         verifyBtn.style.display = 'none';
       }
     }
+
+    // Show "Send Verification Email" button if user's email is not confirmed
+    var sendVerifyBtn = document.getElementById('sendVerifyEmailBtn');
+    if (sendVerifyBtn) {
+      if (u.email_confirmed === false) {
+        sendVerifyBtn.style.display = '';
+        sendVerifyBtn.onclick = function() {
+          sendVerifyBtn.disabled = true;
+          sendVerifyBtn.textContent = 'Sending...';
+          apiPost('/admin/users/' + u.id + '/send-verification', {}).then(function(res) {
+            if (res.success) {
+              AgriCore.showToast('Verification email sent to ' + u.email, 'success');
+            } else {
+              AgriCore.showToast(res.error || 'Failed to send verification email.', 'error');
+            }
+            sendVerifyBtn.disabled = false;
+            sendVerifyBtn.innerHTML = '<i data-lucide="mail" style="width:14px;height:14px;margin-right:4px;"></i> Send Verification Email';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        };
+      } else {
+        sendVerifyBtn.style.display = 'none';
+      }
+    }
   }
 
   function renderUserProfile(u) {

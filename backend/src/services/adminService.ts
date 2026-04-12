@@ -224,6 +224,15 @@ export class AdminService {
 
     if (error || !user) throw new AppError('User not found', 404);
 
+    // Check if user's email is confirmed in auth.users
+    let email_confirmed = true;
+    try {
+      const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(user.auth_id);
+      email_confirmed = !!authUser?.user?.email_confirmed_at;
+    } catch (_) {
+      // If we can't check, assume confirmed
+    }
+
     // If farmer, include farmer profile
     if (user.role === 'farmer') {
       const { data: farmer } = await supabaseAdmin
@@ -231,10 +240,10 @@ export class AdminService {
         .select('*')
         .eq('user_id', userId)
         .maybeSingle();
-      return { ...user, farmer };
+      return { ...user, email_confirmed, farmer };
     }
 
-    return user;
+    return { ...user, email_confirmed };
   }
 
   // ==========================================
