@@ -132,9 +132,10 @@ app.use('/api', async (req, res) => {
     // Prevent recursive proxying when BACKEND_URL points to this same host.
     if (EXTERNAL_BACKEND_URL) {
       try {
-        const externalHost = new URL(EXTERNAL_BACKEND_URL).host;
-        const requestHost = (req.headers.host || '').trim();
-        if (externalHost && requestHost && externalHost === requestHost) {
+        const externalHostname = new URL(EXTERNAL_BACKEND_URL).hostname;
+        const rawRequestHost = String(req.headers['x-forwarded-host'] || req.headers.host || '').trim();
+        const requestHostname = rawRequestHost.split(',')[0].trim().split(':')[0];
+        if (externalHostname && requestHostname && externalHostname === requestHostname) {
           targetBase = INTERNAL_BACKEND_URL;
         }
       } catch {
@@ -148,6 +149,8 @@ app.use('/api', async (req, res) => {
     const headers = {};
     if (req.headers['content-type']) headers['Content-Type'] = req.headers['content-type'];
     if (req.headers['authorization']) headers['Authorization'] = req.headers['authorization'];
+    if (req.headers.host) headers['X-Forwarded-Host'] = req.headers.host;
+    if (req.headers['x-forwarded-proto']) headers['X-Forwarded-Proto'] = req.headers['x-forwarded-proto'];
 
     // Collect request body for non-GET methods
     let body = undefined;

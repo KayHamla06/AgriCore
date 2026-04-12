@@ -243,11 +243,35 @@ export class AuthService {
       password,
     });
 
-    if (error || !data.session) {
-      const message = (error?.message || '').toLowerCase();
 
-      if (message.includes('email not confirmed') || message.includes('email not verified')) {
-        throw new AppError('Please verify your email before logging in. Check your inbox or resend verification email.', 403);
+
+    if (error || !data.user || !data.session) {
+      const authError = error as { message?: string; status?: number; code?: string } | null;
+      const errorMessage = (authError?.message || '').toLowerCase();
+      const errorStatus = authError?.status;
+
+      logger.warn('Supabase login failed', {
+        email: normalizedEmail,
+        status: errorStatus,
+        code: authError?.code,
+        message: authError?.message || 'No error message',
+      });
+
+      if (errorMessage.includes('email not confirmed')) {
+        throw new AppError('Please verify your email before logging in', 403);
+      }
+
+      // Surface upstream/provider failures distinctly from user credential issues.
+      if (typeof errorStatus === 'number' && errorStatus >= 500) {
+        throw new AppError('Authentication provider is temporarily unavailable', 503);
+      }
+
+      if (
+        errorMessage.includes('network') ||
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('fetch failed')
+      ) {
+        throw new AppError('Authentication provider is temporarily unavailable', 503);
       }
 
       throw new AppError('Invalid email or password', 401);
