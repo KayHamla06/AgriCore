@@ -186,11 +186,24 @@ export class UserService {
         await supabaseAdmin.from('weather_history').delete().eq('farmer_id', farmerId);
         await supabaseAdmin.from('support_plans').delete().eq('farmer_id', farmerId);
 
+        // 3b. Delete farmer-linked records (tickets, verification, etc.)
+        await supabaseAdmin.from('farm_records').delete().eq('farmer_id', farmerId);
+
         // 4. Delete farmer profile
         await supabaseAdmin.from('farmers').delete().eq('id', farmerId);
       }
 
-      // 5. Delete user row
+      // 5. Delete user-linked records
+      await supabaseAdmin.from('ticket_replies').delete().eq('user_id', userId);
+      await supabaseAdmin.from('tickets').delete().eq('user_id', userId);
+      await supabaseAdmin.from('notifications').delete().eq('user_id', userId);
+      await supabaseAdmin.from('verification_documents').delete().eq('user_id', userId);
+      await supabaseAdmin.from('verification_requests').delete().eq('user_id', userId);
+      await supabaseAdmin.from('data_change_requests').delete().eq('user_id', userId);
+      await supabaseAdmin.from('activity_logs').delete().eq('user_id', userId);
+      await supabaseAdmin.from('deletion_requests').delete().eq('user_id', userId);
+
+      // 6. Delete user row
       await supabaseAdmin.from('users').delete().eq('id', userId);
 
       // 6. Delete Supabase Auth user

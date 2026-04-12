@@ -540,7 +540,20 @@
       <h3 id="ticketModalTitle">Review Ticket</h3>
       <p style="font-size:.875rem;color:var(--gray-600);margin-bottom:.5rem;" id="ticketModalMeta"></p>
       <div id="ticketModalBody" style="margin-bottom:1rem;background:var(--gray-50);padding:.75rem;border-radius:8px;font-size:.8125rem;max-height:200px;overflow-y:auto;"></div>
-      <div id="ticketModalAttachment" style="margin-bottom:1rem;"></div>
+      <div id="ticketModalAttachment" style="margin-bottom:.75rem;"></div>
+
+      <!-- Conversation Thread -->
+      <div style="margin-bottom:1rem;">
+        <label style="font-weight:600;font-size:.875rem;">Conversation</label>
+        <div id="ticketThreadMessages" style="max-height:200px;overflow-y:auto;background:var(--gray-50);border-radius:8px;padding:.5rem .75rem;margin-top:.25rem;min-height:40px;">
+          <div style="text-align:center;color:var(--gray-400);font-size:.8rem;padding:8px;">No replies yet.</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:.5rem;">
+          <input type="text" class="form-input" id="ticketReplyInput" placeholder="Type a reply..." style="flex:1;font-size:.8125rem;">
+          <button class="btn btn-primary btn-sm" id="ticketReplySendBtn" style="white-space:nowrap;">Send Reply</button>
+        </div>
+      </div>
+
       <label for="ticketModalStatus">Update Status</label>
       <select class="form-select" id="ticketModalStatus" style="margin-bottom:.75rem;">
         <option value="open">Open</option>

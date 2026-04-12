@@ -391,7 +391,7 @@
           var typeLbl = (t.type || '').replace('_', ' ');
           var hasAttachment = t.attachment_url ? ' · 📎' : '';
 
-          return '<div class="ticket-card">' +
+          return '<div class="ticket-card" data-ticket-id="' + AgriCore.escapeHtml(t.id) + '" style="cursor:pointer;">' +
             '<div class="ticket-card-header">' +
             '<div class="ticket-card-title">' + AgriCore.escapeHtml(t.title) + '</div>' +
             '<div class="ticket-card-badges">' +
@@ -404,12 +404,111 @@
             (t.admin_notes ? '<div class="ticket-card-desc" style="color:var(--primary);"><strong>Admin:</strong> ' + AgriCore.escapeHtml(t.admin_notes) + '</div>' : '') +
             '<div class="ticket-card-footer">' +
             '<span>' + date + hasAttachment + '</span>' +
-            (t.resolved_at ? '<span>Resolved: ' + new Date(t.resolved_at).toLocaleDateString('en-ZA') + '</span>' : '') +
+            '<span style="color:var(--primary);font-size:.75rem;">Click to view conversation</span>' +
+            '</div>' +
+            '<div class="ticket-thread" id="thread-' + t.id + '" style="display:none;margin-top:12px;border-top:1px solid var(--gray-200);padding-top:12px;">' +
+              '<div class="thread-messages" id="messages-' + t.id + '"><div style="text-align:center;color:var(--gray-400);font-size:.8rem;padding:8px;">Loading...</div></div>' +
+              '<div class="thread-reply-form" style="margin-top:10px;display:flex;gap:8px;">' +
+                '<input type="text" class="form-input thread-reply-input" id="reply-input-' + t.id + '" placeholder="Type your reply..." style="flex:1;font-size:.8rem;">' +
+                '<button class="btn btn-primary btn-sm thread-reply-btn" data-ticket-id="' + t.id + '"><i data-lucide="send" style="width:14px;height:14px;"></i></button>' +
+              '</div>' +
             '</div>' +
             '</div>';
         }).join('');
 
+        // Wire click-to-expand
+        container.querySelectorAll('.ticket-card').forEach(function(card) {
+          card.addEventListener('click', function(e) {
+            // Don't toggle if clicking reply input or button
+            if (e.target.closest('.thread-reply-form')) return;
+            var ticketId = card.dataset.ticketId;
+            var thread = document.getElementById('thread-' + ticketId);
+            if (!thread) return;
+            var visible = thread.style.display !== 'none';
+            thread.style.display = visible ? 'none' : 'block';
+            if (!visible) loadTicketReplies(ticketId);
+          });
+        });
+
+        // Wire reply buttons
+        container.querySelectorAll('.thread-reply-btn').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var ticketId = btn.dataset.ticketId;
+            var input = document.getElementById('reply-input-' + ticketId);
+            if (!input || !input.value.trim()) return;
+            sendTicketReply(ticketId, input.value.trim());
+            input.value = '';
+          });
+        });
+
+        // Enter key to send reply
+        container.querySelectorAll('.thread-reply-input').forEach(function(input) {
+          input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              var ticketId = input.id.replace('reply-input-', '');
+              if (!input.value.trim()) return;
+              sendTicketReply(ticketId, input.value.trim());
+              input.value = '';
+            }
+          });
+        });
+
         if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
+
+      function loadTicketReplies(ticketId) {
+        var messagesDiv = document.getElementById('messages-' + ticketId);
+        if (!messagesDiv) return;
+        var token = user.token || '';
+        var API_BASE = window.AGRICORE_API_BASE || '/api';
+
+        fetch(API_BASE + '/tickets/' + ticketId + '/replies', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+          var replies = (res.success && res.data) ? res.data : [];
+          if (replies.length === 0) {
+            messagesDiv.innerHTML = '<div style="text-align:center;color:var(--gray-400);font-size:.8rem;padding:8px;">No replies yet. Send a message to start the conversation.</div>';
+            return;
+          }
+          messagesDiv.innerHTML = replies.map(function(r) {
+            var isMe = r.user_id === user.id;
+            var time = new Date(r.created_at).toLocaleString('en-ZA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            return '<div style="display:flex;justify-content:' + (isMe ? 'flex-end' : 'flex-start') + ';margin-bottom:6px;">' +
+              '<div style="max-width:80%;padding:8px 12px;border-radius:12px;font-size:.8125rem;' +
+              (isMe ? 'background:var(--primary);color:white;border-bottom-right-radius:4px;' : 'background:var(--gray-100);color:var(--gray-800);border-bottom-left-radius:4px;') + '">' +
+              '<div>' + AgriCore.escapeHtml(r.message) + '</div>' +
+              '<div style="font-size:.6875rem;margin-top:2px;opacity:.7;">' + (isMe ? 'You' : (r.sender_name || 'Admin')) + ' · ' + time + '</div>' +
+              '</div></div>';
+          }).join('');
+        })
+        .catch(function() {
+          messagesDiv.innerHTML = '<div style="text-align:center;color:var(--danger);font-size:.8rem;">Failed to load replies.</div>';
+        });
+      }
+
+      function sendTicketReply(ticketId, message) {
+        var token = user.token || '';
+        var API_BASE = window.AGRICORE_API_BASE || '/api';
+
+        fetch(API_BASE + '/tickets/' + ticketId + '/replies', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: message })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+          if (res.success) {
+            loadTicketReplies(ticketId);
+          } else {
+            AgriCore.showToast(res.error || 'Failed to send reply.', 'error');
+          }
+        })
+        .catch(function() {
+          AgriCore.showToast('Network error sending reply.', 'error');
+        });
       }
 
       // Refresh icons

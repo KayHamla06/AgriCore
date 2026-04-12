@@ -92,8 +92,15 @@ const AgriCore = (() => {
 
   // ===== Performance Engine =====
   function calculatePerformanceScore(farmer) {
-    let score = 50;
     const yields = farmer.yieldHistory;
+    const prod = farmer.productionHistory;
+
+    // If no real data at all, return 0 (no data)
+    const hasYieldData = yields && yields.length >= 2 && yields.some(function(v) { return v > 0; });
+    const hasLivestockData = farmer.livestock && farmer.livestock > 0;
+    if (!hasYieldData && !hasLivestockData) return 0;
+
+    let score = 50;
     const len = yields.length;
     const lastYield = yields[len - 1];
     const prevYield = yields[len - 2];
@@ -103,19 +110,21 @@ const AgriCore = (() => {
     else if (lastYield < prevYield) score -= 15;
 
     // Production trend (+15 / -10)
-    const prod = farmer.productionHistory;
-    if (prod[prod.length - 1] > prod[prod.length - 2]) score += 15;
-    else if (prod[prod.length - 1] < prod[prod.length - 2]) score -= 10;
+    if (prod && prod.length >= 2) {
+      if (prod[prod.length - 1] > prod[prod.length - 2]) score += 15;
+      else if (prod[prod.length - 1] < prod[prod.length - 2]) score -= 10;
+    }
 
     // 3-month yield trajectory (+10 / -10)
     const recent3 = yields.slice(-3);
-    if (recent3[2] >= recent3[0]) score += 10;
-    else score -= 10;
+    if (recent3.length >= 3 && recent3[2] >= recent3[0]) score += 10;
+    else if (recent3.length >= 3) score -= 10;
 
     return Math.max(0, Math.min(100, score));
   }
 
   function getScoreLevel(score) {
+    if (score === 0) return { level: 'no-data', label: 'No Data', color: '#94a3b8', cssClass: 'no-data' };
     if (score >= 70) return { level: 'good', label: 'Performing Well', color: 'var(--success)', cssClass: 'good' };
     if (score >= 40) return { level: 'stable', label: 'Stable', color: 'var(--warning)', cssClass: 'stable' };
     return { level: 'declining', label: 'Declining', color: 'var(--danger)', cssClass: 'declining' };

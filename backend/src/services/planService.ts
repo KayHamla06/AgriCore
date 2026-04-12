@@ -5,20 +5,27 @@
 
 import { supabaseAdmin } from '../config/supabaseClient';
 import { AppError } from '../middleware/errorHandler';
+import { notificationService } from './notificationService';
 import type { SupportPlan, UserRole } from '../models/types';
 
 export class PlanService {
   /**
    * Get all plans (gov only — for the plans table).
    */
-  async getAll(): Promise<SupportPlan[]> {
+  async getAll(): Promise<(SupportPlan & { farmer_name?: string })[]> {
     const { data, error } = await supabaseAdmin
       .from('support_plans')
-      .select('*')
+      .select('*, farmers!support_plans_farmer_id_fkey(name)')
       .order('created_at', { ascending: false });
 
     if (error) throw new AppError('Failed to fetch plans', 500);
-    return data as SupportPlan[];
+
+    // Flatten the joined farmer name
+    return (data || []).map((p: any) => ({
+      ...p,
+      farmer_name: p.farmers?.name || 'Unknown',
+      farmers: undefined,
+    }));
   }
 
   /**
@@ -80,6 +87,21 @@ export class PlanService {
       .maybeSingle();
 
     if (error) throw new AppError('Failed to create plan', 500);
+
+    // Notify the farmer about the new plan (if created by gov)
+    if (plan.created_by_role === 'government') {
+      const userId = await this.getFarmerUserId(plan.farmer_id);
+      if (userId) {
+        await notificationService.create({
+          user_id: userId,
+          type: 'plan_update',
+          title: 'New Support Plan Created',
+          body: `A ${plan.type} support plan has been created for you.`,
+          link: '/dashboard#plans',
+        }).catch(() => {});
+      }
+    }
+
     return data as SupportPlan;
   }
 
@@ -107,20 +129,60 @@ export class PlanService {
    * Approve a plan (gov action).
    */
   async approve(planId: string): Promise<SupportPlan> {
-    return this.update(planId, {
+    const plan = await this.update(planId, {
       approval_status: 'Approved',
       approved_date: new Date().toISOString().split('T')[0],
       status: 'Active',
     } as Partial<SupportPlan>);
+
+    // Notify farmer
+    const userId = await this.getFarmerUserId(plan.farmer_id);
+    if (userId) {
+      await notificationService.create({
+        user_id: userId,
+        type: 'plan_update',
+        title: 'Plan Approved',
+        body: `Your ${plan.type} plan has been approved.`,
+        link: '/dashboard#plans',
+      }).catch(() => {});
+    }
+
+    return plan;
   }
 
   /**
    * Reject a plan (gov action).
    */
   async reject(planId: string): Promise<SupportPlan> {
-    return this.update(planId, {
+    const plan = await this.update(planId, {
       approval_status: 'Rejected',
     } as Partial<SupportPlan>);
+
+    // Notify farmer
+    const userId = await this.getFarmerUserId(plan.farmer_id);
+    if (userId) {
+      await notificationService.create({
+        user_id: userId,
+        type: 'plan_update',
+        title: 'Plan Rejected',
+        body: `Your ${plan.type} plan has been rejected.`,
+        link: '/dashboard#plans',
+      }).catch(() => {});
+    }
+
+    return plan;
+  }
+
+  /**
+   * Resolve farmer_id to user_id for notifications.
+   */
+  private async getFarmerUserId(farmerId: string): Promise<string | null> {
+    const { data } = await supabaseAdmin
+      .from('farmers')
+      .select('user_id')
+      .eq('id', farmerId)
+      .maybeSingle();
+    return data?.user_id || null;
   }
 
   /**

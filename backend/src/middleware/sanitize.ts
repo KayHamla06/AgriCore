@@ -8,15 +8,21 @@ import { Request, Response, NextFunction } from 'express';
 import validator from 'validator';
 
 /**
- * Recursively sanitizes all string values in an object.
- * Escapes HTML entities to prevent XSS.
+ * Fields that should NOT be HTML-escaped (e.g. passwords sent to
+ * external auth providers which handle their own security).
  */
-function sanitizeValue(value: unknown): unknown {
+const EXEMPT_FIELDS = new Set(['password', 'new_password', 'current_password', 'confirmPassword']);
+
+function sanitizeValue(value: unknown, key?: string): unknown {
   if (typeof value === 'string') {
+    // Skip HTML-escaping for exempt fields (passwords, etc.)
+    if (key && EXEMPT_FIELDS.has(key)) {
+      return validator.trim(value);
+    }
     return validator.escape(validator.trim(value));
   }
   if (Array.isArray(value)) {
-    return value.map(sanitizeValue);
+    return value.map((v) => sanitizeValue(v));
   }
   if (value !== null && typeof value === 'object') {
     return sanitizeObject(value as Record<string, unknown>);
@@ -27,7 +33,7 @@ function sanitizeValue(value: unknown): unknown {
 function sanitizeObject(obj: Record<string, unknown>): Record<string, unknown> {
   const sanitized: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(obj)) {
-    sanitized[key] = sanitizeValue(val);
+    sanitized[key] = sanitizeValue(val, key);
   }
   return sanitized;
 }

@@ -74,18 +74,21 @@
     init: function(ctx) {
       var escape = AgriCore.escapeHtml;
 
-      // Populate farmer select
+      // Populate farmer select from real API
       var planFarmerSelect = document.getElementById('planFarmer');
       if (planFarmerSelect) {
-        AgriCore.mockFarmers.forEach(function(f) {
-          var opt = document.createElement('option');
-          opt.value = f.id;
-          opt.textContent = f.name + ' — ' + f.farmName;
-          planFarmerSelect.appendChild(opt);
+        AgriCore.apiGet('/farmers').then(function(res) {
+          var farmers = (res.success && res.data) ? res.data : [];
+          farmers.forEach(function(f) {
+            var opt = document.createElement('option');
+            opt.value = f.id;
+            opt.textContent = f.name + (f.district ? ' — ' + f.district : '');
+            planFarmerSelect.appendChild(opt);
+          });
         });
       }
 
-      // Smart plan generator — suggestions on farmer select
+      // Smart plan suggestions on farmer select
       var planSuggestions = document.getElementById('planSuggestions');
       var suggestionList = document.getElementById('suggestionList');
       var planTypeSelect = document.getElementById('planType');
@@ -95,36 +98,53 @@
           var farmerId = planFarmerSelect.value;
           if (!farmerId) { planSuggestions.style.display = 'none'; return; }
 
-          var farmer = AgriCore.mockFarmers.find(function(f) { return f.id === farmerId; });
-          if (!farmer) return;
+          // Fetch farmer data for suggestions
+          Promise.all([
+            AgriCore.apiGet('/farmers/' + farmerId + '/crops'),
+            AgriCore.apiGet('/farmers/' + farmerId + '/livestock')
+          ]).then(function(results) {
+            var crops = (results[0].success && results[0].data) ? results[0].data : [];
+            var livestock = (results[1].success && results[1].data) ? results[1].data : [];
+            var suggestions = [];
 
-          var suggestions = AgriCore.generatePlanSuggestions(farmer);
-          if (suggestions.length === 0) { planSuggestions.style.display = 'none'; return; }
+            if (crops.length === 0 && livestock.length === 0) {
+              suggestions.push({ plan: 'Training Program', reason: 'No data recorded — may need getting started support' });
+            }
+            if (crops.length > 0) {
+              var lowYields = crops.filter(function(c) { return (c.yield_tons || 0) < 1; });
+              if (lowYields.length > 0) suggestions.push({ plan: 'Financial Aid', reason: 'Low crop yields detected' });
+            }
+            if (livestock.length > 0) {
+              var sickAnimals = livestock.filter(function(l) { return l.diseases && l.diseases.length > 0; });
+              if (sickAnimals.length > 0) suggestions.push({ plan: 'Equipment Support', reason: 'Livestock health issues reported' });
+            }
 
-          planSuggestions.style.display = 'block';
-          suggestionList.innerHTML = suggestions.map(function(s) {
-            return '<div class="suggestion-item" data-plan="' + escape(s.plan) + '">' +
-              '<span class="suggestion-check">\u2714</span> ' +
-              '<span class="suggestion-plan">' + escape(s.plan) + '</span>' +
-              '<span class="suggestion-reason">' + escape(s.reason) + '</span></div>';
-          }).join('');
+            if (suggestions.length === 0) { planSuggestions.style.display = 'none'; return; }
 
-          suggestionList.querySelectorAll('.suggestion-item').forEach(function(item) {
-            item.addEventListener('click', function() {
-              var plan = item.dataset.plan;
-              if (planTypeSelect) {
-                var options = Array.from(planTypeSelect.options);
-                var match = options.find(function(o) { return o.value && plan.toLowerCase().includes(o.value.toLowerCase().split(' ')[0]); });
-                if (match) planTypeSelect.value = match.value;
-              }
+            planSuggestions.style.display = 'block';
+            suggestionList.innerHTML = suggestions.map(function(s) {
+              return '<div class="suggestion-item" data-plan="' + escape(s.plan) + '">' +
+                '<span class="suggestion-check">\u2714</span> ' +
+                '<span class="suggestion-plan">' + escape(s.plan) + '</span>' +
+                '<span class="suggestion-reason">' + escape(s.reason) + '</span></div>';
+            }).join('');
+
+            suggestionList.querySelectorAll('.suggestion-item').forEach(function(item) {
+              item.addEventListener('click', function() {
+                var plan = item.dataset.plan;
+                if (planTypeSelect) {
+                  var options = Array.from(planTypeSelect.options);
+                  var match = options.find(function(o) { return o.value && plan.toLowerCase().includes(o.value.toLowerCase().split(' ')[0]); });
+                  if (match) planTypeSelect.value = match.value;
+                }
+              });
             });
+            lucide.createIcons();
           });
-
-          lucide.createIcons();
         });
       }
 
-      // Generate plan button
+      // Generate plan button — POST to real API
       var generatePlanBtn = document.getElementById('generatePlanBtn');
       if (generatePlanBtn) {
         generatePlanBtn.addEventListener('click', function() {
@@ -139,34 +159,36 @@
             return;
           }
 
-          var farmer = AgriCore.mockFarmers.find(function(f) { return f.id === farmerId; });
-          var newPlan = {
-            id: 'PLN-' + String(AgriCore.mockPlans.length + 1).padStart(3, '0'),
-            farmerId: farmerId,
-            farmerName: farmer ? farmer.name : 'Unknown',
+          generatePlanBtn.disabled = true;
+          generatePlanBtn.textContent = 'Creating...';
+
+          AgriCore.apiPost('/plans', {
+            farmer_id: farmerId,
             type: type,
-            createdBy: ctx.user.name,
-            createdByRole: 'government',
-            created: new Date().toISOString().split('T')[0],
-            budget: budget || 0,
-            status: 'Pending',
-            objectives: objectives,
+            objectives: objectives || type + ' plan',
+            budget: parseFloat(budget) || 0,
             timeline: timeline,
-            approvalStatus: 'Pending',
-            approvedDate: null
-          };
+            status: 'Pending'
+          }).then(function(res) {
+            generatePlanBtn.disabled = false;
+            generatePlanBtn.textContent = 'Generate Plan';
 
-          AgriCore.mockPlans.push(newPlan);
-          if (window.populatePlansTable) window.populatePlansTable();
-          AgriCore.showToast('Support plan generated successfully!', 'success');
-          ctx.closeModal('createPlanModal');
+            if (res.success) {
+              if (window.populatePlansTable) window.populatePlansTable();
+              AgriCore.showToast('Support plan created successfully!', 'success');
+              ctx.closeModal('createPlanModal');
 
-          // Reset form
-          document.getElementById('planFarmer').value = '';
-          document.getElementById('planType').value = '';
-          document.getElementById('planObjectives').value = '';
-          document.getElementById('planBudget').value = '';
-          document.getElementById('planNotes').value = '';
+              // Reset form
+              document.getElementById('planFarmer').value = '';
+              document.getElementById('planType').value = '';
+              document.getElementById('planObjectives').value = '';
+              document.getElementById('planBudget').value = '';
+              document.getElementById('planNotes').value = '';
+              if (planSuggestions) planSuggestions.style.display = 'none';
+            } else {
+              AgriCore.showToast(res.error || 'Failed to create plan.', 'error');
+            }
+          });
         });
       }
     }

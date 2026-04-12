@@ -1075,6 +1075,81 @@ document.addEventListener('DOMContentLoaded', function () {
     if (ticketModalStatus) ticketModalStatus.value = ticket.status || 'open';
     if (ticketNotes) ticketNotes.value = ticket.admin_notes || '';
     if (ticketModal) ticketModal.classList.add('active');
+    loadAdminTicketReplies(ticket.id);
+  }
+
+  // Admin ticket reply thread
+  function loadAdminTicketReplies(ticketId) {
+    var messagesDiv = document.getElementById('ticketThreadMessages');
+    if (!messagesDiv) return;
+    messagesDiv.innerHTML = '<div style="text-align:center;color:var(--gray-400);font-size:.8rem;padding:8px;">Loading...</div>';
+
+    fetch(API_BASE + '/tickets/' + ticketId + '/replies', {
+      headers: apiHeaders()
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      var replies = (res.success && res.data) ? res.data : [];
+      if (replies.length === 0) {
+        messagesDiv.innerHTML = '<div style="text-align:center;color:var(--gray-400);font-size:.8rem;padding:8px;">No replies yet. Send a message below.</div>';
+        return;
+      }
+      messagesDiv.innerHTML = replies.map(function(r) {
+        var isAdmin = r.role === 'admin' || r.role === 'super_admin';
+        var time = new Date(r.created_at).toLocaleString('en-ZA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        return '<div style="display:flex;justify-content:' + (isAdmin ? 'flex-end' : 'flex-start') + ';margin-bottom:6px;">' +
+          '<div style="max-width:80%;padding:8px 12px;border-radius:12px;font-size:.8125rem;' +
+          (isAdmin ? 'background:var(--primary);color:white;border-bottom-right-radius:4px;' : 'background:var(--gray-200);color:var(--gray-800);border-bottom-left-radius:4px;') + '">' +
+          '<div>' + AgriCore.escapeHtml(r.message) + '</div>' +
+          '<div style="font-size:.6875rem;margin-top:2px;opacity:.7;">' + (r.sender_name || (isAdmin ? 'Admin' : 'User')) + ' · ' + time + '</div>' +
+          '</div></div>';
+      }).join('');
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    })
+    .catch(function() {
+      messagesDiv.innerHTML = '<div style="text-align:center;color:var(--danger);font-size:.8rem;">Failed to load replies.</div>';
+    });
+  }
+
+  // Wire reply send button
+  var ticketReplySendBtn = document.getElementById('ticketReplySendBtn');
+  var ticketReplyInput = document.getElementById('ticketReplyInput');
+
+  if (ticketReplySendBtn) {
+    ticketReplySendBtn.addEventListener('click', function() {
+      if (!pendingTicketId || !ticketReplyInput || !ticketReplyInput.value.trim()) return;
+      var message = ticketReplyInput.value.trim();
+      ticketReplySendBtn.disabled = true;
+
+      fetch(API_BASE + '/tickets/' + pendingTicketId + '/replies', {
+        method: 'POST',
+        headers: apiHeaders(),
+        body: JSON.stringify({ message: message })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        ticketReplySendBtn.disabled = false;
+        if (res.success) {
+          ticketReplyInput.value = '';
+          loadAdminTicketReplies(pendingTicketId);
+        } else {
+          AgriCore.showToast(res.error || 'Failed to send reply.', 'error');
+        }
+      })
+      .catch(function() {
+        ticketReplySendBtn.disabled = false;
+        AgriCore.showToast('Network error.', 'error');
+      });
+    });
+  }
+
+  if (ticketReplyInput) {
+    ticketReplyInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (ticketReplySendBtn) ticketReplySendBtn.click();
+      }
+    });
   }
 
   function closeTicketModal() {

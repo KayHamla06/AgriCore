@@ -155,16 +155,27 @@ export class AuthService {
     // Determine initial verification_status based on role
     const verificationStatus = role === 'government' ? 'pending' : 'none';
 
-    // 1. Create auth user with unconfirmed email
+    // 1. Create auth user — auto-confirm because GoTrue SMTP may be unreliable.
+    //    The user must still verify via the resend-verification flow.
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: false,
+      email_confirm: true,
       user_metadata: { name, role },
     });
 
     if (authError) {
       logger.warn('SignUp: Supabase auth error', { email, error: authError.message });
+
+      // "User already registered" or similar identity conflict
+      if (
+        authError.message.toLowerCase().includes('already') ||
+        authError.message.toLowerCase().includes('exists') ||
+        authError.message.toLowerCase().includes('duplicate')
+      ) {
+        throw new AppError('This email address is already registered.', 409);
+      }
+
       throw new AppError(authError.message, 400);
     }
 
@@ -212,6 +223,41 @@ export class AuthService {
       await supabaseAdmin.from('users').delete().eq('id', profile.id);
       await supabaseAdmin.auth.admin.deleteUser(authUser.id);
       throw farmerProfileError;
+    }
+
+    // 4. Now un-confirm the email so the user must verify it
+    //    and attempt to send verification email (best-effort)
+    try {
+      await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
+        email_confirm: false,
+      });
+    } catch (unconfirmError) {
+      logger.warn('SignUp: could not un-confirm email, user will be pre-verified', {
+        authId: authUser.id,
+        error: (unconfirmError as Error).message,
+      });
+    }
+
+    // 5. Send verification email (best-effort — don't fail signup if SMTP is down)
+    try {
+      const { error: resendError } = await supabaseAdmin.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: `${process.env.APP_URL || 'https://agricore.site'}/auth/callback`,
+        },
+      });
+      if (resendError) {
+        logger.warn('SignUp: verification email send failed', {
+          email,
+          error: resendError.message,
+        });
+      }
+    } catch (emailError) {
+      logger.warn('SignUp: verification email exception', {
+        email,
+        error: (emailError as Error).message,
+      });
     }
 
     return {

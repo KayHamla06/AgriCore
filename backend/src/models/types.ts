@@ -312,7 +312,8 @@ export type NotificationType =
   | 'ticket_updated'
   | 'ticket_resolved'
   | 'deletion_approved'
-  | 'deletion_rejected';
+  | 'deletion_rejected'
+  | 'plan_update';
 
 export interface Notification {
   id: string;
