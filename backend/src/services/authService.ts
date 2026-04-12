@@ -5,8 +5,7 @@
 // PKCE code exchange for email verification callbacks.
 // ============================================
 
-import { createClient } from '@supabase/supabase-js';
-import { supabaseAdmin, supabaseAnonKey, supabaseUrl } from '../config/supabaseClient';
+import { supabaseAdmin } from '../config/supabaseClient';
 import { AppError } from '../middleware/errorHandler';
 import { loginActivityService } from './loginActivityService';
 import logger from '../utils/logger';
@@ -21,16 +20,6 @@ type ProfileRow = {
 };
 
 export class AuthService {
-  private createAuthClient() {
-    return createClient(supabaseUrl || '', supabaseAnonKey || '', {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-      },
-    });
-  }
-
   private normalizeEmail(email?: string | null): string {
     return String(email || '').trim().toLowerCase();
   }
@@ -236,9 +225,7 @@ export class AuthService {
     meta?: { ip_address?: string; user_agent?: string }
   ): Promise<AuthResponse> {
     const normalizedEmail = this.normalizeEmail(email);
-    const authClient = this.createAuthClient();
-
-    const { data, error } = await authClient.auth.signInWithPassword({
+    const { data, error } = await supabaseAdmin.auth.signInWithPassword({
       email: normalizedEmail,
       password,
     });
@@ -308,8 +295,7 @@ export class AuthService {
    * Used when Supabase redirects back after email verification (PKCE flow).
    */
   async exchangeCodeForSession(code: string): Promise<AuthResponse> {
-    const authClient = this.createAuthClient();
-    const { data, error } = await authClient.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabaseAdmin.auth.exchangeCodeForSession(code);
 
     if (error || !data.session) {
       throw new AppError('Invalid or expired auth code', 400);
@@ -355,8 +341,7 @@ export class AuthService {
    * Refresh an existing session token.
    */
   async refreshToken(refreshToken: string): Promise<{ token: string }> {
-    const authClient = this.createAuthClient();
-    const { data, error } = await authClient.auth.refreshSession({
+    const { data, error } = await supabaseAdmin.auth.refreshSession({
       refresh_token: refreshToken,
     });
 
