@@ -12,7 +12,8 @@ document.addEventListener('DOMContentLoaded', function () {
   //  AUTH CHECK — admin only
   // =============================================
   var user = AgriCore.getCurrentUser();
-  if (!user || user.role !== 'admin') {
+  if (!user || !user.token || user.role !== 'admin') {
+    AgriCore.clearCurrentUser();
     window.location.href = '/auth/login';
     return;
   }

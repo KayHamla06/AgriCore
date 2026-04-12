@@ -12,7 +12,8 @@ document.addEventListener('DOMContentLoaded', function() {
   //  AUTH CHECK
   // =============================================
   var user = AgriCore.getCurrentUser();
-  if (!user) {
+  if (!user || !user.token) {
+    AgriCore.clearCurrentUser();
     window.location.href = '/auth/login';
     return;
   }
