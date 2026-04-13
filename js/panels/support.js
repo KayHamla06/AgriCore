@@ -380,6 +380,8 @@
             return;
           }
           renderMyTickets(container, res.data);
+        }).catch(function() {
+          AgriCore.showEmpty(container, 'Failed to load tickets. Please try again.');
         });
       }
 

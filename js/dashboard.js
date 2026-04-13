@@ -313,7 +313,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (typeof lucide !== 'undefined') lucide.createIcons();
       }
     }).catch(function() {
-      // Silently handle if notifications API is unavailable
+      // Back off on errors (likely 429)
+      notifPollMs = Math.min(notifPollMs * 2, 300000);
       if (notifCountEl) notifCountEl.textContent = '0';
       if (notifDot) notifDot.style.display = 'none';
     });
@@ -321,14 +322,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
   loadNotifications();
 
-  // Near-real-time notifications (polling fallback)
-  setInterval(function() {
-    loadNotifications();
-  }, 15000);
+  // Near-real-time notifications (polling with backoff)
+  var notifPollMs = 30000;
+  var notifPollTimer = null;
+  var notifInFlight = false;
+
+  function scheduleNotifPoll() {
+    if (notifPollTimer) clearTimeout(notifPollTimer);
+    notifPollTimer = setTimeout(function() {
+      if (notifInFlight || document.hidden) { scheduleNotifPoll(); return; }
+      notifInFlight = true;
+      loadNotifications().finally(function() {
+        notifInFlight = false;
+        scheduleNotifPoll();
+      });
+    }, notifPollMs);
+  }
+  scheduleNotifPoll();
 
   document.addEventListener('visibilitychange', function() {
-    if (!document.hidden) {
-      loadNotifications();
+    if (!document.hidden && !notifInFlight) {
+      notifInFlight = true;
+      loadNotifications().finally(function() { notifInFlight = false; });
     }
   });
 

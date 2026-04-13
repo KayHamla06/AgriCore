@@ -185,7 +185,19 @@ export class AuthService {
 
     const authUser = authData.user;
 
-    // 2. Create profile row in users table
+    // 2. Send verification email (admin.createUser doesn't send it automatically)
+    try {
+      const authClient = this.createAuthClient();
+      await authClient.auth.resend({ type: 'signup', email });
+      logger.info('SignUp: verification email sent', { email });
+    } catch (emailErr) {
+      logger.warn('SignUp: verification email failed (user can resend later)', {
+        email,
+        error: (emailErr as Error).message,
+      });
+    }
+
+    // 3. Create profile row in users table
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('users')
       .insert({

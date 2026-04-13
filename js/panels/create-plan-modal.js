@@ -78,7 +78,7 @@
       var planFarmerSelect = document.getElementById('planFarmer');
       if (planFarmerSelect) {
         AgriCore.apiGet('/farmers').then(function(res) {
-          var farmers = (res.success && res.data) ? res.data : [];
+          var farmers = (res.success && Array.isArray(res.data)) ? res.data : [];
           farmers.forEach(function(f) {
             var opt = document.createElement('option');
             opt.value = f.id;

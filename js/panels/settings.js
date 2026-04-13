@@ -410,9 +410,9 @@
         });
       }
 
-      // --- Farm Location Map Picker ---
+      // --- Farm Location Map Picker (farmers only) ---
       var mapContainer = document.getElementById('settingsMapContainer');
-      if (mapContainer && typeof L !== 'undefined') {
+      if (mapContainer && typeof L !== 'undefined' && ctx.isFarmer) {
         var locationMap = L.map('settingsMapContainer').setView([-28.5, 25.5], 5);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© OpenStreetMap contributors',
