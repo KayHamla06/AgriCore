@@ -146,7 +146,7 @@ export class AuthService {
   /**
    * Register a new user.
    * Creates Supabase Auth user + row in `users` table.
-   * Supabase automatically sends a verification email when email_confirm is false.
+   * Supabase sends verification email automatically.
    */
   async signUp(payload: SignUpRequest): Promise<AuthResponse> {
     const { password, name, role, province, district, farmSize } = payload;
@@ -155,7 +155,9 @@ export class AuthService {
     // Advisors need admin approval, everyone else just needs email verification
     const verificationStatus = role === 'advisor' ? 'pending' : 'none';
 
-    // 1. Create auth user — email_confirm: false so Supabase sends verification email automatically
+    // 1. Create auth user — email_confirm: false so Supabase sends verification
+    //    email automatically. The on_auth_user_created trigger must be dropped
+    //    so it doesn't conflict with our manual public.users insert below.
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
