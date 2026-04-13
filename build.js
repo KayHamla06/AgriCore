@@ -19,25 +19,23 @@ const DIST_CSS = path.join(DIST_DIR, 'css');
 // =============================================
 
 function minifyJS(code) {
-  // 1. Extract string literals and template literals so minification
-  //    regexes don't corrupt their contents.
+  // 1. Extract strings AND remove comments in a single pass.
+  //    Strings are matched first so quotes inside comments aren't misinterpreted.
   const strings = [];
   const placeholder = (i) => `__STR${i}__`;
 
-  // Match template literals (backticks, handling escaped backticks and ${} expressions),
-  // double-quoted strings, single-quoted strings, and regex literals after operators.
-  const protected = code.replace(/`(?:[^`\\]|\\.|\$\{[^}]*\})*`|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, (match) => {
-    const i = strings.length;
-    strings.push(match);
-    return placeholder(i);
-  });
+  const extracted = code.replace(
+    /`(?:[^`\\]|\\.|\$\{[^}]*\})*`|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\/\/.*$|\/\*[\s\S]*?\*\//gm,
+    (match) => {
+      if (match.startsWith('//') || match.startsWith('/*')) return '';
+      const i = strings.length;
+      strings.push(match);
+      return placeholder(i);
+    }
+  );
 
   // 2. Minify the code (string contents are safe behind placeholders)
-  let result = protected
-    // Remove single-line comments (but not URLs like https://)
-    .replace(/(?<![:\/'"])\/\/(?![\/:]).*$/gm, '')
-    // Remove multi-line comments
-    .replace(/\/\*[\s\S]*?\*\//g, '')
+  let result = extracted
     // Collapse whitespace
     .replace(/\s+/g, ' ')
     // Remove spaces around operators and braces

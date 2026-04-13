@@ -146,7 +146,7 @@ export class AuthService {
   /**
    * Register a new user.
    * Creates Supabase Auth user + row in `users` table.
-   * Then un-confirms the user and sends a verification email.
+   * Supabase automatically sends a verification email when email_confirm is false.
    */
   async signUp(payload: SignUpRequest): Promise<AuthResponse> {
     const { password, name, role, province, district, farmSize } = payload;
@@ -155,12 +155,11 @@ export class AuthService {
     // Advisors need admin approval, everyone else just needs email verification
     const verificationStatus = role === 'advisor' ? 'pending' : 'none';
 
-    // 1. Create auth user — email_confirm: true so it never crashes on SMTP.
-    //    We un-confirm immediately after, then send verification email separately.
+    // 1. Create auth user — email_confirm: false so Supabase sends verification email automatically
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: true,
+      email_confirm: false,
       user_metadata: { name, role },
     });
 
@@ -183,28 +182,6 @@ export class AuthService {
     }
 
     const authUser = authData.user;
-
-    // 2. Un-confirm the user so they must verify their email before logging in
-    try {
-      await supabaseAdmin.rpc('unconfirm_user_email', { target_user_id: authUser.id });
-    } catch (unconfirmErr) {
-      logger.warn('SignUp: failed to un-confirm user, proceeding anyway', {
-        authId: authUser.id,
-        error: (unconfirmErr as Error).message,
-      });
-    }
-
-    // 3. Send verification email (best-effort — if SMTP is broken, user can resend later)
-    try {
-      const authClient = this.createAuthClient();
-      await authClient.auth.resend({ type: 'signup', email });
-      logger.info('SignUp: verification email sent', { email });
-    } catch (emailErr) {
-      logger.warn('SignUp: verification email failed (user can resend later)', {
-        email,
-        error: (emailErr as Error).message,
-      });
-    }
 
     // 2. Create profile row in users table
     const { data: profile, error: profileError } = await supabaseAdmin
