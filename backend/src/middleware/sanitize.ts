@@ -8,10 +8,14 @@ import { Request, Response, NextFunction } from 'express';
 import validator from 'validator';
 
 /**
- * Fields that should NOT be HTML-escaped (e.g. passwords sent to
- * external auth providers which handle their own security).
+ * Fields that should NOT be HTML-escaped.
+ * - Passwords: sent to external auth providers which handle their own security.
+ * - Content fields: escaped at display-time by the frontend (escapeHtml) to avoid double-encoding.
  */
-const EXEMPT_FIELDS = new Set(['password', 'new_password', 'current_password', 'confirmPassword']);
+const EXEMPT_FIELDS = new Set([
+  'password', 'new_password', 'current_password', 'confirmPassword',
+  'message', 'title', 'description', 'admin_notes',
+]);
 
 function sanitizeValue(value: unknown, key?: string): unknown {
   if (typeof value === 'string') {

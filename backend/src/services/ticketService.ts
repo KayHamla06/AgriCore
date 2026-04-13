@@ -253,7 +253,7 @@ export class TicketService {
 
     const { data, error } = await supabaseAdmin
       .from('ticket_replies')
-      .select('*')
+      .select('*, sender:users!sender_id(name, email, role)')
       .eq('ticket_id', ticketId)
       .order('created_at', { ascending: true });
 
@@ -261,7 +261,19 @@ export class TicketService {
       throw new AppError('Failed to fetch ticket replies. Ensure migration-support-settings-v2.sql is applied.', 500);
     }
 
-    return (data || []) as TicketReply[];
+    // Flatten sender info for the frontend
+    const replies = (data || []).map((r: any) => ({
+      id: r.id,
+      ticket_id: r.ticket_id,
+      sender_id: r.sender_id,
+      message: r.message,
+      created_at: r.created_at,
+      sender_name: r.sender?.name || null,
+      sender_email: r.sender?.email || null,
+      sender_role: r.sender?.role || null,
+    }));
+
+    return replies as any[];
   }
 
   async addReply(

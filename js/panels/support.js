@@ -94,9 +94,10 @@
 
             <!-- Submit -->
             <div style="grid-column:1/-1;">
-              <button class="btn btn-primary" id="submitTicketBtn" disabled style="min-width:200px;">
+              <button class="btn btn-primary" id="submitTicketBtn" style="min-width:200px;">
                 <i data-lucide="send" style="width:16px;height:16px;"></i> Submit Ticket
               </button>
+              <div id="ticketValidationErrors" style="margin-top:.5rem;"></div>
             </div>
           </div>
         </div>
@@ -255,7 +256,7 @@
           typeGrid.querySelectorAll('.ticket-type-btn').forEach(function(b) { b.classList.remove('selected'); });
           btn.classList.add('selected');
           selectedType = btn.getAttribute('data-type');
-          validateForm();
+          clearValidationErrors();
         });
       }
 
@@ -268,7 +269,7 @@
           urgencyGrid.querySelectorAll('.urgency-btn').forEach(function(b) { b.classList.remove('selected'); });
           btn.classList.add('selected');
           selectedUrgency = btn.getAttribute('data-urgency');
-          validateForm();
+          clearValidationErrors();
         });
       }
 
@@ -301,24 +302,45 @@
       var titleInput = document.getElementById('ticketTitle');
       var descInput = document.getElementById('ticketDescription');
       var submitBtn = document.getElementById('submitTicketBtn');
+      var validationBox = document.getElementById('ticketValidationErrors');
 
-      function validateForm() {
-        var valid = selectedType && selectedUrgency &&
-          titleInput && titleInput.value.trim().length >= 5 &&
-          descInput && descInput.value.trim().length >= 10;
-        if (submitBtn) submitBtn.disabled = !valid;
+      function getValidationErrors() {
+        var errors = [];
+        if (!selectedType) errors.push('Please select a ticket type.');
+        if (!selectedUrgency) errors.push('Please select an urgency level.');
+        var titleLen = titleInput ? titleInput.value.trim().length : 0;
+        if (titleLen < 5) errors.push('Title must be at least 5 characters (currently ' + titleLen + ').');
+        var descLen = descInput ? descInput.value.trim().length : 0;
+        if (descLen < 10) errors.push('Description must be at least 10 characters (currently ' + descLen + ').');
+        return errors;
       }
 
-      if (titleInput) titleInput.addEventListener('input', validateForm);
-      if (descInput) descInput.addEventListener('input', validateForm);
+      function showValidationErrors(errors) {
+        if (!validationBox) return;
+        if (!errors.length) { validationBox.innerHTML = ''; return; }
+        validationBox.innerHTML = errors.map(function(e) {
+          return '<div style="color:var(--danger);font-size:.8rem;margin-top:.25rem;">\u26A0 ' + e + '</div>';
+        }).join('');
+      }
+
+      function clearValidationErrors() {
+        if (validationBox) validationBox.innerHTML = '';
+      }
+
+      if (titleInput) titleInput.addEventListener('input', clearValidationErrors);
+      if (descInput) descInput.addEventListener('input', clearValidationErrors);
 
       // --- Submit ticket ---
       if (submitBtn) {
         submitBtn.addEventListener('click', function() {
-          if (!selectedType || !selectedUrgency) return;
+          var errors = getValidationErrors();
+          if (errors.length) {
+            showValidationErrors(errors);
+            return;
+          }
+          clearValidationErrors();
           var title = titleInput ? titleInput.value.trim() : '';
           var description = descInput ? descInput.value.trim() : '';
-          if (title.length < 5 || description.length < 10) return;
 
           submitBtn.disabled = true;
           submitBtn.textContent = 'Submitting...';
@@ -352,7 +374,7 @@
               selectedUrgency = null;
               if (typeGrid) typeGrid.querySelectorAll('.ticket-type-btn').forEach(function(b) { b.classList.remove('selected'); });
               if (urgencyGrid) urgencyGrid.querySelectorAll('.urgency-btn').forEach(function(b) { b.classList.remove('selected'); });
-              validateForm();
+              clearValidationErrors();
             } else {
               AgriCore.showToast(data.error || 'Failed to submit ticket.', 'error');
             }
@@ -476,13 +498,21 @@
             return;
           }
           messagesDiv.innerHTML = replies.map(function(r) {
-            var isMe = r.user_id === user.id;
+            var isMe = r.sender_id === user.id;
             var time = new Date(r.created_at).toLocaleString('en-ZA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            var senderLabel = 'Unknown';
+            if (isMe) {
+              senderLabel = 'You';
+            } else if (r.sender_role === 'admin') {
+              senderLabel = 'Admin';
+            } else {
+              senderLabel = r.sender_email || r.sender_name || 'User';
+            }
             return '<div style="display:flex;justify-content:' + (isMe ? 'flex-end' : 'flex-start') + ';margin-bottom:6px;">' +
               '<div style="max-width:80%;padding:8px 12px;border-radius:12px;font-size:.8125rem;' +
               (isMe ? 'background:var(--primary);color:white;border-bottom-right-radius:4px;' : 'background:var(--gray-100);color:var(--gray-800);border-bottom-left-radius:4px;') + '">' +
               '<div>' + AgriCore.escapeHtml(r.message) + '</div>' +
-              '<div style="font-size:.6875rem;margin-top:2px;opacity:.7;">' + (isMe ? 'You' : (r.sender_name || 'Admin')) + ' · ' + time + '</div>' +
+              '<div style="font-size:.6875rem;margin-top:2px;opacity:.7;">' + AgriCore.escapeHtml(senderLabel) + ' · ' + time + '</div>' +
               '</div></div>';
           }).join('');
         })
