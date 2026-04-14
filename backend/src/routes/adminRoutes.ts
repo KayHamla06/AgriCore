@@ -105,6 +105,9 @@ router.post('/users/:id/send-verification', async (req, res, next) => {
 // GET /api/admin/stats — dashboard statistics
 router.get('/stats', adminController.getStats);
 
+// GET /api/admin/recent-logins — recent login activity across all users
+router.get('/recent-logins', adminController.getRecentLogins);
+
 // =============================================
 //  TICKETS (ADMIN)
 // =============================================

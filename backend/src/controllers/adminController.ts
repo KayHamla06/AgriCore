@@ -164,6 +164,20 @@ export class AdminController {
       next(err);
     }
   }
+
+  // ==========================================
+  //  RECENT LOGIN ACTIVITY
+  // ==========================================
+
+  async getRecentLogins(req: Request, res: Response, next: NextFunction) {
+    try {
+      const limit = parseInt(req.query.limit as string) || 20;
+      const logins = await adminService.getRecentLogins(limit);
+      res.json({ success: true, data: logins });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const adminController = new AdminController();

@@ -6,6 +6,7 @@
 
 import { supabaseAdmin } from '../config/supabaseClient';
 import type { NotificationType } from '../models/types';
+import logger from '../utils/logger';
 
 export class NotificationService {
   async getAll(userId: string, unreadOnly = false) {
@@ -56,7 +57,10 @@ export class NotificationService {
       .select()
       .maybeSingle();
 
-    if (error) return null; // Non-critical — don't block caller
+    if (error) {
+      logger.error('Notification create failed', { type: data.type, userId: data.user_id, error: error.message });
+      return null;
+    }
     return notification;
   }
 

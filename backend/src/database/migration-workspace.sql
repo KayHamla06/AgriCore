@@ -10,7 +10,7 @@
 
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
 ALTER TABLE users ADD CONSTRAINT users_role_check
-  CHECK (role IN ('farmer', 'government', 'admin', 'supervisor', 'field_agent', 'office_staff'));
+  CHECK (role IN ('farmer', 'advisor', 'admin', 'supervisor', 'field_agent', 'office_staff'));
 
 -- =============================================
 --  2. DEPARTMENTS
@@ -227,9 +227,10 @@ CREATE TABLE IF NOT EXISTS notifications (
     'task_assigned', 'task_completed', 'visit_shared',
     'message_received', 'note_shared', 'system',
     'verification_request', 'verification_approved', 'verification_rejected',
-    'data_pending', 'data_approved', 'data_rejected',
+    'data_submission', 'data_pending', 'data_approved', 'data_rejected',
     'ticket_created', 'ticket_updated', 'ticket_resolved',
-    'deletion_approved', 'deletion_rejected'
+    'deletion_approved', 'deletion_rejected',
+    'plan_update'
   )),
   title TEXT NOT NULL,
   body TEXT DEFAULT '',

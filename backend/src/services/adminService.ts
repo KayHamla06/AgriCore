@@ -372,6 +372,13 @@ export class AdminService {
     return loginActivityService.getByUser(userId, limit);
   }
 
+  /**
+   * Get recent login activity across all users (admin overview).
+   */
+  async getRecentLogins(limit = 20): Promise<LoginActivity[]> {
+    return loginActivityService.getRecent(limit);
+  }
+
   // ==========================================
   //  USER FILES / UPLOADS
   // ==========================================

@@ -286,6 +286,7 @@ document.addEventListener('DOMContentLoaded', function () {
       loadDataApprovalRequests(),
       loadTickets(),
       loadAdminNotifications(),
+      loadRecentLoginActivity(),
     ]);
   }
 
@@ -328,6 +329,57 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     return Promise.allSettled([pStats, pVer, pData]);
+  }
+
+  // ------ Recent Login Activity (Overview) ------
+  function loadRecentLoginActivity() {
+    return apiFetch('/admin/recent-logins?limit=15').then(function(res) {
+      var tbody = document.getElementById('overviewLoginActivityBody');
+      if (!tbody) return;
+      var logins = (res.success && Array.isArray(res.data)) ? res.data : [];
+      if (logins.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><p>No login activity recorded</p></td></tr>';
+        return;
+      }
+      var escape = AgriCore.escapeHtml;
+      tbody.innerHTML = logins.map(function(login) {
+        var dt = new Date(login.login_at);
+        var dateStr = dt.toLocaleDateString('en-ZA', { year: 'numeric', month: 'short', day: 'numeric' });
+        var timeStr = dt.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+        var loc = [login.city, login.region, login.country].filter(Boolean).join(', ') || '—';
+        var ip = login.ip_address || '—';
+        var ua = login.user_agent || '—';
+        var userName = (login.users && login.users.name) ? login.users.name : '—';
+        var userEmail = (login.users && login.users.email) ? login.users.email : '';
+        var userRole = (login.users && login.users.role) ? login.users.role : '';
+
+        var browser = '—';
+        if (ua !== '—') {
+          if (ua.indexOf('Edg') > -1) browser = 'Edge';
+          else if (ua.indexOf('Chrome') > -1) browser = 'Chrome';
+          else if (ua.indexOf('Firefox') > -1) browser = 'Firefox';
+          else if (ua.indexOf('Safari') > -1) browser = 'Safari';
+          else browser = ua.substring(0, 30) + (ua.length > 30 ? '…' : '');
+        }
+
+        var device = '—';
+        if (ua !== '—') {
+          if (ua.indexOf('Mobile') > -1 || ua.indexOf('Android') > -1) device = 'Mobile';
+          else if (ua.indexOf('Tablet') > -1 || ua.indexOf('iPad') > -1) device = 'Tablet';
+          else device = 'Desktop';
+        }
+
+        return '<tr>' +
+          '<td><div style="font-weight:500;">' + escape(userName) + '</div>' +
+          '<div style="font-size:.7rem;color:var(--gray-500);">' + escape(userEmail) +
+          (userRole ? ' · ' + escape(userRole) : '') + '</div></td>' +
+          '<td><div style="font-weight:500;">' + dateStr + '</div><div style="font-size:.75rem;color:var(--gray-500);">' + timeStr + '</div></td>' +
+          '<td><code style="font-size:.8125rem;background:var(--gray-100);padding:2px 6px;border-radius:4px;">' + escape(ip) + '</code></td>' +
+          '<td>' + escape(loc) + '</td>' +
+          '<td style="font-size:.8125rem;">' + escape(browser) + ' · ' + escape(device) + '</td>' +
+          '</tr>';
+      }).join('');
+    });
   }
 
   // ------ Deletion Requests ------
