@@ -5,7 +5,7 @@
 // Isolated module — does not replace pdfService.
 // ============================================
 
-import puppeteer from 'puppeteer';
+import puppeteer, { type Browser } from 'puppeteer';
 import path from 'path';
 import fs from 'fs';
 import { supabaseAdmin } from '../config/supabaseClient';
@@ -112,7 +112,7 @@ export class PuppeteerPdfService {
   // -----------------------------------------------------------------------
 
   private async renderPdf(html: string, format: 'A4' | 'Letter'): Promise<Buffer> {
-    let browser: puppeteer.Browser | null = null;
+    let browser: Browser | null = null;
     try {
       browser = await puppeteer.launch({
         headless: true,
