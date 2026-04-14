@@ -23,7 +23,7 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS notifications_owner ON notifications;
 CREATE POLICY notifications_owner ON notifications FOR ALL USING (
-  auth.uid()::text = (SELECT auth_id FROM users WHERE id = notifications.user_id)
+  auth.uid() = (SELECT auth_id FROM users WHERE id = notifications.user_id)
 );
 
 -- Drop the old CHECK constraint and add the expanded one

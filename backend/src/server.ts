@@ -41,6 +41,7 @@ import pdfRoutes from './routes/pdfRoutes';
 import verificationRoutes from './routes/verificationRoutes';
 import dataApprovalRoutes from './routes/dataApprovalRoutes';
 import ticketRoutes from './routes/ticketRoutes';
+import reportRoutes from './routes/reportRoutes';
 
 // Validate config at startup
 validateConfig();
@@ -167,6 +168,7 @@ app.use('/api/pdf', pdfRoutes);
 app.use('/api/verification', verificationRoutes);
 app.use('/api/data-approval', dataApprovalRoutes);
 app.use('/api/tickets', ticketRoutes);
+app.use('/api/reports', reportRoutes);
 
 // =============================================
 //  ERROR HANDLING

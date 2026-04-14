@@ -62,12 +62,12 @@ ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 -- Users can see tasks assigned to them or by them
 DROP POLICY IF EXISTS tasks_select ON tasks;
 CREATE POLICY tasks_select ON tasks FOR SELECT USING (
-  auth.uid()::text IN (
+  auth.uid() IN (
     SELECT auth_id FROM users WHERE id = tasks.assigned_to
     UNION
     SELECT auth_id FROM users WHERE id = tasks.assigned_by
   )
-  OR EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid()::text AND role IN ('admin', 'supervisor'))
+  OR EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role IN ('admin', 'supervisor'))
 );
 
 -- =============================================
@@ -94,7 +94,7 @@ ALTER TABLE todos ENABLE ROW LEVEL SECURITY;
 -- Todos are strictly private
 DROP POLICY IF EXISTS todos_owner ON todos;
 CREATE POLICY todos_owner ON todos FOR ALL USING (
-  auth.uid()::text = (SELECT auth_id FROM users WHERE id = todos.user_id)
+  auth.uid() = (SELECT auth_id FROM users WHERE id = todos.user_id)
 );
 
 -- =============================================
@@ -119,14 +119,14 @@ ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
 -- Owner + shared recipients can view
 DROP POLICY IF EXISTS notes_select ON notes;
 CREATE POLICY notes_select ON notes FOR SELECT USING (
-  auth.uid()::text = (SELECT auth_id FROM users WHERE id = notes.user_id)
-  OR (is_shared = true AND (SELECT id FROM users WHERE auth_id = auth.uid()::text) = ANY(shared_with))
+  auth.uid() = (SELECT auth_id FROM users WHERE id = notes.user_id)
+  OR (is_shared = true AND (SELECT id FROM users WHERE auth_id = auth.uid()) = ANY(shared_with))
 );
 
 -- Only owner can modify
 DROP POLICY IF EXISTS notes_modify ON notes;
 CREATE POLICY notes_modify ON notes FOR ALL USING (
-  auth.uid()::text = (SELECT auth_id FROM users WHERE id = notes.user_id)
+  auth.uid() = (SELECT auth_id FROM users WHERE id = notes.user_id)
 );
 
 -- =============================================
@@ -156,9 +156,9 @@ ALTER TABLE field_visits ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS field_visits_select ON field_visits;
 CREATE POLICY field_visits_select ON field_visits FOR SELECT USING (
-  auth.uid()::text = (SELECT auth_id FROM users WHERE id = field_visits.agent_id)
-  OR (SELECT id FROM users WHERE auth_id = auth.uid()::text) = ANY(shared_with)
-  OR EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid()::text AND role IN ('admin', 'supervisor'))
+  auth.uid() = (SELECT auth_id FROM users WHERE id = field_visits.agent_id)
+  OR (SELECT id FROM users WHERE auth_id = auth.uid()) = ANY(shared_with)
+  OR EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role IN ('admin', 'supervisor'))
 );
 
 -- =============================================
@@ -203,7 +203,7 @@ CREATE POLICY chat_rooms_member ON chat_rooms FOR SELECT USING (
   EXISTS (
     SELECT 1 FROM chat_members cm
     JOIN users u ON u.id = cm.user_id
-    WHERE cm.room_id = chat_rooms.id AND u.auth_id = auth.uid()::text
+    WHERE cm.room_id = chat_rooms.id AND u.auth_id = auth.uid()
   )
 );
 
@@ -212,7 +212,7 @@ CREATE POLICY chat_messages_member ON chat_messages FOR SELECT USING (
   EXISTS (
     SELECT 1 FROM chat_members cm
     JOIN users u ON u.id = cm.user_id
-    WHERE cm.room_id = chat_messages.room_id AND u.auth_id = auth.uid()::text
+    WHERE cm.room_id = chat_messages.room_id AND u.auth_id = auth.uid()
   )
 );
 
@@ -246,7 +246,7 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS notifications_owner ON notifications;
 CREATE POLICY notifications_owner ON notifications FOR ALL USING (
-  auth.uid()::text = (SELECT auth_id FROM users WHERE id = notifications.user_id)
+  auth.uid() = (SELECT auth_id FROM users WHERE id = notifications.user_id)
 );
 
 -- =============================================
@@ -273,7 +273,7 @@ ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
 -- Only admins can read activity logs
 DROP POLICY IF EXISTS activity_logs_admin ON activity_logs;
 CREATE POLICY activity_logs_admin ON activity_logs FOR SELECT USING (
-  EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid()::text AND role = 'admin')
+  EXISTS (SELECT 1 FROM users WHERE auth_id = auth.uid() AND role = 'admin')
 );
 
 -- =============================================

@@ -6,6 +6,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import type { UserRole } from '../models/types';
+import { supabaseAdmin } from '../config/supabaseClient';
 import logger from '../utils/logger';
 
 /**
@@ -81,17 +82,18 @@ export function requireVerified(
 
 /**
  * Ensures a farmer can only access their own data.
- * Compares req.user.id against the :farmerId route param.
- * Advisor users bypass this check (they can view any farmer).
+ * Looks up the farmer record by :farmerId and compares
+ * its user_id against the authenticated user's id.
+ * Advisor/admin/supervisor users bypass this check.
  *
  * Usage:
  *   router.get('/farmers/:farmerId/data', authMiddleware, requireOwnerOrGov, getData);
  */
-export function requireOwnerOrGov(
+export async function requireOwnerOrGov(
   req: Request,
   res: Response,
   next: NextFunction
-): void {
+): Promise<void> {
   if (!req.user) {
     res.status(401).json({ success: false, error: 'Authentication required' });
     return;
@@ -105,19 +107,40 @@ export function requireOwnerOrGov(
 
   // Farmers can only access their own data
   const farmerId = req.params.farmerId;
-  if (farmerId && farmerId !== req.user.id) {
-    logger.warn('RBAC: farmer tried to access another farmer', {
-      userId: req.user.id,
-      targetFarmerId: farmerId,
-      path: req.path,
-    });
-
-    res.status(403).json({
-      success: false,
-      error: 'You can only access your own data.',
-    });
+  if (!farmerId) {
+    next();
     return;
   }
 
-  next();
+  try {
+    // Look up the farmer record to compare user_id
+    const { data: farmer, error } = await supabaseAdmin
+      .from('farmers')
+      .select('user_id')
+      .eq('id', farmerId)
+      .maybeSingle();
+
+    if (error || !farmer) {
+      res.status(404).json({ success: false, error: 'Farmer not found' });
+      return;
+    }
+
+    if (farmer.user_id !== req.user.id) {
+      logger.warn('RBAC: farmer tried to access another farmer', {
+        userId: req.user.id,
+        targetFarmerId: farmerId,
+        path: req.path,
+      });
+
+      res.status(403).json({
+        success: false,
+        error: 'You can only access your own data.',
+      });
+      return;
+    }
+
+    next();
+  } catch {
+    res.status(500).json({ success: false, error: 'Authorization check failed' });
+  }
 }

@@ -92,10 +92,70 @@
           <div class="timeline" id="profileTimeline"></div>
         </div>
 
-        <div style="display:flex;gap:12px;">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
           <button class="btn btn-primary" id="createPlanFromProfileBtn"><i data-lucide="clipboard-plus"></i> Create Plan</button>
           <button class="btn btn-secondary" id="downloadFarmerProfilePdfBtn"><i data-lucide="file-down"></i> Download Farmer Report</button>
+          <button class="btn btn-ghost" id="logVisitFromProfileBtn"><i data-lucide="map-pin"></i> Log Visit</button>
+          <button class="btn btn-ghost" id="addNoteFromProfileBtn"><i data-lucide="sticky-note"></i> Add Note</button>
           <button class="btn btn-danger" id="flagFarmerBtn"><i data-lucide="alert-triangle"></i> Flag for Follow-up</button>
+        </div>
+
+        <!-- Advisor Edit Section (gov only) -->
+        <div class="card profile-section" id="advisorEditSection" style="margin-top:20px;display:none;">
+          <div class="profile-section-header">
+            <h3 class="chart-card-title"><i data-lucide="edit-3"></i> Edit Farm Data</h3>
+            <span class="badge badge-warning">Requires Admin Approval</span>
+          </div>
+          <p style="color:var(--gray-500);font-size:.8rem;margin-bottom:12px;">Changes will be submitted for admin review before going live.</p>
+          <div class="advisor-edit-tabs">
+            <button class="filter-btn active" data-edit-tab="livestock">Livestock</button>
+            <button class="filter-btn" data-edit-tab="crops">Crops</button>
+            <button class="filter-btn" data-edit-tab="soil">Soil Data</button>
+          </div>
+
+          <!-- Livestock edit -->
+          <div class="advisor-edit-form" id="editLivestockForm">
+            <div class="form-grid">
+              <div class="form-group"><label>Animal Type</label><input type="text" id="editLsType" class="form-input" placeholder="e.g. Cattle"></div>
+              <div class="form-group"><label>Total</label><input type="number" id="editLsTotal" class="form-input" min="0"></div>
+              <div class="form-group"><label>Born</label><input type="number" id="editLsBorn" class="form-input" min="0"></div>
+              <div class="form-group"><label>Sold</label><input type="number" id="editLsSold" class="form-input" min="0"></div>
+              <div class="form-group"><label>Young</label><input type="number" id="editLsYoung" class="form-input" min="0"></div>
+              <div class="form-group"><label>Diseases</label><input type="text" id="editLsDiseases" class="form-input" placeholder="Comma-separated"></div>
+            </div>
+            <button class="btn btn-primary btn-sm" id="submitLivestockEditBtn" style="margin-top:10px;"><i data-lucide="send"></i> Submit for Approval</button>
+          </div>
+
+          <!-- Crop edit -->
+          <div class="advisor-edit-form" id="editCropForm" style="display:none;">
+            <div class="form-grid">
+              <div class="form-group"><label>Crop Type</label><input type="text" id="editCrType" class="form-input" placeholder="e.g. Maize"></div>
+              <div class="form-group"><label>Hectares</label><input type="number" id="editCrHectares" class="form-input" min="0" step="0.1"></div>
+              <div class="form-group"><label>Yield (tonnes)</label><input type="number" id="editCrYield" class="form-input" min="0" step="0.1"></div>
+              <div class="form-group"><label>Season</label><input type="text" id="editCrSeason" class="form-input" placeholder="e.g. 2025/2026"></div>
+              <div class="form-group"><label>Status</label>
+                <select id="editCrStatus" class="form-input">
+                  <option value="planted">Planted</option>
+                  <option value="growing">Growing</option>
+                  <option value="harvested">Harvested</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm" id="submitCropEditBtn" style="margin-top:10px;"><i data-lucide="send"></i> Submit for Approval</button>
+          </div>
+
+          <!-- Soil edit -->
+          <div class="advisor-edit-form" id="editSoilForm" style="display:none;">
+            <div class="form-grid">
+              <div class="form-group"><label>pH Level</label><input type="number" id="editSoilPh" class="form-input" min="0" max="14" step="0.1"></div>
+              <div class="form-group"><label>Nitrogen (mg/kg)</label><input type="number" id="editSoilN" class="form-input" min="0" step="0.1"></div>
+              <div class="form-group"><label>Phosphorus (mg/kg)</label><input type="number" id="editSoilP" class="form-input" min="0" step="0.1"></div>
+              <div class="form-group"><label>Potassium (mg/kg)</label><input type="number" id="editSoilK" class="form-input" min="0" step="0.1"></div>
+              <div class="form-group"><label>Organic Matter (%)</label><input type="number" id="editSoilOm" class="form-input" min="0" max="100" step="0.1"></div>
+              <div class="form-group"><label>Soil Type</label><input type="text" id="editSoilType" class="form-input" placeholder="e.g. Loam"></div>
+            </div>
+            <button class="btn btn-primary btn-sm" id="submitSoilEditBtn" style="margin-top:10px;"><i data-lucide="send"></i> Submit for Approval</button>
+          </div>
         </div>
       `;
     },
@@ -114,6 +174,159 @@
       // Flag farmer
       var flagBtn = document.getElementById('flagFarmerBtn');
       if (flagBtn) flagBtn.addEventListener('click', function() { AgriCore.showToast('Farmer flagged for follow-up', 'warning'); });
+
+      // Quick action: Log Visit from profile
+      var logVisitProfileBtn = document.getElementById('logVisitFromProfileBtn');
+      if (logVisitProfileBtn) {
+        logVisitProfileBtn.addEventListener('click', function() {
+          ctx.switchPanel('visits');
+          setTimeout(function() {
+            var newVisitBtn = document.getElementById('newVisitBtn');
+            if (newVisitBtn) newVisitBtn.click();
+            // Pre-select farmer
+            var sel = document.getElementById('visitFarmerSelect');
+            if (sel && window._currentProfileFarmerId) sel.value = window._currentProfileFarmerId;
+          }, 200);
+        });
+      }
+
+      // Quick action: Add Note
+      var addNoteBtn = document.getElementById('addNoteFromProfileBtn');
+      if (addNoteBtn) {
+        addNoteBtn.addEventListener('click', function() {
+          AgriCore.showToast('Opening notes...', 'info');
+          // If a note modal/panel exists, link to it; otherwise show toast
+        });
+      }
+
+      // Advisor Edit Section — show only for gov roles
+      if (ctx.isGov) {
+        var editSection = document.getElementById('advisorEditSection');
+        if (editSection) editSection.style.display = 'block';
+
+        // Tab switching
+        document.querySelectorAll('[data-edit-tab]').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            document.querySelectorAll('[data-edit-tab]').forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            document.getElementById('editLivestockForm').style.display = btn.dataset.editTab === 'livestock' ? 'block' : 'none';
+            document.getElementById('editCropForm').style.display = btn.dataset.editTab === 'crops' ? 'block' : 'none';
+            document.getElementById('editSoilForm').style.display = btn.dataset.editTab === 'soil' ? 'block' : 'none';
+          });
+        });
+
+        // Submit livestock change
+        var submitLsBtn = document.getElementById('submitLivestockEditBtn');
+        if (submitLsBtn) {
+          submitLsBtn.addEventListener('click', function() {
+            var farmerId = window._currentProfileFarmerId;
+            if (!farmerId) { AgriCore.showToast('No farmer selected.', 'error'); return; }
+            var animalType = document.getElementById('editLsType').value.trim();
+            if (!animalType) { AgriCore.showToast('Animal type is required.', 'error'); return; }
+
+            var diseases = document.getElementById('editLsDiseases').value.trim();
+            var payload = {
+              animal_type: animalType,
+              total: parseInt(document.getElementById('editLsTotal').value) || 0,
+              born: parseInt(document.getElementById('editLsBorn').value) || 0,
+              sold: parseInt(document.getElementById('editLsSold').value) || 0,
+              young: parseInt(document.getElementById('editLsYoung').value) || 0,
+              diseases: diseases ? diseases.split(',').map(function(d) { return d.trim(); }) : []
+            };
+
+            submitLsBtn.disabled = true;
+            submitLsBtn.textContent = 'Submitting...';
+
+            AgriCore.apiPost('/data-approval/submit', {
+              resource_type: 'livestock',
+              farmer_id: farmerId,
+              payload: payload
+            }).then(function(res) {
+              submitLsBtn.disabled = false;
+              submitLsBtn.innerHTML = '<i data-lucide="send"></i> Submit for Approval';
+              if (typeof lucide !== 'undefined') lucide.createIcons();
+              if (res.success) {
+                AgriCore.showToast('Livestock data submitted for admin approval!', 'success');
+              } else {
+                AgriCore.showToast(res.error || 'Submission failed.', 'error');
+              }
+            });
+          });
+        }
+
+        // Submit crop change
+        var submitCrBtn = document.getElementById('submitCropEditBtn');
+        if (submitCrBtn) {
+          submitCrBtn.addEventListener('click', function() {
+            var farmerId = window._currentProfileFarmerId;
+            if (!farmerId) { AgriCore.showToast('No farmer selected.', 'error'); return; }
+            var cropType = document.getElementById('editCrType').value.trim();
+            if (!cropType) { AgriCore.showToast('Crop type is required.', 'error'); return; }
+
+            var payload = {
+              crop_type: cropType,
+              hectares_planted: parseFloat(document.getElementById('editCrHectares').value) || 0,
+              yield_tonnes: parseFloat(document.getElementById('editCrYield').value) || 0,
+              season: document.getElementById('editCrSeason').value.trim(),
+              status: document.getElementById('editCrStatus').value
+            };
+
+            submitCrBtn.disabled = true;
+            submitCrBtn.textContent = 'Submitting...';
+
+            AgriCore.apiPost('/data-approval/submit', {
+              resource_type: 'crops',
+              farmer_id: farmerId,
+              payload: payload
+            }).then(function(res) {
+              submitCrBtn.disabled = false;
+              submitCrBtn.innerHTML = '<i data-lucide="send"></i> Submit for Approval';
+              if (typeof lucide !== 'undefined') lucide.createIcons();
+              if (res.success) {
+                AgriCore.showToast('Crop data submitted for admin approval!', 'success');
+              } else {
+                AgriCore.showToast(res.error || 'Submission failed.', 'error');
+              }
+            });
+          });
+        }
+
+        // Submit soil change
+        var submitSoilBtn = document.getElementById('submitSoilEditBtn');
+        if (submitSoilBtn) {
+          submitSoilBtn.addEventListener('click', function() {
+            var farmerId = window._currentProfileFarmerId;
+            if (!farmerId) { AgriCore.showToast('No farmer selected.', 'error'); return; }
+
+            var payload = {
+              ph: parseFloat(document.getElementById('editSoilPh').value) || null,
+              nitrogen: parseFloat(document.getElementById('editSoilN').value) || null,
+              phosphorus: parseFloat(document.getElementById('editSoilP').value) || null,
+              potassium: parseFloat(document.getElementById('editSoilK').value) || null,
+              organic_matter: parseFloat(document.getElementById('editSoilOm').value) || null,
+              soil_type: document.getElementById('editSoilType').value.trim()
+            };
+
+            submitSoilBtn.disabled = true;
+            submitSoilBtn.textContent = 'Submitting...';
+
+            AgriCore.apiPost('/data-approval/submit', {
+              resource_type: 'soil_data',
+              farmer_id: farmerId,
+              payload: payload
+            }).then(function(res) {
+              submitSoilBtn.disabled = false;
+              submitSoilBtn.innerHTML = '<i data-lucide="send"></i> Submit for Approval';
+              if (typeof lucide !== 'undefined') lucide.createIcons();
+              if (res.success) {
+                AgriCore.showToast('Soil data submitted for admin approval!', 'success');
+              } else {
+                AgriCore.showToast(res.error || 'Submission failed.', 'error');
+              }
+            });
+          });
+        }
+      }
 
       // PDF download from profile
       var pdfProfileBtn = document.getElementById('downloadFarmerProfilePdfBtn');

@@ -6,6 +6,25 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { requireRole, requireOwnerOrGov } from '../middleware/roleMiddleware';
 import { mockRequest, mockResponse, mockNext, mockAuthUser } from '../__tests__/helpers';
 
+// Mock supabaseAdmin
+vi.mock('../config/supabaseClient', () => ({
+  supabaseAdmin: {
+    from: vi.fn(),
+  },
+}));
+
+import { supabaseAdmin } from '../config/supabaseClient';
+
+function mockSupabaseFarmerLookup(result: { data: any; error: any }) {
+  const chain = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    maybeSingle: vi.fn().mockResolvedValue(result),
+  };
+  (supabaseAdmin.from as ReturnType<typeof vi.fn>).mockReturnValue(chain);
+  return chain;
+}
+
 describe('requireRole', () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -75,30 +94,57 @@ describe('requireOwnerOrGov', () => {
     expect(next).toHaveBeenCalled();
   });
 
-  it('allows farmer to access their own data', () => {
+  it('allows farmer to access their own data', async () => {
+    mockSupabaseFarmerLookup({ data: { user_id: 'user-1' }, error: null });
+
     const req = mockRequest({
-      user: mockAuthUser({ id: 'farmer-1', role: 'farmer' }),
-      params: { farmerId: 'farmer-1' },
+      user: mockAuthUser({ id: 'user-1', role: 'farmer' }),
+      params: { farmerId: 'farmer-record-1' },
     });
     const res = mockResponse();
     const next = mockNext();
 
     requireOwnerOrGov(req, res, next);
 
-    expect(next).toHaveBeenCalled();
+    // Wait for async DB lookup
+    await vi.waitFor(() => {
+      expect(next).toHaveBeenCalled();
+    });
   });
 
-  it('blocks farmer from accessing other farmer data', () => {
+  it('blocks farmer from accessing other farmer data', async () => {
+    mockSupabaseFarmerLookup({ data: { user_id: 'user-2' }, error: null });
+
     const req = mockRequest({
-      user: mockAuthUser({ id: 'farmer-1', role: 'farmer' }),
-      params: { farmerId: 'farmer-2' },
+      user: mockAuthUser({ id: 'user-1', role: 'farmer' }),
+      params: { farmerId: 'farmer-record-2' },
     });
     const res = mockResponse();
     const next = mockNext();
 
     requireOwnerOrGov(req, res, next);
 
-    expect(res.status).toHaveBeenCalledWith(403);
+    await vi.waitFor(() => {
+      expect(res.status).toHaveBeenCalledWith(403);
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when farmer record not found', async () => {
+    mockSupabaseFarmerLookup({ data: null, error: null });
+
+    const req = mockRequest({
+      user: mockAuthUser({ id: 'user-1', role: 'farmer' }),
+      params: { farmerId: 'nonexistent' },
+    });
+    const res = mockResponse();
+    const next = mockNext();
+
+    requireOwnerOrGov(req, res, next);
+
+    await vi.waitFor(() => {
+      expect(res.status).toHaveBeenCalledWith(404);
+    });
     expect(next).not.toHaveBeenCalled();
   });
 

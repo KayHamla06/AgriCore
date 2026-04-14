@@ -64,6 +64,13 @@
           <button class="btn btn-ghost btn-sm" id="viewAttentionBtn">View All</button>
         </div>
 
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+          <button class="quick-action-btn" id="govQuickVisit"><i data-lucide="clipboard-check"></i> Log Visit</button>
+          <button class="quick-action-btn" id="govQuickTask"><i data-lucide="calendar-check"></i> New Task</button>
+          <button class="quick-action-btn" id="govQuickFarmers"><i data-lucide="users"></i> View Farmers</button>
+        </div>
+
         <div class="overview-cards">
           <div class="overview-card">
             <div class="overview-card-header">
@@ -92,6 +99,20 @@
             </div>
             <div class="overview-card-value" id="govDistrictsVal">--</div>
             <div class="overview-card-label">Districts Covered</div>
+          </div>
+          <div class="overview-card">
+            <div class="overview-card-header">
+              <div class="overview-card-icon cyan" style="background:rgba(14,165,233,.1);"><i data-lucide="clipboard-check" style="color:#0ea5e9;"></i></div>
+            </div>
+            <div class="overview-card-value" id="govVisitsVal">--</div>
+            <div class="overview-card-label">Visits This Month</div>
+          </div>
+          <div class="overview-card">
+            <div class="overview-card-header">
+              <div class="overview-card-icon purple" style="background:rgba(139,92,246,.1);"><i data-lucide="list-checks" style="color:#8b5cf6;"></i></div>
+            </div>
+            <div class="overview-card-value" id="govPendingTasksVal">--</div>
+            <div class="overview-card-label">Pending Tasks</div>
           </div>
         </div>
 
@@ -355,6 +376,14 @@
       var viewAttentionBtn = document.getElementById('viewAttentionBtn');
       if (viewAttentionBtn) viewAttentionBtn.addEventListener('click', function() { ctx.switchPanel('farmers'); });
 
+      // === Quick Action Buttons ===
+      var govQuickVisit = document.getElementById('govQuickVisit');
+      if (govQuickVisit) govQuickVisit.addEventListener('click', function() { ctx.switchPanel('visits'); });
+      var govQuickTask = document.getElementById('govQuickTask');
+      if (govQuickTask) govQuickTask.addEventListener('click', function() { ctx.switchPanel('tasks'); });
+      var govQuickFarmers = document.getElementById('govQuickFarmers');
+      if (govQuickFarmers) govQuickFarmers.addEventListener('click', function() { ctx.switchPanel('farmers'); });
+
       // === View All Farmers Button ===
       var viewAllBtn = document.getElementById('viewAllFarmersBtn');
       if (viewAllBtn) viewAllBtn.addEventListener('click', function() { ctx.switchPanel('farmers'); });
@@ -519,6 +548,39 @@
         var tbody = document.getElementById('govRecentFarmersTbody');
         if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--gray-400);">Unable to load farmer data.</td></tr>';
       });
+
+      // === Load Visits This Month ===
+      (function loadVisitStats() {
+        var startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+        AgriCore.apiGet('/visits').then(function(res) {
+          var visits = (res.success && res.data) ? res.data : [];
+          var thisMonth = visits.filter(function(v) {
+            return new Date(v.visit_date || v.created_at) >= startOfMonth;
+          });
+          var el = document.getElementById('govVisitsVal');
+          if (el) el.textContent = thisMonth.length;
+        }).catch(function() {
+          var el = document.getElementById('govVisitsVal');
+          if (el) el.textContent = '0';
+        });
+      })();
+
+      // === Load Pending Tasks Count ===
+      (function loadTaskStats() {
+        AgriCore.apiGet('/tasks').then(function(res) {
+          var tasks = (res.success && res.data) ? res.data : [];
+          var pending = tasks.filter(function(t) {
+            return t.status === 'pending' || t.status === 'in_progress';
+          });
+          var el = document.getElementById('govPendingTasksVal');
+          if (el) el.textContent = pending.length;
+        }).catch(function() {
+          var el = document.getElementById('govPendingTasksVal');
+          if (el) el.textContent = '0';
+        });
+      })();
     }
   });
 })();

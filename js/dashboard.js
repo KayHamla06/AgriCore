@@ -56,8 +56,12 @@ document.addEventListener('DOMContentLoaded', function() {
   if (isFarmer) {
     var sidebarFarmers = document.getElementById('sidebarFarmers');
     var sidebarCompare = document.getElementById('sidebarCompare');
+    var sidebarVisits = document.getElementById('sidebarVisits');
+    var sidebarTasks = document.getElementById('sidebarTasks');
     if (sidebarFarmers) sidebarFarmers.style.display = 'none';
     if (sidebarCompare) sidebarCompare.style.display = 'none';
+    if (sidebarVisits) sidebarVisits.style.display = 'none';
+    if (sidebarTasks) sidebarTasks.style.display = 'none';
   }
 
   // =============================================
@@ -142,7 +146,9 @@ document.addEventListener('DOMContentLoaded', function() {
     'settings': 'Settings',
     'compare': 'Compare Farmers',
     'map': 'Map View',
-    'support': 'Support'
+    'support': 'Support',
+    'visits': 'Visit Log',
+    'tasks': 'Tasks & Calendar'
   };
 
   function switchPanel(panelName) {
@@ -156,7 +162,9 @@ document.addEventListener('DOMContentLoaded', function() {
       'settings': 'panel-settings',
       'compare': 'panel-compare',
       'map': 'panel-map',
-      'support': 'panel-support'
+      'support': 'panel-support',
+      'visits': 'panel-visits',
+      'tasks': 'panel-tasks'
     };
 
     var targetId = idMap[panelName];
