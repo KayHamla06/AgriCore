@@ -416,7 +416,11 @@
           var soilData = (soilRes.success && soilRes.data) ? soilRes.data : [];
 
           // Build a farmerData object compatible with score calculation
-          var yieldHistory = crops.map(function(c) { return parseFloat(c.yield_tonnes) || 0; });
+          // Sort crops oldest → newest (same as farmer-dashboard) for consistent trend calculation
+          var sortedCrops = crops.slice().sort(function(a, b) {
+            return new Date(a.recorded_at || 0) - new Date(b.recorded_at || 0);
+          });
+          var yieldHistory = sortedCrops.map(function(c) { return parseFloat(c.yield_tonnes) || 0; });
           if (yieldHistory.length === 0) yieldHistory = [0, 0];
           var totalLivestock = livestock.reduce(function(sum, l) { return sum + (parseInt(l.total) || 0); }, 0);
 

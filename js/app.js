@@ -149,7 +149,7 @@ const AgriCore = (() => {
 
     // No update in 30+ days
     if (farmer.lastUpdated) {
-      const daysSince = Math.floor((new Date('2026-03-24') - new Date(farmer.lastUpdated)) / 86400000);
+      var daysSince = Math.floor((new Date() - new Date(farmer.lastUpdated)) / 86400000);
       if (daysSince > 30) {
         warnings.push({ type: 'warning', message: 'No updates in ' + daysSince + ' days', icon: 'clock' });
       }

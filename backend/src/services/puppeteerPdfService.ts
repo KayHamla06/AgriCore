@@ -233,7 +233,7 @@ export class PuppeteerPdfService {
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
       });
       const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'networkidle0' });
+      await page.setContent(html, { waitUntil: 'domcontentloaded' });
 
       const pdfBuffer = await page.pdf({
         format,
@@ -242,6 +242,9 @@ export class PuppeteerPdfService {
       });
 
       return Buffer.from(pdfBuffer);
+    } catch (err) {
+      logger.error('Puppeteer renderPdf failed', { error: (err as Error).message, stack: (err as Error).stack });
+      throw new AppError('PDF generation failed: ' + (err as Error).message, 500);
     } finally {
       if (browser) await browser.close();
     }
