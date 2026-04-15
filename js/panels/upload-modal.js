@@ -497,10 +497,24 @@
         var lastRain = document.getElementById('weatherLastRain');
         var season = document.getElementById('weatherSeason');
 
-        // Determine season from current month
-        var monthNow = new Date().getMonth() + 1; // 1-12
-        var seasonName = (monthNow >= 10 || monthNow <= 3) ? 'Summer' :
-                         (monthNow >= 4 && monthNow <= 6) ? 'Autumn' : 'Winter';
+        // Use period start/end dates from the soil tab
+        var periodStartEl = document.getElementById('uploadPeriodStart');
+        var periodEndEl = document.getElementById('uploadPeriodEnd');
+        var startDate = periodStartEl ? periodStartEl.value : '';
+        var endDate = periodEndEl ? periodEndEl.value : '';
+
+        // Fallback to last 7 days if no dates set
+        if (!startDate || !endDate) {
+          var today = new Date();
+          endDate = today.toISOString().split('T')[0];
+          var weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+          startDate = weekAgo.toISOString().split('T')[0];
+        }
+
+        // Determine season from the period start month
+        var periodMonth = parseInt(startDate.split('-')[1]) || (new Date().getMonth() + 1);
+        var seasonName = (periodMonth >= 10 || periodMonth <= 3) ? 'Summer' :
+                         (periodMonth >= 4 && periodMonth <= 6) ? 'Autumn' : 'Winter';
         if (season) season.value = seasonName;
 
         // Fetch farmer profile for coordinates
@@ -521,11 +535,9 @@
             }
             var lat = parseFloat(profile.latitude);
             var lng = parseFloat(profile.longitude);
-            var today = new Date().toISOString().split('T')[0];
-            var weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
             var url = 'https://archive-api.open-meteo.com/v1/archive?latitude=' + lat +
               '&longitude=' + lng +
-              '&start_date=' + weekAgo + '&end_date=' + today +
+              '&start_date=' + startDate + '&end_date=' + endDate +
               '&daily=temperature_2m_max,temperature_2m_min,precipitation_sum' +
               '&hourly=relative_humidity_2m&timezone=auto';
             return fetch(url).then(function(r) { return r.json(); });

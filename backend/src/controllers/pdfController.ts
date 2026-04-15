@@ -1,32 +1,32 @@
 // ============================================
 // AgriCore — PDF Controller
 // Handles PDF report generation requests.
+// Uses Puppeteer for high-quality HTML→PDF.
 // ============================================
 
 import { Request, Response, NextFunction } from 'express';
-import { pdfService } from '../services/pdfService';
+import { puppeteerPdfService } from '../services/puppeteerPdfService';
 
 export class PdfController {
   /**
    * GET /api/pdf/farmer/:farmerId
-   * Generate and stream a farmer report PDF.
+   * Generate and stream a farmer report PDF via Puppeteer.
    */
   async getFarmerReport(req: Request, res: Response, next: NextFunction) {
     try {
       const { farmerId } = req.params;
 
-      const doc = await pdfService.generateFarmerReport(
+      const pdfBuffer = await puppeteerPdfService.generateFarmerReport(
         farmerId,
         req.user!.id,
-        req.user!.role
+        req.user!.role,
       );
 
       const filename = `AgriCore_Farm_Report_${farmerId.slice(0, 8)}.pdf`;
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-
-      doc.pipe(res);
-      doc.end();
+      res.setHeader('Content-Length', pdfBuffer.length);
+      res.end(pdfBuffer);
     } catch (err) {
       next(err);
     }
@@ -34,24 +34,23 @@ export class PdfController {
 
   /**
    * GET /api/pdf/plans/:farmerId
-   * Generate and stream a support plan report PDF.
+   * Generate and stream a support plan report PDF via Puppeteer.
    */
   async getPlanReport(req: Request, res: Response, next: NextFunction) {
     try {
       const { farmerId } = req.params;
 
-      const doc = await pdfService.generatePlanReport(
+      const pdfBuffer = await puppeteerPdfService.generatePlanReport(
         farmerId,
         req.user!.id,
-        req.user!.role
+        req.user!.role,
       );
 
       const filename = `AgriCore_Plan_Report_${farmerId.slice(0, 8)}.pdf`;
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-
-      doc.pipe(res);
-      doc.end();
+      res.setHeader('Content-Length', pdfBuffer.length);
+      res.end(pdfBuffer);
     } catch (err) {
       next(err);
     }
@@ -63,22 +62,19 @@ export class PdfController {
    */
   async getComparisonReport(req: Request, res: Response, next: NextFunction) {
     try {
-      const { farmerIds, dataTypes, timeRange } = req.body;
+      const { farmerIds } = req.body;
 
-      const doc = await pdfService.generateComparisonReport(
-        farmerIds,
-        dataTypes || ['livestock', 'crops', 'soil'],
-        timeRange || {},
+      const pdfBuffer = await puppeteerPdfService.generateComparisonReport(
+        farmerIds || [],
         req.user!.id,
-        req.user!.role
+        req.user!.role,
       );
 
       const filename = `AgriCore_Comparison_Report_${Date.now()}.pdf`;
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-
-      doc.pipe(res);
-      doc.end();
+      res.setHeader('Content-Length', pdfBuffer.length);
+      res.end(pdfBuffer);
     } catch (err) {
       next(err);
     }
@@ -97,20 +93,19 @@ export class PdfController {
         return;
       }
 
-      const doc = await pdfService.generateFilteredExport(
+      const pdfBuffer = await puppeteerPdfService.generateFilteredExport(
         farmerId,
         fields || ['livestock', 'crops', 'soil', 'plans'],
         timeRange || {},
         req.user!.id,
-        req.user!.role
+        req.user!.role,
       );
 
       const filename = `AgriCore_Export_${farmerId.slice(0, 8)}.pdf`;
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-
-      doc.pipe(res);
-      doc.end();
+      res.setHeader('Content-Length', pdfBuffer.length);
+      res.end(pdfBuffer);
     } catch (err) {
       next(err);
     }

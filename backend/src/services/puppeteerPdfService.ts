@@ -108,6 +108,120 @@ export class PuppeteerPdfService {
   }
 
   // -----------------------------------------------------------------------
+  //  Public — Generate plan report PDF buffer
+  // -----------------------------------------------------------------------
+
+  async generatePlanReport(
+    farmerId: string,
+    requestingUserId: string,
+    requestingUserRole: string,
+    options: PuppeteerPdfOptions = {},
+  ): Promise<Buffer> {
+    const { format = 'A4' } = options;
+
+    const { data: farmer, error: farmerErr } = await supabaseAdmin
+      .from('farmers')
+      .select('*')
+      .eq('id', farmerId)
+      .maybeSingle();
+
+    if (farmerErr || !farmer) throw new AppError('Farmer not found', 404);
+
+    if (requestingUserRole === 'farmer' && farmer.user_id !== requestingUserId) {
+      throw new AppError('You can only download your own plan report.', 403);
+    }
+
+    const { data: plans } = await supabaseAdmin
+      .from('support_plans')
+      .select('*')
+      .eq('farmer_id', farmerId)
+      .order('created_at', { ascending: false });
+
+    const html = this.buildPlanReportHtml(farmer, plans || []);
+    return this.renderPdf(html, format);
+  }
+
+  // -----------------------------------------------------------------------
+  //  Public — Generate comparison report PDF buffer
+  // -----------------------------------------------------------------------
+
+  async generateComparisonReport(
+    farmerIds: string[],
+    _requestingUserId: string,
+    _requestingUserRole: string,
+    options: PuppeteerPdfOptions = {},
+  ): Promise<Buffer> {
+    const { format = 'A4' } = options;
+
+    if (!farmerIds || farmerIds.length === 0) throw new AppError('No farmer IDs provided', 400);
+
+    const farmers: Record<string, any>[] = [];
+    for (const fid of farmerIds.slice(0, 10)) {
+      const { data } = await supabaseAdmin.from('farmers').select('*').eq('id', fid).maybeSingle();
+      if (data) {
+        const [lsRes, crRes] = await Promise.all([
+          supabaseAdmin.from('livestock').select('*').eq('farmer_id', fid),
+          supabaseAdmin.from('crops').select('*').eq('farmer_id', fid),
+        ]);
+        farmers.push({ ...data, livestock: lsRes.data || [], crops: crRes.data || [] });
+      }
+    }
+
+    const html = this.buildComparisonHtml(farmers);
+    return this.renderPdf(html, format);
+  }
+
+  // -----------------------------------------------------------------------
+  //  Public — Generate filtered export PDF buffer
+  // -----------------------------------------------------------------------
+
+  async generateFilteredExport(
+    farmerId: string,
+    fields: string[],
+    _timeRange: Record<string, string>,
+    requestingUserId: string,
+    requestingUserRole: string,
+    options: PuppeteerPdfOptions = {},
+  ): Promise<Buffer> {
+    const { format = 'A4' } = options;
+
+    const { data: farmer, error: farmerErr } = await supabaseAdmin
+      .from('farmers')
+      .select('*')
+      .eq('id', farmerId)
+      .maybeSingle();
+
+    if (farmerErr || !farmer) throw new AppError('Farmer not found', 404);
+
+    if (requestingUserRole === 'farmer' && farmer.user_id !== requestingUserId) {
+      throw new AppError('Access denied', 403);
+    }
+
+    const sections: Record<string, any[]> = {};
+
+    if (fields.includes('livestock')) {
+      const { data } = await supabaseAdmin.from('livestock').select('*').eq('farmer_id', farmerId);
+      sections.livestock = data || [];
+    }
+    if (fields.includes('crops')) {
+      const { data } = await supabaseAdmin.from('crops').select('*').eq('farmer_id', farmerId);
+      sections.crops = data || [];
+    }
+    if (fields.includes('soil')) {
+      const { data } = await supabaseAdmin.from('soil_data').select('*').eq('farmer_id', farmerId).order('tested_at', { ascending: false }).limit(1);
+      sections.soil = data || [];
+    }
+    if (fields.includes('plans')) {
+      const { data } = await supabaseAdmin.from('support_plans').select('*').eq('farmer_id', farmerId).order('created_at', { ascending: false });
+      sections.plans = data || [];
+    }
+
+    // Re-use the farmer report builder with whatever fields were requested
+    const html = this.buildExportHtml(farmer, sections);
+    return this.renderPdf(html, format);
+  }
+
+  // -----------------------------------------------------------------------
   //  Internal — Render HTML → PDF via Puppeteer
   // -----------------------------------------------------------------------
 
@@ -389,6 +503,225 @@ export class PuppeteerPdfService {
 </div>
 </body>
 </html>`;
+  }
+
+  // -----------------------------------------------------------------------
+  //  Internal — Build plan report HTML
+  // -----------------------------------------------------------------------
+
+  private buildPlanReportHtml(
+    farmer: Record<string, any>,
+    plans: Record<string, any>[],
+  ): string {
+    const logoUri = this.getLogoDataUri();
+    const now = new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' });
+    const esc = (val: unknown): string => {
+      const str = String(val ?? '');
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    };
+
+    const planRows = plans.map(p => `
+      <tr>
+        <td>${esc(p.type)}</td>
+        <td>${esc(p.objectives || '—')}</td>
+        <td>R${Number(p.budget || 0).toLocaleString()}</td>
+        <td>${esc(p.timeline || '—')}</td>
+        <td><span class="status-${(p.status || '').toLowerCase()}">${esc(p.status || 'Draft')}</span></td>
+        <td>${esc(p.approval_status || 'Pending')}</td>
+        <td>${p.created_at ? new Date(p.created_at).toLocaleDateString('en-ZA') : '—'}</td>
+      </tr>`).join('');
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>AgriCore Plan Report — ${esc(farmer.name)}</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1a1a2e; font-size: 12px; line-height: 1.5; }
+  .header { display: flex; align-items: center; gap: 16px; border-bottom: 3px solid #2d6a4f; padding-bottom: 12px; margin-bottom: 18px; }
+  .header img { height: 60px; }
+  .header .title-block h1 { font-size: 22px; color: #2d6a4f; margin-bottom: 2px; }
+  .header .title-block p { font-size: 10px; color: #666; }
+  .section { margin-bottom: 18px; }
+  .section h2 { font-size: 14px; color: #2d6a4f; border-bottom: 1px solid #d0d0d0; padding-bottom: 4px; margin-bottom: 8px; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; }
+  .info-grid .label { font-weight: 600; color: #555; }
+  .info-grid .value { color: #1a1a2e; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  th { background: #2d6a4f; color: #fff; text-align: left; padding: 6px 8px; font-size: 11px; }
+  td { padding: 5px 8px; border-bottom: 1px solid #e0e0e0; font-size: 11px; }
+  tr:nth-child(even) { background: #f7faf8; }
+  .status-active { color: #059669; font-weight: 600; }
+  .status-draft { color: #6b7280; }
+  .status-completed { color: #2563eb; font-weight: 600; }
+  .status-pending { color: #d97706; }
+  .analytics { display: flex; gap: 12px; margin-bottom: 12px; }
+  .card { flex: 1; background: #f0f7f4; border-left: 4px solid #2d6a4f; padding: 10px 14px; border-radius: 4px; }
+  .card .num { font-size: 22px; font-weight: 700; color: #2d6a4f; }
+  .card .lbl { font-size: 10px; color: #666; }
+  .footer { margin-top: 24px; border-top: 2px solid #2d6a4f; padding-top: 10px; text-align: center; font-size: 9px; color: #999; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    ${logoUri ? `<img src="${logoUri}" alt="AgriCore Logo"/>` : ''}
+    <div class="title-block">
+      <h1>Support Plan Report</h1>
+      <p>Generated on ${esc(now)}</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Farmer Information</h2>
+    <div class="info-grid">
+      <span class="label">Name</span><span class="value">${esc(farmer.name)}</span>
+      <span class="label">Province</span><span class="value">${esc(farmer.province || 'N/A')}</span>
+      <span class="label">District</span><span class="value">${esc(farmer.district || 'N/A')}</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Summary</h2>
+    <div class="analytics">
+      <div class="card"><div class="num">${plans.length}</div><div class="lbl">Total Plans</div></div>
+      <div class="card"><div class="num">${plans.filter(p => p.status === 'Active').length}</div><div class="lbl">Active</div></div>
+      <div class="card"><div class="num">${plans.filter(p => p.status === 'Completed').length}</div><div class="lbl">Completed</div></div>
+      <div class="card"><div class="num">R${plans.reduce((s, p) => s + (Number(p.budget) || 0), 0).toLocaleString()}</div><div class="lbl">Total Budget</div></div>
+    </div>
+  </div>
+
+  ${plans.length ? `
+  <div class="section">
+    <h2>Support Plans (${plans.length})</h2>
+    <table>
+      <thead><tr><th>Type</th><th>Objectives</th><th>Budget</th><th>Timeline</th><th>Status</th><th>Approval</th><th>Created</th></tr></thead>
+      <tbody>${planRows}</tbody>
+    </table>
+  </div>` : '<div class="section"><h2>Support Plans</h2><p>No plans found for this farmer.</p></div>'}
+
+  <div class="footer">
+    <p>Generated by AgriCore | ${new Date().toISOString()}</p>
+    <p>Confidential. Do not distribute without authorization.</p>
+  </div>
+</div>
+</body>
+</html>`;
+  }
+
+  // -----------------------------------------------------------------------
+  //  Internal — Build comparison report HTML
+  // -----------------------------------------------------------------------
+
+  private buildComparisonHtml(farmers: Record<string, any>[]): string {
+    const logoUri = this.getLogoDataUri();
+    const now = new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' });
+    const esc = (val: unknown): string => {
+      const str = String(val ?? '');
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    };
+
+    const rows = farmers.map(f => {
+      const totalLivestock = (f.livestock || []).reduce((s: number, l: any) => s + (l.total || 0), 0);
+      const totalHectares = (f.crops || []).reduce((s: number, c: any) => s + (c.hectares_planted || 0), 0);
+      const totalYield = (f.crops || []).reduce((s: number, c: any) => s + (c.yield_tonnes || 0), 0);
+      return `<tr>
+        <td>${esc(f.name)}</td>
+        <td>${esc(f.district || '—')}</td>
+        <td>${totalLivestock}</td>
+        <td>${totalHectares}</td>
+        <td>${totalYield}</td>
+        <td>${(f.crops || []).length}</td>
+      </tr>`;
+    }).join('');
+
+    return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/><title>AgriCore Comparison Report</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1a1a2e; font-size: 12px; line-height: 1.5; }
+  .header { display: flex; align-items: center; gap: 16px; border-bottom: 3px solid #2d6a4f; padding-bottom: 12px; margin-bottom: 18px; }
+  .header img { height: 60px; }
+  .header .title-block h1 { font-size: 22px; color: #2d6a4f; }
+  .header .title-block p { font-size: 10px; color: #666; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  th { background: #2d6a4f; color: #fff; text-align: left; padding: 6px 8px; font-size: 11px; }
+  td { padding: 5px 8px; border-bottom: 1px solid #e0e0e0; font-size: 11px; }
+  tr:nth-child(even) { background: #f7faf8; }
+  .footer { margin-top: 24px; border-top: 2px solid #2d6a4f; padding-top: 10px; text-align: center; font-size: 9px; color: #999; }
+</style></head><body>
+<div class="page">
+  <div class="header">
+    ${logoUri ? `<img src="${logoUri}" alt="AgriCore Logo"/>` : ''}
+    <div class="title-block"><h1>Farmer Comparison Report</h1><p>Generated on ${esc(now)}</p></div>
+  </div>
+  <table>
+    <thead><tr><th>Name</th><th>District</th><th>Total Livestock</th><th>Hectares</th><th>Yield (t)</th><th>Crop Types</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="footer"><p>Generated by AgriCore | ${new Date().toISOString()}</p><p>Confidential.</p></div>
+</div></body></html>`;
+  }
+
+  // -----------------------------------------------------------------------
+  //  Internal — Build filtered export HTML
+  // -----------------------------------------------------------------------
+
+  private buildExportHtml(
+    farmer: Record<string, any>,
+    sections: Record<string, any[]>,
+  ): string {
+    const logoUri = this.getLogoDataUri();
+    const now = new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' });
+    const esc = (val: unknown): string => {
+      const str = String(val ?? '');
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    };
+
+    let body = '';
+
+    if (sections.livestock?.length) {
+      const rows = sections.livestock.map(l => `<tr><td>${esc(l.animal_type)}</td><td>${l.total||0}</td><td>${l.born||0}</td><td>${l.sold||0}</td><td>${esc(Array.isArray(l.diseases) && l.diseases.length ? l.diseases.join(', ') : 'None')}</td></tr>`).join('');
+      body += `<h2>Livestock</h2><table><thead><tr><th>Type</th><th>Total</th><th>Born</th><th>Sold</th><th>Diseases</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+    if (sections.crops?.length) {
+      const rows = sections.crops.map(c => `<tr><td>${esc(c.crop_type || c.crop_name)}</td><td>${c.hectares_planted||0}</td><td>${c.yield_tonnes||0}</td><td>${esc(c.season||'—')}</td></tr>`).join('');
+      body += `<h2 style="margin-top:16px;">Crops</h2><table><thead><tr><th>Crop</th><th>Hectares</th><th>Yield (t)</th><th>Season</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+    if (sections.soil?.length) {
+      const s = sections.soil[0];
+      body += `<h2 style="margin-top:16px;">Soil Data</h2><p>pH: ${s.ph??'N/A'} | N: ${s.nitrogen??'N/A'} | P: ${s.phosphorus??'N/A'} | K: ${s.potassium??'N/A'}</p>`;
+    }
+    if (sections.plans?.length) {
+      const rows = sections.plans.map(p => `<tr><td>${esc(p.type)}</td><td>R${Number(p.budget||0).toLocaleString()}</td><td>${esc(p.status||'Draft')}</td><td>${p.created_at ? new Date(p.created_at).toLocaleDateString('en-ZA') : '—'}</td></tr>`).join('');
+      body += `<h2 style="margin-top:16px;">Plans</h2><table><thead><tr><th>Type</th><th>Budget</th><th>Status</th><th>Created</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/><title>AgriCore Export — ${esc(farmer.name)}</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1a1a2e; font-size: 12px; line-height: 1.5; }
+  .header { display: flex; align-items: center; gap: 16px; border-bottom: 3px solid #2d6a4f; padding-bottom: 12px; margin-bottom: 18px; }
+  .header img { height: 60px; }
+  .header .title-block h1 { font-size: 22px; color: #2d6a4f; }
+  .header .title-block p { font-size: 10px; color: #666; }
+  h2 { font-size: 14px; color: #2d6a4f; border-bottom: 1px solid #d0d0d0; padding-bottom: 4px; margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  th { background: #2d6a4f; color: #fff; text-align: left; padding: 6px 8px; font-size: 11px; }
+  td { padding: 5px 8px; border-bottom: 1px solid #e0e0e0; font-size: 11px; }
+  tr:nth-child(even) { background: #f7faf8; }
+  .footer { margin-top: 24px; border-top: 2px solid #2d6a4f; padding-top: 10px; text-align: center; font-size: 9px; color: #999; }
+</style></head><body>
+<div class="page">
+  <div class="header">
+    ${logoUri ? `<img src="${logoUri}" alt="AgriCore Logo"/>` : ''}
+    <div class="title-block"><h1>Data Export — ${esc(farmer.name)}</h1><p>Generated on ${esc(now)}</p></div>
+  </div>
+  ${body || '<p>No data to export.</p>'}
+  <div class="footer"><p>Generated by AgriCore | ${new Date().toISOString()}</p><p>Confidential.</p></div>
+</div></body></html>`;
   }
 }
 

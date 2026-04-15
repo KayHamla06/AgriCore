@@ -4,6 +4,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { planService } from '../services/planService';
+import { supabaseAdmin } from '../config/supabaseClient';
 
 export class PlanController {
   async getAll(_req: Request, res: Response, next: NextFunction) {
@@ -17,9 +18,21 @@ export class PlanController {
 
   async getMyPlans(req: Request, res: Response, next: NextFunction) {
     try {
+      // Resolve farmer profile ID from auth user ID
+      const { data: farmer } = await supabaseAdmin
+        .from('farmers')
+        .select('id')
+        .eq('user_id', req.user!.id)
+        .maybeSingle();
+
+      if (!farmer) {
+        res.json({ success: true, data: [] });
+        return;
+      }
+
       const role = req.query.createdByRole as string | undefined;
       const plans = await planService.getByFarmerId(
-        req.user!.id,
+        farmer.id,
         role === 'farmer' || role === 'advisor' ? role : undefined
       );
       res.json({ success: true, data: plans });

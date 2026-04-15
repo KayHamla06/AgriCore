@@ -77,8 +77,10 @@
       // Populate farmer select from real API
       var planFarmerSelect = document.getElementById('planFarmer');
       if (planFarmerSelect) {
-        AgriCore.apiGet('/farmers').then(function(res) {
-          var farmers = (res.success && Array.isArray(res.data)) ? res.data : [];
+        AgriCore.apiGet('/farmers?limit=100').then(function(res) {
+          // API returns { success, data: { data: [...], total } }
+          var raw = (res.success && res.data) ? res.data : {};
+          var farmers = Array.isArray(raw) ? raw : (Array.isArray(raw.data) ? raw.data : []);
           farmers.forEach(function(f) {
             var opt = document.createElement('option');
             opt.value = f.id;
