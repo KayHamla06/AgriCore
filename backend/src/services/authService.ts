@@ -86,14 +86,28 @@ export class AuthService {
     email?: string | null;
     user_metadata?: Record<string, unknown> | null;
   }): Promise<ProfileRow> {
-    const { data: existing } = await supabaseAdmin
+    // Try with is_suspended first; fall back without it if column doesn't exist yet
+    let existing: ProfileRow | null = null;
+    const { data: fullData, error: fullErr } = await supabaseAdmin
       .from('users')
       .select('id, email, role, name, verification_status, is_suspended')
       .eq('auth_id', authUser.id)
       .maybeSingle();
 
+    if (fullErr) {
+      // Column may not exist yet — retry without is_suspended
+      const { data: fallbackData } = await supabaseAdmin
+        .from('users')
+        .select('id, email, role, name, verification_status')
+        .eq('auth_id', authUser.id)
+        .maybeSingle();
+      existing = fallbackData as ProfileRow | null;
+    } else {
+      existing = fullData as ProfileRow | null;
+    }
+
     if (existing) {
-      return existing as ProfileRow;
+      return existing;
     }
 
     const metadata = authUser.user_metadata || {};
@@ -120,6 +134,22 @@ export class AuthService {
       .maybeSingle();
 
     if (createError || !created) {
+      // If duplicate key, the user exists — race condition or earlier SELECT failed
+      if (createError?.message?.includes('duplicate key')) {
+        const { data: retryData } = await supabaseAdmin
+          .from('users')
+          .select('id, email, role, name, verification_status')
+          .eq('auth_id', authUser.id)
+          .maybeSingle();
+
+        if (retryData) {
+          logger.info('Auth sync: recovered profile via retry after duplicate key', {
+            authId: authUser.id,
+          });
+          return retryData as ProfileRow;
+        }
+      }
+
       logger.error('Auth sync: failed to auto-create missing users profile', {
         authId: authUser.id,
         email,
