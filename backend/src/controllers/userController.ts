@@ -257,6 +257,54 @@ export class UserController {
       next(err);
     }
   }
+
+  // ==========================================
+  //  FILE UPLOADS
+  // ==========================================
+
+  async uploadFarmImage(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.file) {
+        res.status(400).json({ success: false, error: 'No file provided' });
+        return;
+      }
+      const result = await userService.uploadFarmImage(req.user!.id, req.file);
+      res.status(201).json({ success: true, data: result, message: 'Farm image uploaded' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async uploadDocument(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.file) {
+        res.status(400).json({ success: false, error: 'No file provided' });
+        return;
+      }
+      const result = await userService.uploadDocument(req.user!.id, req.file);
+      res.status(201).json({ success: true, data: result, message: 'Document uploaded' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getMyFiles(req: Request, res: Response, next: NextFunction) {
+    try {
+      const files = await userService.getMyFiles(req.user!.id);
+      res.json({ success: true, data: files });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async deleteMyFile(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await userService.deleteMyFile(req.user!.id, req.params.fileId);
+      res.json({ success: true, data: result, message: 'File deleted' });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const userController = new UserController();

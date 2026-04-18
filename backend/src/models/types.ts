@@ -11,6 +11,7 @@ export interface AuthUser {
   name: string;
   department_id?: string;
   verification_status?: VerificationStatus;
+  is_suspended?: boolean;
 }
 
 export interface FarmerProfile {
@@ -471,4 +472,52 @@ export interface AdminProfileEdit {
   new_values: Record<string, unknown>;
   reason: string | null;
   edited_at: string;
+}
+
+// =============================================
+//  NOTICE BOARD TYPES
+// =============================================
+
+export interface Notice {
+  id: string;
+  title: string;
+  message: string;
+  created_by: string;
+  created_by_role: 'admin' | 'advisor';
+  expiry_date: string | null;
+  is_pinned: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NoticeTarget {
+  id: string;
+  notice_id: string;
+  role: UserRole | null;
+  province: string | null;
+  district: string | null;
+  farming_type: 'crop' | 'livestock' | 'mixed' | null;
+  farmer_scale: 'small' | 'commercial' | null;
+}
+
+export interface NoticeView {
+  id: string;
+  notice_id: string;
+  user_id: string;
+  viewed_at: string;
+}
+
+export interface CreateNoticeRequest {
+  title: string;
+  message: string;
+  expiry_date?: string | null;
+  is_pinned?: boolean;
+  targets: Array<{
+    role?: UserRole | null;
+    province?: string | null;
+    district?: string | null;
+    farming_type?: 'crop' | 'livestock' | 'mixed' | null;
+    farmer_scale?: 'small' | 'commercial' | null;
+  }>;
 }

@@ -99,6 +99,23 @@ router.post('/users/:id/send-verification', async (req, res, next) => {
 });
 
 // =============================================
+//  ACCOUNT SUSPENSION
+// =============================================
+
+const suspendSchema = z.object({
+  reason: z.string().min(1, 'Reason is required').max(500),
+});
+
+// POST /api/admin/users/:id/suspend — suspend a user
+router.post('/users/:id/suspend', validate(suspendSchema), adminController.suspendUser);
+
+// POST /api/admin/users/:id/unsuspend — reactivate a user
+router.post('/users/:id/unsuspend', adminController.unsuspendUser);
+
+// GET /api/admin/users/:id/suspension-log — get suspension audit trail
+router.get('/users/:id/suspension-log', adminController.getSuspensionLog);
+
+// =============================================
 //  STATISTICS
 // =============================================
 

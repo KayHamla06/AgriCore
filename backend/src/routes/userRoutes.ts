@@ -19,6 +19,12 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
 });
 
+// Multer config for larger file uploads (farm images, documents)
+const uploadLarge = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+});
+
 router.use(authMiddleware);
 
 // Middleware to check if user has edit permission (admin-controlled)
@@ -138,5 +144,21 @@ router.get('/edit-permission', async (req: Request, res: Response, next: NextFun
     next(err);
   }
 });
+
+// ==========================================
+//  FILE UPLOADS (farm images, documents)
+// ==========================================
+
+// POST /api/user/farm-image — upload a farm photo
+router.post('/farm-image', checkEditPermission, uploadLarge.single('file'), userController.uploadFarmImage);
+
+// POST /api/user/document — upload a document (PDF, JPG, PNG)
+router.post('/document', checkEditPermission, uploadLarge.single('file'), userController.uploadDocument);
+
+// GET /api/user/files — list all uploaded files for the current user
+router.get('/files', userController.getMyFiles);
+
+// DELETE /api/user/files/:fileId — delete an uploaded file
+router.delete('/files/:fileId', userController.deleteMyFile);
 
 export default router;

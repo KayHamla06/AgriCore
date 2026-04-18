@@ -19,6 +19,7 @@ import { runSupabaseStartupDiagnostics } from './config/supabaseClient';
 import { errorHandler, notFoundHandler, sanitizeBody, requestLogger } from './middleware';
 import logger from './utils/logger';
 import { startWeatherCron } from './weather/weatherCron';
+import { startNoticeCron } from './services/noticeCron';
 
 // Routes
 import authRoutes from './routes/authRoutes';
@@ -42,6 +43,7 @@ import verificationRoutes from './routes/verificationRoutes';
 import dataApprovalRoutes from './routes/dataApprovalRoutes';
 import ticketRoutes from './routes/ticketRoutes';
 import reportRoutes from './routes/reportRoutes';
+import noticeRoutes from './routes/noticeRoutes';
 
 // Validate config at startup
 validateConfig();
@@ -169,6 +171,7 @@ app.use('/api/verification', verificationRoutes);
 app.use('/api/data-approval', dataApprovalRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/notices', noticeRoutes);
 
 // =============================================
 //  ERROR HANDLING
@@ -205,6 +208,9 @@ const server = app.listen(config.port, () => {
   } else {
     logger.warn('Weather API not configured — cron disabled');
   }
+
+  // Start notice board expiry cleanup cron
+  startNoticeCron();
 });
 
 // Graceful shutdown

@@ -889,6 +889,207 @@
   font-weight: 500;
 }
 
+/* --- File Upload UI --- */
+.upload-section {
+  margin-bottom: 24px;
+}
+
+.upload-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.upload-box {
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.upload-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 28px 16px;
+  border: 2px dashed var(--gray-200);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition-base);
+  text-align: center;
+}
+
+.upload-dropzone:hover,
+.upload-dropzone.dragover {
+  border-color: var(--primary);
+  background: var(--primary-light, #f0fdf4);
+}
+
+.upload-label {
+  font-size: .8125rem;
+  color: var(--gray-600);
+}
+
+.upload-hint {
+  font-size: .6875rem;
+  color: var(--gray-400);
+}
+
+.upload-browse-btn {
+  cursor: pointer;
+}
+
+.upload-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--gray-50);
+}
+
+.upload-preview img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200);
+}
+
+.upload-preview-doc {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-light, #f0fdf4);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.upload-preview-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.upload-preview-info span:first-child {
+  font-size: .8125rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.upload-preview-info span:last-child {
+  font-size: .6875rem;
+  color: var(--gray-400);
+}
+
+.upload-preview-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* --- My Files Grid --- */
+.my-files-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.my-files-loading,
+.my-files-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 32px 16px;
+  font-size: .875rem;
+  color: var(--gray-400);
+}
+
+.my-file-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--gray-50);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gray-100);
+  transition: var(--transition-base);
+}
+
+.my-file-card:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.my-file-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  border: 1px solid var(--gray-200);
+}
+
+.my-file-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-light, #f0fdf4);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  color: var(--primary);
+}
+
+.my-file-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.my-file-name {
+  font-size: .8125rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.my-file-meta {
+  font-size: .6875rem;
+  color: var(--gray-400);
+}
+
+.my-file-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.btn-xs {
+  padding: 4px 8px;
+  font-size: .75rem;
+}
+
+@media (max-width: 768px) {
+  .upload-row {
+    grid-template-columns: 1fr;
+  }
+  .my-files-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* --- Empty State --- */
 .empty-state {
   text-align: center;
@@ -2605,6 +2806,15 @@
   color: #dc2626;
 }
 
+.ver-status-badge.suspended {
+  background: #1a1a1a;
+  color: #fff;
+}
+
+.badge-suspended {
+  color: #dc2626;
+}
+
 /* ===== Date/Time & Weather Strip ===== */
 .datetime-weather-strip {
   display: flex;
@@ -3409,4 +3619,185 @@
 
 .create-form-card .btn-primary {
   margin-top: 8px;
+}
+
+/* ============================================
+   NOTICE BOARD STYLES
+   ============================================ */
+
+.notice-board-container {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.notice-board-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, var(--primary-50) 0%, #f1f8e9 100%);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.notice-board-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+
+.notice-board-title .lucide {
+  width: 20px;
+  height: 20px;
+}
+
+.notice-board-body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.notice-card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  transition: var(--transition);
+}
+
+.notice-card:hover {
+  border-color: var(--primary-200);
+  box-shadow: var(--shadow-sm);
+}
+
+.notice-card-pinned {
+  border-left: 3px solid var(--primary);
+  background: var(--primary-50);
+}
+
+.notice-card-urgent {
+  border-left: 3px solid var(--danger);
+  background: #fef2f2;
+}
+
+.notice-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.notice-pin {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.notice-pin .lucide {
+  width: 14px;
+  height: 14px;
+}
+
+.notice-card-title {
+  font-size: .938rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.notice-card-meta {
+  font-size: .75rem;
+  color: var(--gray-400);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.notice-card-message {
+  font-size: .875rem;
+  color: var(--gray-600);
+  line-height: 1.6;
+  margin: 0 0 8px;
+  white-space: pre-wrap;
+}
+
+.notice-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.notice-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .688rem;
+  background: var(--gray-100);
+  color: var(--gray-600);
+  padding: 3px 8px;
+  border-radius: 50px;
+}
+
+.notice-tag .lucide {
+  width: 10px;
+  height: 10px;
+}
+
+.notice-card-expiry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .75rem;
+  color: var(--gray-400);
+}
+
+.notice-card-expiry .lucide {
+  width: 12px;
+  height: 12px;
+}
+
+.notice-expiry-urgent {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.notice-empty {
+  text-align: center;
+  color: var(--gray-400);
+  font-size: .875rem;
+  padding: 24px 0;
+}
+
+.notice-loader {
+  text-align: center;
+  color: var(--gray-400);
+  padding: 24px 0;
+  font-size: .875rem;
+}
+
+.notice-loader .spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .notice-board-body {
+    padding: 12px;
+    max-height: 300px;
+  }
+  .notice-card {
+    padding: 12px;
+  }
 }

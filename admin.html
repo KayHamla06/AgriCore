@@ -57,8 +57,10 @@
           <i data-lucide="life-buoy"></i>
           Tickets
           <span class="notif-dot" id="ticketDot" style="display:none;"></span>
+        </div>        <div class=\"nav-item\" data-panel=\"notices\">
+          <i data-lucide=\"megaphone\"></i>
+          Notice Board
         </div>
-
         <div class="sidebar-section-title">Account</div>
         <div class="nav-item" id="logoutBtn">
           <i data-lucide="log-out"></i>
@@ -309,6 +311,7 @@
               <button class="btn btn-primary btn-sm" id="editUserBtn"><i data-lucide="edit-2" style="width:14px;height:14px;margin-right:4px;"></i> Edit Profile</button>
               <button class="btn btn-sm" id="verifyUserBtn" style="display:none;background:var(--primary);color:#fff;"><i data-lucide="badge-check" style="width:14px;height:14px;margin-right:4px;"></i> Verify User</button>
               <button class="btn btn-sm" id="sendVerifyEmailBtn" style="display:none;background:#2563eb;color:#fff;"><i data-lucide="mail" style="width:14px;height:14px;margin-right:4px;"></i> Send Verification Email</button>
+              <button class="btn btn-sm" id="suspendUserBtn" style="display:none;"><i data-lucide="user-x" style="width:14px;height:14px;margin-right:4px;"></i> Suspend</button>
               <button class="btn btn-ghost btn-sm" id="togglePermBtn"><i data-lucide="shield" style="width:14px;height:14px;margin-right:4px;"></i> <span id="permBtnText">Revoke Edit</span></button>
             </div>
           </div>
@@ -319,6 +322,7 @@
             <button class="ud-tab" data-udtab="photos">Photos & Docs</button>
             <button class="ud-tab" data-udtab="logins">Login Activity</button>
             <button class="ud-tab" data-udtab="map">Login Map</button>
+            <button class="ud-tab" data-udtab="suspension">Suspension Log</button>
             <button class="ud-tab" data-udtab="edit-history">Edit History</button>
           </div>
 
@@ -364,6 +368,13 @@
           <div class="ud-tab-content" id="udtab-edit-history">
             <div id="udEditHistory">
               <p style="color:var(--gray-500);">Loading edit history...</p>
+            </div>
+          </div>
+
+          <!-- Suspension Log Tab -->
+          <div class="ud-tab-content" id="udtab-suspension">
+            <div id="udSuspensionLog">
+              <p style="color:var(--gray-500);">Loading suspension log...</p>
             </div>
           </div>
         </div>
@@ -443,6 +454,88 @@
 
           <div class="request-list" id="ticketList" style="margin-top:1rem;">
             <div class="empty-state"><i data-lucide="inbox"></i><p>No tickets found</p></div>
+          </div>
+        </div>
+
+        <!-- NOTICE BOARD MANAGEMENT PANEL -->
+        <div class="panel" id="panel-notices">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">Notice Board</h2>
+              <p style="color:var(--gray-500);font-size:.875rem;">Create and manage announcements for users.</p>
+            </div>
+            <button class="btn btn-primary btn-sm" id="createNoticeBtn"><i data-lucide="plus"></i> Create Notice</button>
+          </div>
+
+          <!-- Create Notice Form (hidden by default) -->
+          <div class="admin-notice-form" id="noticeFormContainer" style="display:none;">
+            <div class="card" style="padding:1.5rem;margin-bottom:1.5rem;">
+              <h3 style="margin-bottom:1rem;font-size:1rem;"><i data-lucide="edit-3"></i> New Notice</h3>
+              <div class="form-group" style="margin-bottom:1rem;">
+                <label class="form-label">Title *</label>
+                <input type="text" class="form-control" id="noticeTitle" maxlength="200" placeholder="Enter notice title">
+              </div>
+              <div class="form-group" style="margin-bottom:1rem;">
+                <label class="form-label">Message *</label>
+                <textarea class="form-control" id="noticeMessage" rows="4" maxlength="2000" placeholder="Write the notice message..."></textarea>
+              </div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+                <div class="form-group">
+                  <label class="form-label">Audience</label>
+                  <select class="form-select" id="noticeAudience">
+                    <option value="">Everyone</option>
+                    <option value="farmer">Farmers Only</option>
+                    <option value="advisor">Advisors Only</option>
+                    <option value="admin">Admins Only</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Province (optional)</label>
+                  <select class="form-select" id="noticeProvince">
+                    <option value="">All Provinces</option>
+                    <option>Eastern Cape</option>
+                    <option>Free State</option>
+                    <option>Gauteng</option>
+                    <option>KwaZulu-Natal</option>
+                    <option>Limpopo</option>
+                    <option>Mpumalanga</option>
+                    <option>North West</option>
+                    <option>Northern Cape</option>
+                    <option>Western Cape</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+                <div class="form-group">
+                  <label class="form-label">Expiry</label>
+                  <input type="date" class="form-control" id="noticeExpiry">
+                  <small style="color:var(--gray-400);">Leave blank for persistent notice</small>
+                </div>
+                <div class="form-group" style="display:flex;align-items:flex-end;gap:.75rem;">
+                  <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">
+                    <input type="checkbox" id="noticePinned"> <span class="form-label" style="margin:0;">Pin to top</span>
+                  </label>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:.75rem;justify-content:flex-end;">
+                <button class="btn btn-ghost btn-sm" id="cancelNoticeBtn">Cancel</button>
+                <button class="btn btn-primary btn-sm" id="submitNoticeBtn"><i data-lucide="send"></i> Publish Notice</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="filter-tabs" id="noticeFilters">
+            <button class="filter-tab active" data-nstatus="all">All</button>
+            <button class="filter-tab" data-nstatus="active">Active</button>
+            <button class="filter-tab" data-nstatus="expired">Expired</button>
+            <button class="filter-tab" data-nstatus="pinned">Pinned</button>
+          </div>
+
+          <div class="request-list" id="adminNoticeList" style="margin-top:1rem;">
+            <div class="empty-state"><i data-lucide="megaphone"></i><p>No notices yet</p></div>
           </div>
         </div>
 

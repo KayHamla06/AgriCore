@@ -200,7 +200,7 @@ export class AdminService {
   async getUsers(role?: string) {
     let query = supabaseAdmin
       .from('users')
-      .select('id, email, name, role, phone, verification_status, created_at')
+      .select('id, email, name, role, phone, verification_status, is_suspended, created_at')
       .order('created_at', { ascending: false });
 
     if (role) {
@@ -511,6 +511,148 @@ export class AdminService {
       .limit(50);
 
     if (error) throw new AppError('Failed to fetch edit history', 500);
+    return data;
+  }
+
+  // ==========================================
+  //  ACCOUNT SUSPENSION
+  // ==========================================
+
+  /**
+   * Suspend a user account. Blocked from further login/API access.
+   */
+  async suspendUser(adminId: string, targetUserId: string, reason: string) {
+    // Prevent self-suspension
+    if (adminId === targetUserId) {
+      throw new AppError('Cannot suspend your own account', 400);
+    }
+
+    // Check target exists and is not already suspended
+    const { data: target, error: fetchErr } = await supabaseAdmin
+      .from('users')
+      .select('id, name, email, role, is_suspended')
+      .eq('id', targetUserId)
+      .maybeSingle();
+
+    if (fetchErr || !target) throw new AppError('User not found', 404);
+    if (target.is_suspended) throw new AppError('User is already suspended', 400);
+
+    // Prevent suspending other admins
+    if (target.role === 'admin') {
+      throw new AppError('Cannot suspend admin accounts', 403);
+    }
+
+    // Update user
+    const { error: updateErr } = await supabaseAdmin
+      .from('users')
+      .update({
+        is_suspended: true,
+        suspended_at: new Date().toISOString(),
+        suspended_by: adminId,
+        suspension_reason: reason,
+      })
+      .eq('id', targetUserId);
+
+    if (updateErr) throw new AppError('Failed to suspend user', 500);
+
+    // Audit log
+    await supabaseAdmin.from('suspension_logs').insert({
+      user_id: targetUserId,
+      admin_id: adminId,
+      action: 'suspend',
+      reason,
+    });
+
+    // Notify user
+    await notificationService.create({
+      user_id: targetUserId,
+      type: 'system',
+      title: 'Account Suspended',
+      body: `Your account has been suspended. Reason: ${reason}`,
+    });
+
+    await activityLogService.log({
+      user_id: adminId,
+      action: 'suspend_user',
+      resource_type: 'user',
+      resource_id: targetUserId,
+      details: { reason },
+    });
+
+    logger.info('Admin suspended user', { adminId, targetUserId, reason });
+    cacheService.invalidateAdminStats();
+    return { id: targetUserId, name: target.name, email: target.email };
+  }
+
+  /**
+   * Unsuspend (reactivate) a user account.
+   */
+  async unsuspendUser(adminId: string, targetUserId: string) {
+    const { data: target, error: fetchErr } = await supabaseAdmin
+      .from('users')
+      .select('id, name, email, is_suspended')
+      .eq('id', targetUserId)
+      .maybeSingle();
+
+    if (fetchErr || !target) throw new AppError('User not found', 404);
+    if (!target.is_suspended) throw new AppError('User is not suspended', 400);
+
+    const { error: updateErr } = await supabaseAdmin
+      .from('users')
+      .update({
+        is_suspended: false,
+        suspended_at: null,
+        suspended_by: null,
+        suspension_reason: null,
+      })
+      .eq('id', targetUserId);
+
+    if (updateErr) throw new AppError('Failed to unsuspend user', 500);
+
+    // Audit log
+    await supabaseAdmin.from('suspension_logs').insert({
+      user_id: targetUserId,
+      admin_id: adminId,
+      action: 'unsuspend',
+      reason: 'Account reactivated by admin',
+    });
+
+    // Notify user
+    await notificationService.create({
+      user_id: targetUserId,
+      type: 'system',
+      title: 'Account Reactivated',
+      body: 'Your account has been reactivated. You can now log in again.',
+    });
+
+    await activityLogService.log({
+      user_id: adminId,
+      action: 'unsuspend_user',
+      resource_type: 'user',
+      resource_id: targetUserId,
+      details: {},
+    });
+
+    logger.info('Admin unsuspended user', { adminId, targetUserId });
+    cacheService.invalidateAdminStats();
+    return { id: targetUserId, name: target.name, email: target.email };
+  }
+
+  /**
+   * Get suspension log for a user.
+   */
+  async getSuspensionLog(userId: string) {
+    const { data, error } = await supabaseAdmin
+      .from('suspension_logs')
+      .select('*, admin:admin_id(name, email)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      logger.warn('Failed to fetch suspension logs', { error: error.message });
+      return [];
+    }
     return data;
   }
 }

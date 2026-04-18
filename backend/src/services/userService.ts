@@ -9,6 +9,7 @@ import { config } from '../config';
 import { AppError } from '../middleware/errorHandler';
 import logger from '../utils/logger';
 import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 import type { UserNotificationSettings } from '../models/types';
 
 export class UserService {
@@ -308,6 +309,140 @@ export class UserService {
       throw new AppError('Failed to update address', 500);
     }
     return data;
+  }
+
+  // ==========================================
+  //  FARM IMAGE & DOCUMENT UPLOADS
+  // ==========================================
+
+  /**
+   * Upload a farm photo for the authenticated farmer.
+   * Stores in Supabase Storage and tracks in files table.
+   */
+  async uploadFarmImage(userId: string, file: Express.Multer.File): Promise<{ url: string }> {
+    const ALLOWED = ['image/jpeg', 'image/png', 'image/webp'];
+    const MAX = 10 * 1024 * 1024;
+
+    if (!ALLOWED.includes(file.mimetype)) {
+      throw new AppError('Only JPG, PNG, and WebP images are allowed.', 400);
+    }
+    if (file.size > MAX) {
+      throw new AppError(`File too large: ${(file.size / 1024 / 1024).toFixed(1)}MB. Max: 10MB`, 400);
+    }
+
+    const ext = path.extname(file.originalname);
+    const filePath = `user-files/${userId}/farm/${uuidv4()}${ext}`;
+
+    const { error } = await supabaseAdmin.storage
+      .from(config.storageBucket)
+      .upload(filePath, file.buffer, { contentType: file.mimetype, upsert: false });
+
+    if (error) {
+      logger.error('Upload: farm image failed', { userId, error: error.message });
+      throw new AppError('Failed to upload farm image', 500);
+    }
+
+    const { data: urlData } = supabaseAdmin.storage
+      .from(config.storageBucket)
+      .getPublicUrl(filePath);
+
+    // Track in files table
+    await supabaseAdmin.from('files').insert({
+      user_id: userId,
+      file_type: 'image',
+      category: 'farm',
+      file_name: file.originalname,
+      file_url: urlData.publicUrl,
+      file_size: file.size,
+    });
+
+    return { url: urlData.publicUrl };
+  }
+
+  /**
+   * Upload a document (PDF or image) for the authenticated user.
+   * Stores in Supabase Storage and tracks in files table.
+   */
+  async uploadDocument(userId: string, file: Express.Multer.File): Promise<{ url: string }> {
+    const ALLOWED = ['application/pdf', 'image/jpeg', 'image/png'];
+    const MAX = 10 * 1024 * 1024;
+
+    if (!ALLOWED.includes(file.mimetype)) {
+      throw new AppError('Only PDF, JPG, and PNG files are allowed.', 400);
+    }
+    if (file.size > MAX) {
+      throw new AppError(`File too large: ${(file.size / 1024 / 1024).toFixed(1)}MB. Max: 10MB`, 400);
+    }
+
+    const ext = path.extname(file.originalname);
+    const fileType = file.mimetype === 'application/pdf' ? 'pdf' : 'image';
+    const filePath = `user-files/${userId}/documents/${uuidv4()}${ext}`;
+
+    const { error } = await supabaseAdmin.storage
+      .from(config.storageBucket)
+      .upload(filePath, file.buffer, { contentType: file.mimetype, upsert: false });
+
+    if (error) {
+      logger.error('Upload: document failed', { userId, error: error.message });
+      throw new AppError('Failed to upload document', 500);
+    }
+
+    const { data: urlData } = supabaseAdmin.storage
+      .from(config.storageBucket)
+      .getPublicUrl(filePath);
+
+    await supabaseAdmin.from('files').insert({
+      user_id: userId,
+      file_type: fileType,
+      category: 'other',
+      file_name: file.originalname,
+      file_url: urlData.publicUrl,
+      file_size: file.size,
+    });
+
+    return { url: urlData.publicUrl };
+  }
+
+  /**
+   * Get all uploaded files for the authenticated user.
+   */
+  async getMyFiles(userId: string) {
+    const { data, error } = await supabaseAdmin
+      .from('files')
+      .select('id, file_type, category, file_name, file_url, file_size, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      logger.warn('Failed to fetch user files', { userId, error: error.message });
+      return [];
+    }
+    return data;
+  }
+
+  /**
+   * Delete a user's own file.
+   */
+  async deleteMyFile(userId: string, fileId: string) {
+    const { data: file, error: fetchErr } = await supabaseAdmin
+      .from('files')
+      .select('id, file_url, user_id')
+      .eq('id', fileId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (fetchErr || !file) throw new AppError('File not found', 404);
+
+    // Extract storage path from URL
+    const bucketUrl = supabaseAdmin.storage.from(config.storageBucket).getPublicUrl('').data.publicUrl;
+    const storagePath = file.file_url.replace(bucketUrl, '');
+
+    if (storagePath) {
+      await supabaseAdmin.storage.from(config.storageBucket).remove([storagePath]);
+    }
+
+    await supabaseAdmin.from('files').delete().eq('id', fileId);
+    return { success: true };
   }
 }
 

@@ -59,7 +59,19 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }, 800);
       } else {
-        loginError.textContent = res.error || res.message || 'Invalid email or password.';
+        // Check for suspension
+        if (res.reason || (res.error && res.error.toLowerCase().includes('suspended'))) {
+          loginError.innerHTML =
+            '<div style="text-align:left;">' +
+            '<strong style="color:#dc2626;">⛔ Account Suspended</strong><br>' +
+            '<span style="font-size:.875rem;color:var(--gray-600);">' +
+            AgriCore.escapeHtml(res.reason || res.error || 'Your account has been suspended.') +
+            '</span><br>' +
+            '<span style="font-size:.813rem;color:var(--gray-500);margin-top:4px;display:inline-block;">Contact support for assistance.</span>' +
+            '</div>';
+        } else {
+          loginError.textContent = res.error || res.message || 'Invalid email or password.';
+        }
         loginError.style.display = 'block';
       }
     } catch (err) {

@@ -121,6 +121,71 @@
             <button class="btn btn-primary btn-sm" id="saveLocationBtn" disabled>Save Location</button>
           </div>
 
+          <!-- My Files (Farm Photos & Documents) -->
+          <div class="settings-card" style="grid-column:1/-1;">
+            <h3 class="settings-card-title">My Files</h3>
+            <p class="settings-card-desc">Upload farm photos and documents (PDFs). Max 10 MB per file.</p>
+
+            <div class="upload-section">
+              <div class="upload-row">
+                <!-- Farm Photo Upload -->
+                <div class="upload-box" id="farmPhotoUploadBox">
+                  <div class="upload-dropzone" id="farmPhotoDropzone">
+                    <i data-lucide="image-plus" style="width:32px;height:32px;color:var(--text-muted);"></i>
+                    <span class="upload-label">Drop farm photos here or</span>
+                    <label class="btn btn-outline btn-sm upload-browse-btn">
+                      Browse
+                      <input type="file" id="farmPhotoInput" accept="image/jpeg,image/png,image/webp" style="display:none;">
+                    </label>
+                    <span class="upload-hint">JPG, PNG, WebP — up to 10 MB</span>
+                  </div>
+                  <div class="upload-preview" id="farmPhotoPreview" style="display:none;">
+                    <img id="farmPhotoPreviewImg" src="" alt="Preview">
+                    <div class="upload-preview-info">
+                      <span id="farmPhotoFileName"></span>
+                      <span id="farmPhotoFileSize"></span>
+                    </div>
+                    <div class="upload-preview-actions">
+                      <button class="btn btn-primary btn-sm" id="uploadFarmPhotoBtn">Upload</button>
+                      <button class="btn btn-outline btn-sm" id="cancelFarmPhotoBtn">Cancel</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Document Upload -->
+                <div class="upload-box" id="documentUploadBox">
+                  <div class="upload-dropzone" id="documentDropzone">
+                    <i data-lucide="file-up" style="width:32px;height:32px;color:var(--text-muted);"></i>
+                    <span class="upload-label">Drop documents here or</span>
+                    <label class="btn btn-outline btn-sm upload-browse-btn">
+                      Browse
+                      <input type="file" id="documentInput" accept="application/pdf,image/jpeg,image/png" style="display:none;">
+                    </label>
+                    <span class="upload-hint">PDF, JPG, PNG — up to 10 MB</span>
+                  </div>
+                  <div class="upload-preview" id="documentPreview" style="display:none;">
+                    <div class="upload-preview-doc">
+                      <i data-lucide="file-text" style="width:32px;height:32px;color:var(--primary);"></i>
+                    </div>
+                    <div class="upload-preview-info">
+                      <span id="documentFileName"></span>
+                      <span id="documentFileSize"></span>
+                    </div>
+                    <div class="upload-preview-actions">
+                      <button class="btn btn-primary btn-sm" id="uploadDocumentBtn">Upload</button>
+                      <button class="btn btn-outline btn-sm" id="cancelDocumentBtn">Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Uploaded Files Grid -->
+            <div id="myFilesGrid" class="my-files-grid">
+              <div class="my-files-loading">Loading files...</div>
+            </div>
+          </div>
+
           <!-- Notifications -->
           <div class="settings-card">
             <h3 class="settings-card-title">Notifications</h3>
@@ -581,6 +646,247 @@
             });
         });
       }
+
+      // ==========================================
+      //  MY FILES — Farm Photos & Documents
+      // ==========================================
+      var token = user.token || '';
+      var API_BASE = window.AGRICORE_API_BASE || '/api';
+
+      // -- Farm Photo Upload --
+      var farmPhotoInput = document.getElementById('farmPhotoInput');
+      var farmPhotoDropzone = document.getElementById('farmPhotoDropzone');
+      var farmPhotoPreview = document.getElementById('farmPhotoPreview');
+      var farmPhotoPreviewImg = document.getElementById('farmPhotoPreviewImg');
+      var farmPhotoFileName = document.getElementById('farmPhotoFileName');
+      var farmPhotoFileSize = document.getElementById('farmPhotoFileSize');
+      var uploadFarmPhotoBtn = document.getElementById('uploadFarmPhotoBtn');
+      var cancelFarmPhotoBtn = document.getElementById('cancelFarmPhotoBtn');
+      var selectedFarmPhoto = null;
+
+      function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      }
+
+      function handleFarmPhotoSelect(file) {
+        if (!file) return;
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+          AgriCore.showToast('Only JPG, PNG, and WebP images allowed.', 'error');
+          return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          AgriCore.showToast('File too large. Max 10 MB.', 'error');
+          return;
+        }
+        selectedFarmPhoto = file;
+        if (farmPhotoFileName) farmPhotoFileName.textContent = file.name;
+        if (farmPhotoFileSize) farmPhotoFileSize.textContent = formatSize(file.size);
+        var reader = new FileReader();
+        reader.onload = function(ev) {
+          if (farmPhotoPreviewImg) farmPhotoPreviewImg.src = ev.target.result;
+          if (farmPhotoDropzone) farmPhotoDropzone.style.display = 'none';
+          if (farmPhotoPreview) farmPhotoPreview.style.display = 'flex';
+        };
+        reader.readAsDataURL(file);
+      }
+
+      if (farmPhotoInput) farmPhotoInput.addEventListener('change', function(e) { handleFarmPhotoSelect(e.target.files[0]); });
+
+      if (farmPhotoDropzone) {
+        farmPhotoDropzone.addEventListener('dragover', function(e) { e.preventDefault(); farmPhotoDropzone.classList.add('dragover'); });
+        farmPhotoDropzone.addEventListener('dragleave', function() { farmPhotoDropzone.classList.remove('dragover'); });
+        farmPhotoDropzone.addEventListener('drop', function(e) {
+          e.preventDefault(); farmPhotoDropzone.classList.remove('dragover');
+          if (e.dataTransfer.files.length) handleFarmPhotoSelect(e.dataTransfer.files[0]);
+        });
+      }
+
+      if (cancelFarmPhotoBtn) cancelFarmPhotoBtn.addEventListener('click', function() {
+        selectedFarmPhoto = null;
+        if (farmPhotoDropzone) farmPhotoDropzone.style.display = '';
+        if (farmPhotoPreview) farmPhotoPreview.style.display = 'none';
+        if (farmPhotoInput) farmPhotoInput.value = '';
+      });
+
+      if (uploadFarmPhotoBtn) uploadFarmPhotoBtn.addEventListener('click', function() {
+        if (!selectedFarmPhoto) return;
+        uploadFarmPhotoBtn.disabled = true;
+        uploadFarmPhotoBtn.textContent = 'Uploading...';
+
+        var fd = new FormData();
+        fd.append('file', selectedFarmPhoto);
+
+        fetch(API_BASE + '/user/farm-image', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token },
+          body: fd,
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.success) {
+            AgriCore.showToast('Farm photo uploaded!', 'success');
+            selectedFarmPhoto = null;
+            if (farmPhotoDropzone) farmPhotoDropzone.style.display = '';
+            if (farmPhotoPreview) farmPhotoPreview.style.display = 'none';
+            if (farmPhotoInput) farmPhotoInput.value = '';
+            loadMyFiles();
+          } else {
+            AgriCore.showToast(data.error || 'Upload failed', 'error');
+          }
+        })
+        .catch(function() { AgriCore.showToast('Network error.', 'error'); })
+        .finally(function() {
+          uploadFarmPhotoBtn.disabled = false;
+          uploadFarmPhotoBtn.textContent = 'Upload';
+        });
+      });
+
+      // -- Document Upload --
+      var documentInput = document.getElementById('documentInput');
+      var documentDropzone = document.getElementById('documentDropzone');
+      var documentPreview = document.getElementById('documentPreview');
+      var documentFileName = document.getElementById('documentFileName');
+      var documentFileSize = document.getElementById('documentFileSize');
+      var uploadDocumentBtn = document.getElementById('uploadDocumentBtn');
+      var cancelDocumentBtn = document.getElementById('cancelDocumentBtn');
+      var selectedDocument = null;
+
+      function handleDocumentSelect(file) {
+        if (!file) return;
+        if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
+          AgriCore.showToast('Only PDF, JPG, and PNG files allowed.', 'error');
+          return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          AgriCore.showToast('File too large. Max 10 MB.', 'error');
+          return;
+        }
+        selectedDocument = file;
+        if (documentFileName) documentFileName.textContent = file.name;
+        if (documentFileSize) documentFileSize.textContent = formatSize(file.size);
+        if (documentDropzone) documentDropzone.style.display = 'none';
+        if (documentPreview) documentPreview.style.display = 'flex';
+      }
+
+      if (documentInput) documentInput.addEventListener('change', function(e) { handleDocumentSelect(e.target.files[0]); });
+
+      if (documentDropzone) {
+        documentDropzone.addEventListener('dragover', function(e) { e.preventDefault(); documentDropzone.classList.add('dragover'); });
+        documentDropzone.addEventListener('dragleave', function() { documentDropzone.classList.remove('dragover'); });
+        documentDropzone.addEventListener('drop', function(e) {
+          e.preventDefault(); documentDropzone.classList.remove('dragover');
+          if (e.dataTransfer.files.length) handleDocumentSelect(e.dataTransfer.files[0]);
+        });
+      }
+
+      if (cancelDocumentBtn) cancelDocumentBtn.addEventListener('click', function() {
+        selectedDocument = null;
+        if (documentDropzone) documentDropzone.style.display = '';
+        if (documentPreview) documentPreview.style.display = 'none';
+        if (documentInput) documentInput.value = '';
+      });
+
+      if (uploadDocumentBtn) uploadDocumentBtn.addEventListener('click', function() {
+        if (!selectedDocument) return;
+        uploadDocumentBtn.disabled = true;
+        uploadDocumentBtn.textContent = 'Uploading...';
+
+        var fd = new FormData();
+        fd.append('file', selectedDocument);
+
+        fetch(API_BASE + '/user/document', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token },
+          body: fd,
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.success) {
+            AgriCore.showToast('Document uploaded!', 'success');
+            selectedDocument = null;
+            if (documentDropzone) documentDropzone.style.display = '';
+            if (documentPreview) documentPreview.style.display = 'none';
+            if (documentInput) documentInput.value = '';
+            loadMyFiles();
+          } else {
+            AgriCore.showToast(data.error || 'Upload failed', 'error');
+          }
+        })
+        .catch(function() { AgriCore.showToast('Network error.', 'error'); })
+        .finally(function() {
+          uploadDocumentBtn.disabled = false;
+          uploadDocumentBtn.textContent = 'Upload';
+        });
+      });
+
+      // -- Load & Render My Files --
+      function loadMyFiles() {
+        var grid = document.getElementById('myFilesGrid');
+        if (!grid) return;
+        grid.innerHTML = '<div class="my-files-loading">Loading files...</div>';
+
+        AgriCore.apiGet('/user/files')
+          .then(function(res) {
+            if (!res.success || !res.data || !res.data.length) {
+              grid.innerHTML = '<div class="my-files-empty">No files uploaded yet.</div>';
+              return;
+            }
+            var html = '';
+            res.data.forEach(function(f) {
+              var isImage = f.file_type === 'image';
+              var icon = isImage ? 'image' : 'file-text';
+              var thumb = isImage
+                ? '<img src="' + f.file_url + '" alt="' + f.file_name + '" class="my-file-thumb">'
+                : '<div class="my-file-icon"><i data-lucide="' + icon + '"></i></div>';
+              var date = new Date(f.created_at).toLocaleDateString();
+
+              html += '<div class="my-file-card" data-file-id="' + f.id + '">'
+                + thumb
+                + '<div class="my-file-info">'
+                + '<span class="my-file-name" title="' + f.file_name + '">' + f.file_name + '</span>'
+                + '<span class="my-file-meta">' + formatSize(f.file_size) + ' · ' + date + '</span>'
+                + '</div>'
+                + '<div class="my-file-actions">'
+                + '<a href="' + f.file_url + '" target="_blank" class="btn btn-outline btn-xs" title="View"><i data-lucide="external-link" style="width:14px;height:14px;"></i></a>'
+                + '<button class="btn btn-outline btn-xs my-file-delete" data-id="' + f.id + '" title="Delete"><i data-lucide="trash-2" style="width:14px;height:14px;color:var(--danger);"></i></button>'
+                + '</div>'
+                + '</div>';
+            });
+            grid.innerHTML = html;
+
+            // Bind delete buttons
+            grid.querySelectorAll('.my-file-delete').forEach(function(btn) {
+              btn.addEventListener('click', function() {
+                var fileId = btn.getAttribute('data-id');
+                if (!confirm('Delete this file?')) return;
+                btn.disabled = true;
+
+                fetch(API_BASE + '/user/files/' + fileId, {
+                  method: 'DELETE',
+                  headers: { 'Authorization': 'Bearer ' + token },
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                  if (data.success) {
+                    AgriCore.showToast('File deleted.', 'success');
+                    loadMyFiles();
+                  } else {
+                    AgriCore.showToast(data.error || 'Failed to delete.', 'error');
+                    btn.disabled = false;
+                  }
+                })
+                .catch(function() { AgriCore.showToast('Network error.', 'error'); btn.disabled = false; });
+              });
+            });
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+      }
+
+      // Initial load
+      loadMyFiles();
 
       // Refresh icons
       if (typeof lucide !== 'undefined') lucide.createIcons();

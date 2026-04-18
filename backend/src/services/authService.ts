@@ -18,6 +18,7 @@ type ProfileRow = {
   role: UserRole;
   name: string;
   verification_status: 'none' | 'pending' | 'verified' | 'rejected';
+  is_suspended?: boolean;
 };
 
 export class AuthService {
@@ -87,7 +88,7 @@ export class AuthService {
   }): Promise<ProfileRow> {
     const { data: existing } = await supabaseAdmin
       .from('users')
-      .select('id, email, role, name, verification_status')
+      .select('id, email, role, name, verification_status, is_suspended')
       .eq('auth_id', authUser.id)
       .maybeSingle();
 
@@ -294,6 +295,20 @@ export class AuthService {
       email: data.user.email,
       user_metadata: data.user.user_metadata as Record<string, unknown> | null,
     });
+
+    // Check if account is suspended
+    if (profile.is_suspended) {
+      const { data: suspData } = await supabaseAdmin
+        .from('users')
+        .select('suspension_reason')
+        .eq('id', profile.id)
+        .maybeSingle();
+
+      throw new AppError(
+        suspData?.suspension_reason || 'Your account has been suspended. Contact support for assistance.',
+        403
+      );
+    }
 
     // Record login activity (non-blocking)
     loginActivityService.recordLogin({

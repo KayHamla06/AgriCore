@@ -148,7 +148,8 @@ document.addEventListener('DOMContentLoaded', function() {
     'map': 'Map View',
     'support': 'Support',
     'visits': 'Visit Log',
-    'tasks': 'Tasks & Calendar'
+    'tasks': 'Tasks & Calendar',
+    'notices': 'Notice Board'
   };
 
   function switchPanel(panelName) {
@@ -164,7 +165,8 @@ document.addEventListener('DOMContentLoaded', function() {
       'map': 'panel-map',
       'support': 'panel-support',
       'visits': 'panel-visits',
-      'tasks': 'panel-tasks'
+      'tasks': 'panel-tasks',
+      'notices': 'panel-notices'
     };
 
     var targetId = idMap[panelName];

@@ -131,6 +131,7 @@ document.addEventListener('DOMContentLoaded', function () {
     'verification': 'Verification Requests',
     'data-approval': 'Data Approval',
     'tickets': 'Support Tickets',
+    'notices': 'Notice Board',
   };
 
   function switchPanel(panelName) {
@@ -577,7 +578,9 @@ document.addEventListener('DOMContentLoaded', function () {
       var userName = (u && u.name) || 'Unknown User';
       var userEmail = (u && u.email) || '—';
       var verBadge = '';
-      if (verStatus === 'verified') {
+      if (u.is_suspended) {
+        verBadge = '<span class="ver-badge badge-suspended" title="Suspended">⛔</span>';
+      } else if (verStatus === 'verified') {
         var badgeClass = roleName === 'farmer' ? 'badge-verified-farmer' : 'badge-verified-gov';
         verBadge = '<span class="ver-badge ' + badgeClass + '">✓</span>';
       } else if (verStatus === 'pending') {
@@ -585,11 +588,14 @@ document.addEventListener('DOMContentLoaded', function () {
       } else {
         verBadge = '<span class="ver-badge badge-unverified">✗</span>';
       }
+      var statusCol = u.is_suspended
+        ? '<span class="ver-status-badge suspended">suspended</span>'
+        : '<span class="ver-status-badge ' + verStatus + '">' + verStatus + '</span>';
       return '<tr data-user-id="' + (u && u.id ? u.id : '') + '">' +
         '<td>' + AgriCore.escapeHtml(userName) + ' ' + verBadge + '</td>' +
         '<td>' + AgriCore.escapeHtml(userEmail) + '</td>' +
         '<td><span class="role-badge ' + roleName + '">' + roleName + '</span></td>' +
-        '<td><span class="ver-status-badge ' + verStatus + '">' + verStatus + '</span></td>' +
+        '<td>' + statusCol + '</td>' +
         '<td>' + AgriCore.escapeHtml((u && u.phone) || '—') + '</td>' +
         '<td>' + date + '</td>' +
         '</tr>';
@@ -1292,19 +1298,21 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function loadUserDetail(userId) {
-    // Load user details, files, login activity, permissions, edit history in parallel
+    // Load user details, files, login activity, permissions, edit history, suspension log in parallel
     Promise.all([
       apiFetch('/admin/users/' + userId),
       apiFetch('/admin/users/' + userId + '/files'),
       apiFetch('/admin/users/' + userId + '/logins'),
       apiFetch('/admin/users/' + userId + '/permissions'),
       apiFetch('/admin/users/' + userId + '/edit-history'),
+      apiFetch('/admin/users/' + userId + '/suspension-log'),
     ]).then(function(results) {
       var userRes = results[0];
       var filesRes = results[1];
       var loginsRes = results[2];
       var permRes = results[3];
       var historyRes = results[4];
+      var suspLogRes = results[5];
 
       if (!userRes.success || !userRes.data) {
         AgriCore.showToast('Failed to load user details.', 'error');
@@ -1319,6 +1327,7 @@ document.addEventListener('DOMContentLoaded', function () {
       renderLoginActivity((loginsRes.success && Array.isArray(loginsRes.data)) ? loginsRes.data : []);
       renderPermission((permRes.success && permRes.data) ? permRes.data : { can_edit_profile: true });
       renderEditHistory((historyRes.success && Array.isArray(historyRes.data)) ? historyRes.data : []);
+      renderSuspensionLog((suspLogRes.success && Array.isArray(suspLogRes.data)) ? suspLogRes.data : []);
 
       if (typeof lucide !== 'undefined') lucide.createIcons();
     }).catch(function() {
@@ -1420,6 +1429,62 @@ document.addEventListener('DOMContentLoaded', function () {
         };
       } else {
         sendVerifyBtn.style.display = 'none';
+      }
+    }
+
+    // Suspend / Unsuspend button
+    var suspendBtn = document.getElementById('suspendUserBtn');
+    if (suspendBtn) {
+      // Don't show for admin users
+      if (u.role === 'admin') {
+        suspendBtn.style.display = 'none';
+      } else if (u.is_suspended) {
+        suspendBtn.style.display = '';
+        suspendBtn.className = 'btn btn-sm';
+        suspendBtn.style.background = 'var(--primary)';
+        suspendBtn.style.color = '#fff';
+        suspendBtn.innerHTML = '<i data-lucide="user-check" style="width:14px;height:14px;margin-right:4px;"></i> Unsuspend';
+        suspendBtn.onclick = function() {
+          if (!confirm('Reactivate this user\'s account?')) return;
+          suspendBtn.disabled = true;
+          suspendBtn.textContent = 'Processing...';
+          apiPost('/admin/users/' + u.id + '/unsuspend', {}).then(function(res) {
+            if (res.success) {
+              AgriCore.showToast('User has been reactivated.', 'success');
+              loadUserDetail(u.id);
+              loadAllData();
+            } else {
+              AgriCore.showToast(res.error || 'Failed to unsuspend user.', 'error');
+              suspendBtn.disabled = false;
+              suspendBtn.innerHTML = '<i data-lucide="user-check" style="width:14px;height:14px;margin-right:4px;"></i> Unsuspend';
+            }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        };
+      } else {
+        suspendBtn.style.display = '';
+        suspendBtn.className = 'btn btn-sm';
+        suspendBtn.style.background = 'var(--danger)';
+        suspendBtn.style.color = '#fff';
+        suspendBtn.innerHTML = '<i data-lucide="user-x" style="width:14px;height:14px;margin-right:4px;"></i> Suspend';
+        suspendBtn.onclick = function() {
+          var reason = prompt('Enter suspension reason (required):');
+          if (!reason || !reason.trim()) return;
+          suspendBtn.disabled = true;
+          suspendBtn.textContent = 'Processing...';
+          apiPost('/admin/users/' + u.id + '/suspend', { reason: reason.trim() }).then(function(res) {
+            if (res.success) {
+              AgriCore.showToast('User has been suspended.', 'success');
+              loadUserDetail(u.id);
+              loadAllData();
+            } else {
+              AgriCore.showToast(res.error || 'Failed to suspend user.', 'error');
+              suspendBtn.disabled = false;
+              suspendBtn.innerHTML = '<i data-lucide="user-x" style="width:14px;height:14px;margin-right:4px;"></i> Suspend';
+            }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        };
       }
     }
   }
@@ -1756,6 +1821,41 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // =============================================
+  //  SUSPENSION LOG
+  // =============================================
+
+  function renderSuspensionLog(logs) {
+    var container = document.getElementById('udSuspensionLog');
+    if (!container) return;
+
+    if (!logs || logs.length === 0) {
+      container.innerHTML = '<div class="empty-state"><i data-lucide="shield-off"></i><p>No suspension history</p></div>';
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      return;
+    }
+
+    container.innerHTML = logs.map(function(log) {
+      var admin = log.admin || {};
+      var dt = new Date(log.created_at);
+      var dateStr = dt.toLocaleDateString('en-ZA', { year: 'numeric', month: 'short', day: 'numeric' });
+      var timeStr = dt.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+      var actionClass = log.action === 'suspend' ? 'danger' : 'success';
+      var actionLabel = log.action === 'suspend' ? '⛔ Suspended' : '✅ Reactivated';
+
+      return '<div class="ud-edit-card">' +
+        '<div class="ud-edit-header">' +
+        '<span style="font-weight:600;color:var(--' + actionClass + ');">' + actionLabel + '</span>' +
+        '<span class="ud-edit-date">' + dateStr + ' ' + timeStr + '</span>' +
+        '</div>' +
+        '<div style="margin-top:.375rem;font-size:.813rem;color:var(--gray-600);">' +
+        'By ' + AgriCore.escapeHtml(admin.name || 'Admin') + (admin.email ? ' (' + AgriCore.escapeHtml(admin.email) + ')' : '') +
+        '</div>' +
+        (log.reason ? '<div style="margin-top:.375rem;font-size:.813rem;color:var(--gray-500);">Reason: ' + AgriCore.escapeHtml(log.reason) + '</div>' : '') +
+        '</div>';
+    }).join('');
+  }
+
+  // =============================================
   //  INITIAL LOAD
   // =============================================
   //  ADMIN NOTIFICATIONS (Real API)
@@ -1869,11 +1969,209 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   // =============================================
+  //  NOTICE BOARD MANAGEMENT
+  // =============================================
+  var noticeFormContainer = document.getElementById('noticeFormContainer');
+  var createNoticeBtn = document.getElementById('createNoticeBtn');
+  var cancelNoticeBtn = document.getElementById('cancelNoticeBtn');
+  var submitNoticeBtn = document.getElementById('submitNoticeBtn');
+  var adminNoticeList = document.getElementById('adminNoticeList');
+  var noticeFilterStatus = 'all';
+
+  if (createNoticeBtn) {
+    createNoticeBtn.addEventListener('click', function() {
+      noticeFormContainer.style.display = noticeFormContainer.style.display === 'none' ? 'block' : 'none';
+    });
+  }
+  if (cancelNoticeBtn) {
+    cancelNoticeBtn.addEventListener('click', function() {
+      noticeFormContainer.style.display = 'none';
+      clearNoticeForm();
+    });
+  }
+
+  // Filter tabs
+  document.querySelectorAll('#noticeFilters .filter-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('#noticeFilters .filter-tab').forEach(function(t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+      noticeFilterStatus = tab.getAttribute('data-nstatus') || 'all';
+      renderNoticeList(window._adminNotices || []);
+    });
+  });
+
+  function clearNoticeForm() {
+    var title = document.getElementById('noticeTitle');
+    var msg = document.getElementById('noticeMessage');
+    var aud = document.getElementById('noticeAudience');
+    var prov = document.getElementById('noticeProvince');
+    var exp = document.getElementById('noticeExpiry');
+    var pin = document.getElementById('noticePinned');
+    if (title) title.value = '';
+    if (msg) msg.value = '';
+    if (aud) aud.value = '';
+    if (prov) prov.value = '';
+    if (exp) exp.value = '';
+    if (pin) pin.checked = false;
+  }
+
+  if (submitNoticeBtn) {
+    submitNoticeBtn.addEventListener('click', function() {
+      var title = (document.getElementById('noticeTitle').value || '').trim();
+      var message = (document.getElementById('noticeMessage').value || '').trim();
+      var audience = document.getElementById('noticeAudience').value;
+      var province = document.getElementById('noticeProvince').value;
+      var expiryDate = document.getElementById('noticeExpiry').value;
+      var isPinned = document.getElementById('noticePinned').checked;
+
+      if (!title || !message) {
+        showToast('Title and message are required', 'error');
+        return;
+      }
+
+      var targets = [];
+      var target = {};
+      if (audience) target.role = audience;
+      if (province) target.province = province;
+      if (Object.keys(target).length > 0) {
+        targets.push(target);
+      }
+
+      submitNoticeBtn.disabled = true;
+      submitNoticeBtn.textContent = 'Publishing...';
+
+      apiPost('/notices', {
+        title: title,
+        message: message,
+        expiry_date: expiryDate || null,
+        is_pinned: isPinned,
+        targets: targets
+      }).then(function(res) {
+        if (res && res.success) {
+          showToast('Notice published!', 'success');
+          clearNoticeForm();
+          noticeFormContainer.style.display = 'none';
+          loadNotices();
+        } else {
+          showToast(res.error || 'Failed to publish notice', 'error');
+        }
+      }).catch(function() {
+        showToast('Failed to publish notice', 'error');
+      }).finally(function() {
+        submitNoticeBtn.disabled = false;
+        submitNoticeBtn.innerHTML = '<i data-lucide="send"></i> Publish Notice';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      });
+    });
+  }
+
+  function loadNotices() {
+    apiFetch('/notices').then(function(res) {
+      var notices = (res && res.success && res.data) ? res.data : [];
+      window._adminNotices = notices;
+      renderNoticeList(notices);
+    });
+  }
+
+  function renderNoticeList(notices) {
+    if (!adminNoticeList) return;
+    var now = new Date();
+
+    var filtered = notices.filter(function(n) {
+      if (noticeFilterStatus === 'active') return n.is_active && (!n.expiry_date || new Date(n.expiry_date) > now);
+      if (noticeFilterStatus === 'expired') return n.expiry_date && new Date(n.expiry_date) <= now;
+      if (noticeFilterStatus === 'pinned') return n.is_pinned;
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      adminNoticeList.innerHTML = '<div class="empty-state"><i data-lucide="megaphone"></i><p>No notices found</p></div>';
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      return;
+    }
+
+    var html = '';
+    filtered.forEach(function(n) {
+      var isExpired = n.expiry_date && new Date(n.expiry_date) <= now;
+      var statusBadge = isExpired
+        ? '<span class="badge badge-danger">Expired</span>'
+        : '<span class="badge badge-success">Active</span>';
+      if (n.is_pinned) statusBadge += ' <span class="badge badge-warning">Pinned</span>';
+
+      var targets = (n.notice_targets || []).map(function(t) {
+        var parts = [];
+        if (t.role) parts.push(t.role);
+        if (t.province) parts.push(t.province);
+        return parts.join(', ');
+      }).filter(Boolean).join(' | ');
+
+      html += '<div class="request-card" data-notice-id="' + n.id + '">';
+      html += '<div class="request-card-header">';
+      html += '<div><strong>' + escapeHtml(n.title) + '</strong> ' + statusBadge + '</div>';
+      html += '<div style="display:flex;gap:.5rem;align-items:center;">';
+      html += '<span style="font-size:.75rem;color:var(--gray-400);">' + formatAdminDate(n.created_at) + '</span>';
+      html += '<button class="btn btn-ghost btn-sm notice-view-stats" data-id="' + n.id + '" title="View stats"><i data-lucide="eye"></i></button>';
+      html += '<button class="btn btn-danger btn-sm notice-delete-btn" data-id="' + n.id + '" title="Delete"><i data-lucide="trash-2"></i></button>';
+      html += '</div>';
+      html += '</div>';
+      html += '<p style="margin:.5rem 0;color:var(--gray-600);font-size:.875rem;">' + escapeHtml(n.message).substring(0, 200) + '</p>';
+      if (targets) html += '<p style="font-size:.75rem;color:var(--gray-400);"><i data-lucide="target" style="width:12px;height:12px;"></i> ' + escapeHtml(targets) + '</p>';
+      if (n.expiry_date) html += '<p style="font-size:.75rem;color:var(--gray-400);"><i data-lucide="clock" style="width:12px;height:12px;"></i> Expires: ' + formatAdminDate(n.expiry_date) + '</p>';
+      html += '<p style="font-size:.75rem;color:var(--gray-400);">By: ' + escapeHtml(n.created_by_role) + '</p>';
+      html += '</div>';
+    });
+
+    adminNoticeList.innerHTML = html;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    // Delete buttons
+    adminNoticeList.querySelectorAll('.notice-delete-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var id = btn.getAttribute('data-id');
+        if (!confirm('Delete this notice?')) return;
+        apiFetch('/notices/' + id, { method: 'DELETE' }).then(function(res) {
+          if (res && res.success) {
+            showToast('Notice deleted', 'success');
+            loadNotices();
+          } else {
+            showToast(res.error || 'Failed to delete', 'error');
+          }
+        });
+      });
+    });
+
+    // View stats buttons
+    adminNoticeList.querySelectorAll('.notice-view-stats').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var id = btn.getAttribute('data-id');
+        apiFetch('/notices/' + id + '/stats').then(function(res) {
+          if (res && res.success && res.data) {
+            showToast('Views: ' + res.data.views, 'info');
+          }
+        });
+      });
+    });
+  }
+
+  function formatAdminDate(d) {
+    if (!d) return '';
+    return new Date(d).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+  }
+
+  // =============================================
   showAdminLoader();
   verifyAdminSession().then(function(valid) {
     if (!valid) return;
     return loadAllData().then(function() {
       scheduleAdminNotificationPoll();
+      loadNotices();
     });
   }).finally(function() {
     hideAdminLoader();

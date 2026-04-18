@@ -178,6 +178,44 @@ export class AdminController {
       next(err);
     }
   }
+
+  // ==========================================
+  //  ACCOUNT SUSPENSION
+  // ==========================================
+
+  async suspendUser(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await adminService.suspendUser(
+        req.user!.id,
+        req.params.id,
+        req.body.reason
+      );
+      res.json({ success: true, data: result, message: 'User has been suspended.' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async unsuspendUser(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await adminService.unsuspendUser(
+        req.user!.id,
+        req.params.id
+      );
+      res.json({ success: true, data: result, message: 'User has been reactivated.' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getSuspensionLog(req: Request, res: Response, next: NextFunction) {
+    try {
+      const logs = await adminService.getSuspensionLog(req.params.id);
+      res.json({ success: true, data: logs });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const adminController = new AdminController();

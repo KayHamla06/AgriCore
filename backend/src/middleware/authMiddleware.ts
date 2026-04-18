@@ -54,7 +54,7 @@ export async function authMiddleware(
     // Try with verification_status first; fall back without it if column missing
     const result = await supabaseAdmin
       .from('users')
-      .select('id, email, role, name, verification_status')
+      .select('id, email, role, name, verification_status, is_suspended, suspension_reason')
       .eq('auth_id', user.id)
       .maybeSingle();
 
@@ -78,13 +78,24 @@ export async function authMiddleware(
       return;
     }
 
-    // 3. Attach to request
+    // 3. Check if suspended
+    if (profile.is_suspended) {
+      res.status(403).json({
+        success: false,
+        error: 'Account suspended',
+        reason: profile.suspension_reason || 'Your account has been suspended. Contact support for assistance.',
+      });
+      return;
+    }
+
+    // 4. Attach to request
     req.user = {
       id: profile.id as string,
       email: profile.email as string,
       role: profile.role as UserRole,
       name: profile.name as string,
       verification_status: (profile.verification_status as VerificationStatus) || undefined,
+      is_suspended: !!profile.is_suspended,
     };
 
     next();
