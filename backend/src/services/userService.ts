@@ -346,7 +346,7 @@ export class UserService {
       .from(config.storageBucket)
       .getPublicUrl(filePath);
 
-    // Track in files table
+    // Track in files table (non-blocking — table may not exist yet)
     await supabaseAdmin.from('files').insert({
       user_id: userId,
       file_type: 'image',
@@ -354,6 +354,8 @@ export class UserService {
       file_name: file.originalname,
       file_url: urlData.publicUrl,
       file_size: file.size,
+    }).then(({ error: insertErr }) => {
+      if (insertErr) logger.warn('files table insert skipped', { error: insertErr.message });
     });
 
     return { url: urlData.publicUrl };
@@ -398,6 +400,8 @@ export class UserService {
       file_name: file.originalname,
       file_url: urlData.publicUrl,
       file_size: file.size,
+    }).then(({ error: insertErr }) => {
+      if (insertErr) logger.warn('files table insert skipped', { error: insertErr.message });
     });
 
     return { url: urlData.publicUrl };

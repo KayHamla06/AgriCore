@@ -74,6 +74,36 @@ export async function runSupabaseStartupDiagnostics(): Promise<void> {
   if (permissionErrors.length > 0) {
     logger.warn('Supabase startup diagnostics returned query errors', { permissionErrors });
   }
+
+  // Ensure the storage bucket exists
+  await ensureStorageBucket();
+}
+
+async function ensureStorageBucket(): Promise<void> {
+  const bucketName = process.env.STORAGE_BUCKET || 'agricore-files';
+  const { data: buckets, error: listErr } = await supabaseAdmin.storage.listBuckets();
+
+  if (listErr) {
+    logger.warn('Could not list storage buckets', { error: listErr.message });
+    return;
+  }
+
+  const exists = buckets?.some(b => b.name === bucketName);
+  if (exists) {
+    logger.info('Storage bucket verified', { bucket: bucketName });
+    return;
+  }
+
+  const { error: createErr } = await supabaseAdmin.storage.createBucket(bucketName, {
+    public: true,
+    fileSizeLimit: 10 * 1024 * 1024, // 10 MB
+  });
+
+  if (createErr) {
+    logger.error('Failed to create storage bucket', { bucket: bucketName, error: createErr.message });
+  } else {
+    logger.info('Storage bucket created', { bucket: bucketName });
+  }
 }
 
 export { supabaseUrl, supabaseAnonKey };

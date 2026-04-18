@@ -208,6 +208,23 @@ export class AdminService {
     }
 
     const { data, error } = await query;
+
+    // If columns like is_suspended or verification_status don't exist yet, retry with core columns
+    if (error && (error.code === '42703' || error.message?.includes('column') || error.message?.includes('does not exist'))) {
+      let fallbackQuery = supabaseAdmin
+        .from('users')
+        .select('id, email, name, role, phone, created_at')
+        .order('created_at', { ascending: false });
+
+      if (role) {
+        fallbackQuery = fallbackQuery.eq('role', role);
+      }
+
+      const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+      if (fallbackError) throw new AppError('Failed to fetch users', 500);
+      return fallbackData;
+    }
+
     if (error) throw new AppError('Failed to fetch users', 500);
     return data;
   }

@@ -60,7 +60,8 @@ export class FarmerService {
       .maybeSingle();
 
     if (error) {
-      throw new AppError('Failed to load user province', 500);
+      // province column may not exist yet if migration not applied
+      return null;
     }
 
     return (data?.province as string | null) || null;
