@@ -2105,19 +2105,24 @@ document.addEventListener('DOMContentLoaded', function () {
         return parts.join(', ');
       }).filter(Boolean).join(' | ');
 
-      html += '<div class="request-card" data-notice-id="' + n.id + '">';
-      html += '<div class="request-card-header">';
-      html += '<div><strong>' + escapeHtml(n.title) + '</strong> ' + statusBadge + '</div>';
-      html += '<div style="display:flex;gap:.5rem;align-items:center;">';
-      html += '<span style="font-size:.75rem;color:var(--gray-400);">' + formatAdminDate(n.created_at) + '</span>';
-      html += '<button class="btn btn-ghost btn-sm notice-view-stats" data-id="' + n.id + '" title="View stats"><i data-lucide="eye"></i></button>';
-      html += '<button class="btn btn-danger btn-sm notice-delete-btn" data-id="' + n.id + '" title="Delete"><i data-lucide="trash-2"></i></button>';
+      html += '<div class="notice-card" data-notice-id="' + n.id + '">';
+      html += '<div class="notice-card-icon"><i data-lucide="megaphone"></i></div>';
+      html += '<div class="notice-card-body">';
+      html += '<div class="notice-card-header">';
+      html += '<div class="notice-card-title">' + escapeHtml(n.title) + ' ' + statusBadge + '</div>';
+      html += '<div class="notice-card-actions">';
+      html += '<button class="btn btn-ghost btn-sm notice-view-stats" data-id="' + n.id + '" title="View stats"><i data-lucide="bar-chart-2"></i></button>';
+      html += '<button class="btn btn-ghost btn-sm notice-delete-btn" data-id="' + n.id + '" title="Delete" style="color:var(--danger);"><i data-lucide="trash-2"></i></button>';
       html += '</div>';
       html += '</div>';
-      html += '<p style="margin:.5rem 0;color:var(--gray-600);font-size:.875rem;">' + escapeHtml(n.message).substring(0, 200) + '</p>';
-      if (targets) html += '<p style="font-size:.75rem;color:var(--gray-400);"><i data-lucide="target" style="width:12px;height:12px;"></i> ' + escapeHtml(targets) + '</p>';
-      if (n.expiry_date) html += '<p style="font-size:.75rem;color:var(--gray-400);"><i data-lucide="clock" style="width:12px;height:12px;"></i> Expires: ' + formatAdminDate(n.expiry_date) + '</p>';
-      html += '<p style="font-size:.75rem;color:var(--gray-400);">By: ' + escapeHtml(n.created_by_role) + '</p>';
+      html += '<p class="notice-card-msg">' + escapeHtml(n.message).substring(0, 200) + (n.message.length > 200 ? '…' : '') + '</p>';
+      html += '<div class="notice-card-meta">';
+      if (targets) html += '<span><i data-lucide="users" style="width:12px;height:12px;"></i> ' + escapeHtml(targets) + '</span>';
+      if (n.expiry_date) html += '<span><i data-lucide="calendar" style="width:12px;height:12px;"></i> ' + formatAdminDate(n.expiry_date) + '</span>';
+      html += '<span><i data-lucide="user" style="width:12px;height:12px;"></i> ' + escapeHtml(n.created_by_role || 'admin') + '</span>';
+      html += '<span><i data-lucide="clock" style="width:12px;height:12px;"></i> ' + formatAdminDate(n.created_at) + '</span>';
+      html += '</div>';
+      html += '</div>';
       html += '</div>';
     });
 

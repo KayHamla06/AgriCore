@@ -364,6 +364,102 @@
 }
 
 /* =============================================
+   NOTICE CARDS
+   ============================================= */
+.notice-card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  gap: 1rem;
+  transition: box-shadow 0.2s;
+  margin-bottom: 0.75rem;
+}
+
+.notice-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-200, #a5d6a7);
+}
+
+.notice-card-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  background: var(--primary-100, #e8f5e9);
+  color: var(--primary-700, #2e7d32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.notice-card-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.notice-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.notice-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.375rem;
+}
+
+.notice-card-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.notice-card-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.notice-card-msg {
+  font-size: 0.8125rem;
+  color: var(--gray-600);
+  margin: 0.25rem 0 0.5rem;
+  line-height: 1.5;
+}
+
+.notice-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--gray-400);
+}
+
+.notice-card-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+@media (max-width: 768px) {
+  .notice-card {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .notice-card-header {
+    flex-direction: column;
+  }
+}
+
+/* =============================================
    RESPONSIVE
    ============================================= */
 @media (max-width: 768px) {

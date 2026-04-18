@@ -58,8 +58,9 @@ export async function authMiddleware(
       .eq('auth_id', user.id)
       .maybeSingle();
 
-    if (result.error && (result.error.code === '42703' || result.error.message?.includes('verification_status'))) {
-      // verification_status column doesn't exist yet — query without it
+    if (result.error && (result.error.code === '42703' || result.error.message?.includes('column')
+        || result.error.message?.includes('does not exist'))) {
+      // Some columns may not exist yet — query with only core columns
       const fallback = await supabaseAdmin
         .from('users')
         .select('id, email, role, name')
