@@ -197,7 +197,7 @@ export class NoticeService {
   //  Fan-out notifications to targeted users (internal)
   // -----------------------------------------------------------------------
   private async fanOutNotifications(
-    noticeId: string,
+    _noticeId: string,
     title: string,
     targets: CreateNoticeRequest['targets'],
   ) {
