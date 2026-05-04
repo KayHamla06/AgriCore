@@ -63,7 +63,7 @@ export function requireVerified(
 
   // Only enforce verification requirement for advisor users
   const status = req.user.verification_status ?? 'unverified';
-  if (req.user.role === 'advisor' && status !== 'verified') {
+  if (req.user.role === 'advisor' && status !== 'verified' && status !== 'pending') {
     logger.warn('RBAC: unverified advisor user blocked', {
       userId: req.user.id,
       status: req.user.verification_status,
