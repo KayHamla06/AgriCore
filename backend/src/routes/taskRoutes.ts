@@ -32,6 +32,9 @@ const updateTaskSchema = z.object({
 // All routes require authentication
 router.use(authMiddleware);
 
+// Root task list endpoint for backwards compatibility and default task loading
+router.get('/', taskController.getMyTasks);
+
 // Get tasks assigned to me
 router.get('/assigned', taskController.getMyTasks);
 

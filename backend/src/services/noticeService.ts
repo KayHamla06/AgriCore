@@ -99,9 +99,14 @@ export class NoticeService {
 
       return targets.some((t: any) => {
         if (t.role && t.role !== userRole) return false;
-        if (t.province && t.province !== userProvince) return false;
-        if (t.district && t.district !== userDistrict) return false;
-        // farming_type and farmer_scale are soft filters — skip if user data unavailable
+
+        if (userRole === 'farmer') {
+          if (t.province && t.province !== userProvince) return false;
+          if (t.district && t.district !== userDistrict) return false;
+        }
+
+        // Admins and advisors can see general notices even if they are province/district filtered,
+        // because these notices are still relevant to staff oversight.
         return true;
       });
     });

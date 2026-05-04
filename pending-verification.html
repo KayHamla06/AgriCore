@@ -340,8 +340,7 @@
         }
       });
 
-      // Check status button
-      document.getElementById('checkStatusBtn').addEventListener('click', async function() {
+      async function checkVerificationStatus() {
         try {
           var res = await fetch((window.AGRICORE_API_BASE || '/api') + '/auth/me', {
             headers: { 'Authorization': 'Bearer ' + user.token }
@@ -356,21 +355,28 @@
             if (updatedUser.verification_status === 'verified') {
               AgriCore.showToast('Your account has been verified! Redirecting...', 'success');
               setTimeout(function() { window.location.href = '/platform/dashboard'; }, 1200);
-            } else if (updatedUser.verification_status === 'rejected') {
+              return;
+            }
+
+            if (updatedUser.verification_status === 'rejected') {
               user = updatedUser;
               pageTitle.textContent = 'Verification Rejected';
               pageSubtitle.textContent = 'Your application was rejected. You can re-submit your documents below.';
               pendingStatusBox.classList.add('hidden');
               rejectedStatusBox.classList.remove('hidden');
               AgriCore.showToast('Your application was rejected. Please re-submit documents.', 'error');
-            } else {
-              AgriCore.showToast('Your application is still under review.', 'info');
+              return;
             }
+
+            AgriCore.showToast('Your application is still under review.', 'info');
           }
         } catch (err) {
           AgriCore.showToast('Unable to check status. Please try again.', 'error');
         }
-      });
+      }
+
+      document.getElementById('checkStatusBtn').addEventListener('click', checkVerificationStatus);
+      setInterval(checkVerificationStatus, 20000);
 
       // Logout button
       document.getElementById('logoutBtn').addEventListener('click', function() {

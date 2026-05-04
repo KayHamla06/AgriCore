@@ -27,6 +27,19 @@ document.addEventListener('DOMContentLoaded', function() {
   var isFarmer = user.role === 'farmer';
   var isGov = user.role === 'advisor';
 
+  function refreshUserStatus() {
+    AgriCore.apiGet('/auth/me').then(function (res) {
+      if (!res.success || !res.data) return;
+      var updated = res.data;
+      if (updated.verification_status !== user.verification_status || updated.name !== user.name || updated.email !== user.email) {
+        updated.token = user.token;
+        AgriCore.setCurrentUser(updated);
+        user = updated;
+        if (sidebarUserName) sidebarUserName.textContent = user.name;
+      }
+    });
+  }
+
   // =============================================
   //  DOM REFERENCES — Shell elements
   // =============================================
@@ -51,6 +64,9 @@ document.addEventListener('DOMContentLoaded', function() {
   if (sidebarUserName) sidebarUserName.textContent = user.name;
   if (sidebarUserRole) sidebarUserRole.textContent = isFarmer ? 'Farmer' : 'Advisor';
   if (topbarSubtitle) topbarSubtitle.textContent = 'Welcome back, ' + user.name.split(' ')[0];
+
+  refreshUserStatus();
+  setInterval(refreshUserStatus, 30000);
 
   // Hide gov-only sidebar items for farmers
   if (isFarmer) {

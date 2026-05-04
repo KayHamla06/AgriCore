@@ -35,6 +35,17 @@ export class VerificationService {
     }
   }
 
+  private async syncFarmerVerifiedFlag(userId: string, verified: boolean): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from('farmers')
+      .update({ verified })
+      .eq('user_id', userId);
+
+    if (error && !this.isMissingRelationError(error)) {
+      throw new AppError('Failed to update farmer verified flag', 500);
+    }
+  }
+
   private async syncVerificationRequests(
     userId: string,
     status: 'pending' | 'approved' | 'rejected',
@@ -285,6 +296,7 @@ export class VerificationService {
     }
 
     const isGov = targetUser.role === 'advisor';
+    const isFarmer = targetUser.role === 'farmer';
 
     const previousStatus = targetUser.verification_status as VerificationStatus;
     const reviewedAt = new Date().toISOString();
@@ -292,10 +304,16 @@ export class VerificationService {
     await this.syncUserVerificationStatus(userId, 'verified');
 
     try {
+      if (isFarmer) {
+        await this.syncFarmerVerifiedFlag(userId, true);
+      }
       await this.syncVerificationDocuments(userId, 'approved', adminId, notes, reviewedAt);
       await this.syncVerificationRequests(userId, 'approved', adminId, notes, reviewedAt);
     } catch (error) {
       await this.syncUserVerificationStatus(userId, previousStatus);
+      if (isFarmer) {
+        await this.syncFarmerVerifiedFlag(userId, previousStatus === 'verified');
+      }
       throw error;
     }
 
@@ -338,7 +356,7 @@ export class VerificationService {
   ): Promise<void> {
     const { data: targetUser, error: targetUserError } = await supabaseAdmin
       .from('users')
-      .select('verification_status')
+      .select('role, verification_status')
       .eq('id', userId)
       .maybeSingle();
 
@@ -352,14 +370,21 @@ export class VerificationService {
 
     const previousStatus = targetUser.verification_status as VerificationStatus;
     const reviewedAt = new Date().toISOString();
+    const isFarmer = targetUser.role === 'farmer';
 
     await this.syncUserVerificationStatus(userId, 'rejected');
 
     try {
+      if (isFarmer) {
+        await this.syncFarmerVerifiedFlag(userId, false);
+      }
       await this.syncVerificationDocuments(userId, 'rejected', adminId, notes, reviewedAt);
       await this.syncVerificationRequests(userId, 'rejected', adminId, notes, reviewedAt);
     } catch (error) {
       await this.syncUserVerificationStatus(userId, previousStatus);
+      if (isFarmer) {
+        await this.syncFarmerVerifiedFlag(userId, previousStatus === 'verified');
+      }
       throw error;
     }
 

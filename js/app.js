@@ -36,9 +36,10 @@ const AgriCore = (() => {
   function getPerformanceStatus(currentYield, previousYield) {
     if (currentYield > previousYield) {
       return { status: 'improving', label: 'Improving', class: 'badge-success' };
-    } else {
+    } else if (currentYield < previousYield) {
       return { status: 'declining', label: 'Declining', class: 'badge-danger' };
     }
+    return { status: 'stable', label: 'Stable', class: 'badge-warning' };
   }
 
   // ===== Session Management =====
@@ -532,6 +533,21 @@ const AgriCore = (() => {
     return apiFetch(path, { method: 'PATCH', body: JSON.stringify(body) });
   }
 
+  function refreshCurrentUser() {
+    var user = getCurrentUser();
+    if (!user || !user.token) return Promise.resolve(null);
+
+    return apiGet('/auth/me').then(function (res) {
+      if (res.success && res.data) {
+        var updated = res.data;
+        updated.token = user.token;
+        setCurrentUser(updated);
+        return updated;
+      }
+      return null;
+    });
+  }
+
   // ===== UI State Helpers (Loading / Error / Empty) =====
   function showLoading(container) {
     if (!container) return;
@@ -561,6 +577,7 @@ const AgriCore = (() => {
     getPerformanceStatus,
     setCurrentUser,
     getCurrentUser,
+    refreshCurrentUser,
     clearCurrentUser,
     showToast,
     apiGet,
